@@ -521,7 +521,7 @@
       if (status) status.textContent = 'not saving — this browser is blocking storage';
       alert('This browser is blocking local storage, so your notes cannot be saved.\n\n' +
         'This usually happens in a private/incognito window or when site data is blocked. ' +
-        'Open the app in a normal window, or use Settings → data → download backup before you close the tab.');
+        'Open the app in a normal window, or use Backup → download backup before you close the tab.');
     }
 
     function load() {
@@ -545,7 +545,7 @@
         try { localStorage.setItem(KEY + '-corrupt-' + Date.now(), raw); } catch (e2) { /* ignore */ }
         alert('Your saved data could not be read (it appears corrupted). ' +
           'Starting fresh — a copy of the unreadable data was kept in browser storage. ' +
-          'If you have a backup file, use Settings → data → load backup to restore it.');
+          'If you have a backup file, use Backup → load backup to restore it.');
         return false;
       }
       if (!d || typeof d !== 'object') return false;
@@ -619,9 +619,9 @@
           warnedFull = true;
           alert('Saving failed: this browser\'s storage is full.\n\n' +
             'Your most recent edits are NOT saved. To fix this:\n' +
-            '1. Use Settings → data → download backup to save what you can.\n' +
+            '1. Use Backup → download backup to save what you can.\n' +
             '2. Delete some large images from your notes, then edit again.\n\n' +
-            'Images are the usual cause — check Settings → data for current usage.');
+            'Images are the usual cause — check the Backup page for current usage.');
         }
         updateUsageDisplay();
       }
@@ -2838,11 +2838,31 @@
     }
 
     function setupStudyMode() {
+      var overlay = Utils.$('study-overlay');
+      var layout = document.querySelector('.layout');
+      var returnFocusTo = null;
+
+      // The overlay is position:fixed over the page, so the page behind it must leave
+      // the tab order (inert) or Tab would reach the covered delete-card buttons.
+      function openOverlay() {
+        returnFocusTo = document.activeElement;
+        overlay.classList.add('open');
+        if (layout) layout.inert = true;
+        Utils.$('study-flip').focus();
+      }
+      function closeOverlay() {
+        if (!overlay.classList.contains('open')) return;
+        overlay.classList.remove('open');
+        if (layout) layout.inert = false;
+        if (returnFocusTo && typeof returnFocusTo.focus === 'function') returnFocusTo.focus();
+        returnFocusTo = null;
+      }
+
       function renderCard() {
         var deck = getStudyDeck();
         if (deck.length === 0) {
           // deck emptied while studying (cards deleted / filter changed)
-          Utils.$('study-overlay').classList.remove('open');
+          closeOverlay();
           return;
         }
         if (AppState.studyIdx >= deck.length) AppState.studyIdx = 0;
@@ -2856,8 +2876,22 @@
         if (deck.length === 0) { alert('No cards to review.'); return; }
         AppState.studyIdx = 0;
         AppState.studyFlipped = false;
-        Utils.$('study-overlay').classList.add('open');
+        openOverlay();
         renderCard();
+      });
+      // Listen on the document: after tabbing past the last button, focus sits on
+      // <body>, and Escape must still close the overlay from there.
+      document.addEventListener('keydown', function (e) {
+        if (!overlay.classList.contains('open')) return;
+        if (e.key === 'Escape') { e.preventDefault(); closeOverlay(); return; }
+        if (e.key !== 'Tab') return;
+        var focusables = overlay.querySelectorAll('button:not([disabled])');
+        if (!focusables.length) return;
+        var first = focusables[0], last = focusables[focusables.length - 1];
+        var inside = overlay.contains(document.activeElement);
+        if (!inside) { e.preventDefault(); (e.shiftKey ? last : first).focus(); return; }
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
       });
       Utils.$('study-card').addEventListener('click', function () {
         AppState.studyFlipped = !AppState.studyFlipped; renderCard();
@@ -2875,9 +2909,7 @@
         AppState.studyIdx = (AppState.studyIdx + 1) % deck.length;
         AppState.studyFlipped = false; renderCard();
       });
-      Utils.$('study-close').addEventListener('click', function () {
-        Utils.$('study-overlay').classList.remove('open');
-      });
+      Utils.$('study-close').addEventListener('click', closeOverlay);
     }
 
     return { renderGrid: renderGrid, setupCards: setupCards, setupStudyMode: setupStudyMode };
