@@ -681,6 +681,7 @@
       schedule: 'Calendar',
       manager: 'Schedule manager',
       cards: 'Flashcards',
+      backup: 'Backup',
       settings: 'Settings'
     };
 
