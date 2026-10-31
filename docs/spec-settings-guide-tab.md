@@ -1,3 +1,5 @@
+> **원본 설계 스펙 (역사 기록용).** 범용 템플릿이라 `<i class="아이콘">` 자리표시자를 쓰지만, 실제 구현은 `<span class="icon" data-icon="help" aria-hidden="true"></span>` 인라인 SVG 패턴을 쓴다(`CLAUDE.md` 아이콘 규칙: 아이콘 폰트·CDN 금지).
+
 웹앱의 Settings 페이지에 "Guide"(사용 설명서) 탭을 추가해줘. 단일 HTML 구조 기준.
 
 ## 구조

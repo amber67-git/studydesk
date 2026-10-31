@@ -1,3 +1,6 @@
+> **ClassDesk(학생 관리 앱)용 스펙.** StudyDesk Library 등록 모달의 레이아웃 철학(검색바 최상단, 삭제 버튼 왼쪽 격리)을 참고하려고 보관한다.
+> AR/Lexile 등 읽기 레벨 항목은 StudyDesk에 적용하지 않는다(`CLAUDE.md` 도메인 규칙 참조).
+
 📋 ClassDesk "Add Book" 설계 스펙
 핵심 철학
 

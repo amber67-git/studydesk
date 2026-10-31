@@ -11,6 +11,7 @@
  *   Nav            - sidebar page switching + mobile drawer
  *   Subjects       - subject CRUD
  *   NotesModule    - notebook list + cornell editor + format commands + images
+ *   Library        - study-material catalog + API auto-fill (books, films, courses...)
  *   Schedule       - calendar + today's list + recurring/one-off tasks
  *   Flashcards     - card grid + study mode
  *   Settings       - font style + text size + data reset

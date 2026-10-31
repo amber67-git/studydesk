@@ -14,7 +14,7 @@ For live-reload while editing in VS Code, the **Live Server** extension works we
 
 - `index.html` — markup only
 - `style.css` — all styles
-- `app.js` — all behavior, organized into modules (see the header comment at the top of the file for the module map: Utils, Icons, Storage, AppState, Subjects, NotesModule, Schedule, Flashcards, Settings, Stats, App)
+- `app.js` — all behavior, organized into modules (see the header comment at the top of the file for the module map: Icons, Utils, Storage, AppState, Modal, Nav, Subjects, NotesModule, Library, Schedule, Flashcards, Settings, Stats, App)
 
 ## Data model
 
