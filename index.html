@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StudyDesk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Architects+Daughter&family=Nanum+Pen+Script&family=Yomogi&family=Zhi+Mang+Xing&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="layout">
+
+  <aside class="sb" id="sidebar">
+    <div class="sb-brand">
+      <div class="sb-logo">StudyDesk</div>
+      <div class="sb-sub" id="header-date"></div>
+    </div>
+    <nav class="sb-nav">
+      <button class="ni active" data-page="notes" onclick="showPage('notes')"><span class="icon" data-icon="notes" aria-hidden="true"></span>Notebooks</button>
+      <button class="ni" data-page="library" onclick="showPage('library')"><span class="icon" data-icon="library" aria-hidden="true"></span>Library</button>
+      <button class="ni" data-page="schedule" onclick="showPage('schedule')"><span class="icon" data-icon="calendar" aria-hidden="true"></span>Calendar</button>
+      <button class="ni" data-page="manager" onclick="showPage('manager')"><span class="icon" data-icon="list-check" aria-hidden="true"></span>Schedule manager</button>
+      <button class="ni" data-page="cards" onclick="showPage('cards')"><span class="icon" data-icon="cards" aria-hidden="true"></span>Flashcards</button>
+      <button class="ni" data-page="settings" onclick="showPage('settings')"><span class="icon" data-icon="settings" aria-hidden="true"></span>Settings</button>
+    </nav>
+    <div class="sb-foot">stored only in this browser</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <button class="mob-menu-btn" onclick="toggleMobileSidebar()" aria-label="menu"><span class="icon" data-icon="menu-2" aria-hidden="true"></span></button>
+      <div class="tb-title" id="tb-title">Notebooks</div>
+      <div class="tb-actions" id="tb-actions"></div>
+    </div>
+    <div class="backup-banner" id="backup-banner" style="display:none;" role="status">
+      <span class="icon" data-icon="download" aria-hidden="true"></span>
+      <span id="backup-banner-text"></span>
+      <button class="btn btn-p" id="backup-banner-now">backup now</button>
+      <button class="btn" id="backup-banner-later">later</button>
+    </div>
+    <div class="mob-overlay" id="mob-overlay" onclick="toggleMobileSidebar()"></div>
+
+    <!-- ============ NOTES PAGE ============ -->
+    <div class="page active" id="page-notes">
+      <div class="pc">
+        <div class="stats">
+          <div class="sc c-blu"><div class="sc-lbl">Total notebooks</div><div class="sc-val" id="st-notes">0</div></div>
+          <div class="sc c-grn"><div class="sc-lbl">Subjects</div><div class="sc-val" id="st-subjects">0</div></div>
+          <div class="sc c-amb"><div class="sc-lbl">Today's tasks</div><div class="sc-val" id="st-tasks">0</div></div>
+          <div class="sc c-pur"><div class="sc-lbl">Flashcards</div><div class="sc-val" id="st-cards">0</div></div>
+        </div>
+
+        <div class="notes-page-grid">
+          <div class="today-card today-card-compact">
+            <h2>today's study list</h2>
+            <p class="today-date" id="today-date-label"></p>
+            <div id="today-task-list"></div>
+            <div class="add-task-row">
+              <input type="text" id="adhoc-task-input" placeholder="add a one-off task for today" />
+              <select id="adhoc-task-subject"></select>
+              <select id="adhoc-task-type">
+                <option value="lecture">lecture</option>
+                <option value="book">book</option>
+                <option value="movie">movie</option>
+                <option value="project">project</option>
+                <option value="self-study">self-study</option>
+                <option value="other">other</option>
+              </select>
+              <button class="btn btn-p" id="adhoc-task-add"><span class="icon" data-icon="plus" aria-hidden="true"></span> add</button>
+            </div>
+          </div>
+
+          <div class="card" style="overflow:hidden">
+            <div class="fbar">
+              <div class="search-wrap">
+                <span class="icon" data-icon="search" aria-hidden="true"></span>
+                <input type="text" id="note-search" placeholder="search notebooks" />
+              </div>
+              <select id="notebook-subject-filter" title="filter by subject"></select>
+              <select id="notebook-type-filter" title="filter by type">
+                <option value="all">all types</option>
+                <option value="lecture">lecture</option>
+                <option value="book">book</option>
+                <option value="movie">movie</option>
+                <option value="project">project</option>
+                <option value="self-study">self-study</option>
+                <option value="other">other</option>
+              </select>
+              <button class="btn" id="new-subject-btn"><span class="icon" data-icon="plus" aria-hidden="true"></span> subject</button>
+              <div style="margin-left:auto"><button class="btn btn-p" id="new-note-btn"><span class="icon" data-icon="pencil-plus" aria-hidden="true"></span> new notebook</button></div>
+            </div>
+
+            <div class="pc" style="padding:16px">
+              <div class="notes-layout">
+                <div class="note-list" id="note-list"></div>
+
+                <div class="cornell-wrap">
+                <button class="page-flip-btn page-flip-prev" id="page-flip-prev" aria-label="previous page"><span class="icon" data-icon="chevron-left" aria-hidden="true"></span></button>
+                <button class="page-flip-btn page-flip-next" id="page-flip-next" aria-label="next page"><span class="icon" data-icon="chevron-right" aria-hidden="true"></span></button>
+                <div class="cornell">
+                  <div class="cornell-head">
+                    <div class="ch-row ch-row-3">
+                      <div class="ch-cell">
+                        <div class="cell-label">SUBJECT</div>
+                        <select id="note-subject-select" class="cell-input"></select>
+                      </div>
+                      <div class="ch-cell">
+                        <div class="cell-label">TYPE</div>
+                        <select id="note-type-select" class="cell-input">
+                          <option value="lecture">lecture</option>
+                          <option value="book">book</option>
+                          <option value="movie">movie</option>
+                          <option value="project">project</option>
+                          <option value="self-study">self-study</option>
+                          <option value="other">other</option>
+                        </select>
+                      </div>
+                      <div class="ch-cell">
+                        <div class="cell-label">TOPIC</div>
+                        <input type="text" id="note-title" class="cell-input" placeholder="name, topic, class" />
+                      </div>
+                    </div>
+                    <div class="ch-meta-row">
+                      <input type="text" id="note-chapter" class="meta-tags-input" placeholder="chapter / subtitle (this page)" />
+                      <input type="text" id="note-tags" class="meta-tags-input" placeholder="tags / keywords (this page)" />
+                      <input type="date" id="note-date" title="date (auto-filled per page)" />
+                    </div>
+                  </div>
+                  <div class="cornell-body">
+                    <div class="cues-col">
+                      <div class="section-title">CUE</div>
+                      <div class="cues-spacer"></div>
+                      <textarea id="cues" class="lined" placeholder="Review cues
+
+Key words / Questions / Vocabulary"></textarea>
+                  </div>
+                  <div class="notes-body-wrap">
+                    <div class="section-title section-title-notes">MAIN NOTES</div>
+                    <div class="notes-body-toolbar">
+                      <button type="button" class="fmt-btn" data-cmd="bold" title="bold" aria-label="bold"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h7a3.5 3.5 0 0 1 0 7H6z"/><path d="M6 11h8a3.5 3.5 0 0 1 0 7H6z"/></svg></button>
+                      <button type="button" class="fmt-btn" data-cmd="italic" title="italic" aria-label="italic"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="11" y1="4" x2="18" y2="4"/><line x1="6" y1="20" x2="13" y2="20"/><line x1="14" y1="4" x2="10" y2="20"/></svg></button>
+                      <button type="button" class="fmt-btn" data-cmd="highlight" title="highlight" aria-label="highlight"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 17l8.5-8.5a2 2 0 0 1 2.8 0l1.2 1.2a2 2 0 0 1 0 2.8L9 21H5z"/><path d="M13 6l3 3"/></svg></button>
+                      <span class="color-chip-group" role="group" aria-label="text color">
+                        <button type="button" class="color-chip" data-color="#18181b" style="background:#18181b;" title="black" aria-label="black"></button>
+                        <button type="button" class="color-chip" data-color="#b91c1c" style="background:#b91c1c;" title="red" aria-label="red"></button>
+                        <button type="button" class="color-chip" data-color="#1e40af" style="background:#1e40af;" title="blue" aria-label="blue"></button>
+                      </span>
+                      <span class="fmt-sep"></span>
+                      <button type="button" class="fmt-btn" data-cmd="indent-add" title="indent" aria-label="indent"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><path d="M4 9l3 3-3 3"/></svg></button>
+                      <button type="button" class="fmt-btn" data-cmd="indent-remove" title="outdent" aria-label="outdent"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><path d="M7 9L4 12l3 3"/></svg></button>
+                      <button type="button" class="fmt-btn" data-cmd="label" title="label" aria-label="label"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11V5a1 1 0 0 1 1-1h6l11 11-7 7L3 11z"/><circle cx="8" cy="7.5" r="1" fill="currentColor" stroke="none"/></svg></button>
+                      <button type="button" class="fmt-btn" data-cmd="link" title="link" aria-label="insert link"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a3.5 3.5 0 0 0 5 0l3-3a3.5 3.5 0 0 0-5-5l-1 1"/><path d="M14 10a3.5 3.5 0 0 0-5 0l-3 3a3.5 3.5 0 0 0 5 5l1-1"/></svg></button>
+                      <span class="fmt-sep"></span>
+                      <button type="button" class="fmt-btn" id="insert-image-btn" title="insert image" aria-label="insert image"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6" fill="currentColor" stroke="none"/><path d="M21 16l-5-5-4 4-2-2-5 5"/></svg></button>
+                    </div>
+                    <div id="notes-body" class="lined notes-body-editable" contenteditable="true" data-placeholder="Take notes here.
+
+Use short sentences, bullet points, symbols, and diagrams."></div>
+                    <input type="file" id="image-file-input" accept="image/*" style="display:none;" />
+                  </div>
+                </div>
+                <div class="cornell-summary">
+                  <div class="section-title section-title-summary">SUMMARY</div>
+                  <textarea id="summary" placeholder="Quick summary
+
+Write the main idea in your own words."></textarea>
+                </div>
+                <div class="cornell-footer">
+                  <button class="bic danger" id="delete-note-btn" title="delete notebook" aria-label="delete notebook"><span class="icon" data-icon="trash" aria-hidden="true"></span></button>
+                  <button class="btn" id="review-mode-btn" title="hide MAIN NOTES and recall from cues"><span class="icon" data-icon="eye-off" aria-hidden="true"></span> self-test</button>
+                  <button type="button" id="page-indicator" class="page-indicator" title="jump to a page"></button>
+                  <span id="save-status"></span>
+                  <button class="btn btn-p" id="save-note-btn"><span class="icon" data-icon="check" aria-hidden="true"></span> save</button>
+                </div>
+              </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ LIBRARY PAGE ============ -->
+    <div class="page" id="page-library">
+      <div class="pc">
+        <div class="card">
+          <div class="fbar">
+            <div class="search-wrap">
+              <span class="icon" data-icon="search" aria-hidden="true"></span>
+              <input type="text" id="lib-search" placeholder="search title, author, ISBN, call no, notes" />
+            </div>
+            <select id="lib-type-filter" title="filter by type"></select>
+            <select id="lib-category-filter" title="filter by category"></select>
+            <select id="lib-genre-filter" title="filter by genre"></select>
+            <select id="lib-status-filter" title="filter by status"></select>
+            <div style="margin-left:auto"><button class="btn btn-p" id="lib-add-btn"><span class="icon" data-icon="plus" aria-hidden="true"></span> add item</button></div>
+          </div>
+
+          <div class="lib-bulk-bar" id="lib-bulk-bar" style="display:none;">
+            <span id="lib-bulk-count"></span>
+            <button class="btn" id="lib-bulk-edit-btn"><span class="icon" data-icon="pencil" aria-hidden="true"></span> bulk edit</button>
+            <button class="btn" id="lib-bulk-clear-btn">clear selection</button>
+          </div>
+
+          <div class="cb p">
+            <div class="lib-grid" id="lib-grid"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ SCHEDULE PAGE (calendar only) ============ -->
+    <div class="page" id="page-schedule">
+      <div class="pc">
+        <div class="card" style="padding:0">
+          <div class="ch"><div class="ct"><span class="icon" data-icon="calendar-month" aria-hidden="true"></span>calendar</div>
+            <div class="month-nav">
+              <button class="bic" id="cal-prev-btn"><span class="icon" data-icon="chevron-left" aria-hidden="true"></span></button>
+              <span id="cal-month-label" class="mn-label"></span>
+              <button class="bic" id="cal-next-btn"><span class="icon" data-icon="chevron-right" aria-hidden="true"></span></button>
+            </div>
+          </div>
+          <div class="cal-weekdays">
+            <div>MON</div><div>TUE</div><div>WED</div><div>THU</div><div>FRI</div><div>SAT</div><div>SUN</div>
+          </div>
+          <div id="cal-grid" class="cal-grid"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ SCHEDULE MANAGER PAGE ============ -->
+    <div class="page" id="page-manager">
+      <div class="pc">
+        <div class="schedule-grid-2col">
+          <div class="card">
+            <div class="ch"><div class="ct"><span class="icon" data-icon="repeat" aria-hidden="true"></span>recurring schedule</div></div>
+            <div class="cb p">
+              <div class="recurring-form">
+                <input type="text" id="rec-title" placeholder="e.g. economics 101 lecture" style="flex:2; min-width:140px;" />
+                <select id="rec-subject" title="subject"></select>
+                <select id="rec-type" title="type">
+                  <option value="lecture">lecture</option>
+                  <option value="book">book</option>
+                  <option value="movie">movie</option>
+                  <option value="project">project</option>
+                  <option value="self-study">self-study</option>
+                  <option value="other">other</option>
+                </select>
+              </div>
+              <div class="day-picker" id="day-picker" style="margin-bottom:10px;"></div>
+              <button class="btn btn-p" id="add-recurring-btn" style="width:100%;"><span class="icon" data-icon="repeat" aria-hidden="true"></span> add recurring task</button>
+              <div class="recurring-list" id="recurring-list" style="margin-top:12px;"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="ch"><div class="ct"><span class="icon" data-icon="checklist" aria-hidden="true"></span>one-off tasks</div></div>
+            <div class="cb p">
+              <p style="font-family:var(--sans); font-size:13px; color:var(--txt2); margin-top:0;">Add a task for a specific date. It will show up on the calendar and, if it's today, on the Notebooks page study list. Tag it with a subject so "go to note" knows which notebook to open.</p>
+              <div class="fr c2" style="margin-bottom:10px;">
+                <input type="text" id="manager-task-input" placeholder="task title" />
+                <input type="date" id="manager-task-date" />
+              </div>
+              <div class="fr c2" style="margin-bottom:10px;">
+                <select id="manager-task-subject" title="subject"></select>
+                <select id="manager-task-type" title="type">
+                  <option value="lecture">lecture</option>
+                  <option value="book">book</option>
+                  <option value="movie">movie</option>
+                  <option value="project">project</option>
+                  <option value="self-study">self-study</option>
+                  <option value="other">other</option>
+                </select>
+              </div>
+              <button class="btn btn-p" id="manager-task-add" style="width:100%;"><span class="icon" data-icon="plus" aria-hidden="true"></span> add one-off task</button>
+              <div class="recurring-list" id="manager-task-list" style="margin-top:12px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ FLASHCARDS PAGE ============ -->
+    <div class="page" id="page-cards">
+      <div class="pc">
+        <div class="card">
+          <div class="fbar">
+            <select id="deck-filter"></select>
+            <button class="btn" id="study-mode-btn"><span class="icon" data-icon="player-play" aria-hidden="true"></span> review mode</button>
+            <div style="margin-left:auto"><button class="btn btn-p" id="add-card-btn"><span class="icon" data-icon="plus" aria-hidden="true"></span> card</button></div>
+          </div>
+          <div class="cb p">
+            <div class="card-grid" id="card-grid"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ SETTINGS PAGE ============ -->
+    <div class="page" id="page-settings">
+      <div class="pc">
+        <div class="card">
+          <div class="ch"><div class="ct"><span class="icon" data-icon="typography" aria-hidden="true"></span>font style</div></div>
+          <div class="cb p">
+            <p style="font-family:var(--sans); font-size:13px; color:var(--txt2); margin-top:0;">This sets one fixed font for the whole page — it does not change while you type, even if you switch languages inside the same note. All fonts are free for commercial use (Google Fonts, SIL Open Font License).</p>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <label style="display:flex; align-items:center; gap:6px; font-size:14px; cursor:pointer;">
+                <input type="radio" name="font-mode" id="font-mode-hand" value="hand" checked style="width:auto;height:auto;"> handwritten
+              </label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:14px; cursor:pointer;">
+                <input type="radio" name="font-mode" id="font-mode-clean" value="clean" style="width:auto;height:auto;"> clean sans-serif
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="ch"><div class="ct"><span class="icon" data-icon="text-size" aria-hidden="true"></span>note text size</div></div>
+          <div class="cb p">
+            <p style="font-family:var(--sans); font-size:13px; color:var(--txt2); margin-top:0;">Applies to every note, flashcard, and task across the page.</p>
+            <div style="display:flex; align-items:center; gap:12px;">
+              <input type="range" id="font-size-slider" min="13" max="22" step="1" value="16" style="flex:1; height:auto;" />
+              <span id="font-size-value" style="font-family:var(--sans); font-size:13px; color:var(--txt2); min-width:36px;">16px</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="ch"><div class="ct"><span class="icon" data-icon="language" aria-hidden="true"></span>multilingual support</div></div>
+          <div class="cb p">
+            <p style="font-family:var(--sans); font-size:13px; color:var(--txt2); margin-top:0;">The handwritten font covers Latin script directly. Korean, Japanese, and Chinese characters automatically render in a matching handwriting style as a fallback, so the look stays consistent within one note even when you mix languages.</p>
+            <table style="width:100%; font-size:13px; border-collapse:collapse;">
+              <tr class="font-preview-row"><td style="width:140px;">English / French</td><td style="font-family:var(--hand); font-size:16px; color:var(--txt);">the quick brown fox / le renard brun</td></tr>
+              <tr class="font-preview-row"><td>Korean</td><td style="font-family:var(--hand); font-size:18px; color:var(--txt);">안녕하세요 공부 노트</td></tr>
+              <tr class="font-preview-row"><td>Japanese</td><td style="font-family:var(--hand); font-size:17px; color:var(--txt);">こんにちは 勉強ノート</td></tr>
+              <tr class="font-preview-row"><td>Chinese</td><td style="font-family:var(--hand); font-size:18px; color:var(--txt);">你好 学习笔记</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="ch"><div class="ct"><span class="icon" data-icon="calendar" aria-hidden="true"></span>schedule</div></div>
+          <div class="cb p">
+            <p style="font-family:var(--sans); font-size:13px; color:var(--txt2); margin:0;">This page manages your study plan directly — recurring tasks and one-off tasks are stored here, not synced with any external calendar. That keeps your study schedule private to this browser.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="ch"><div class="ct"><span class="icon" data-icon="database" aria-hidden="true"></span>data</div></div>
+          <div class="cb p">
+            <p style="font-family:var(--sans); font-size:13px; color:var(--txt2); margin-top:0;">Everything is stored only in this browser (localStorage), including any images you add to notes. Download a backup file regularly — it's the only way to recover your notes if browser data gets cleared, and it also lets you move your notes to another browser or computer.</p>
+            <div class="backup-row">
+              <button class="btn btn-p" id="export-data-btn"><span class="icon" data-icon="download" aria-hidden="true"></span> download backup</button>
+              <button class="btn" id="import-data-btn"><span class="icon" data-icon="upload" aria-hidden="true"></span> load backup</button>
+              <input type="file" id="import-file-input" accept=".json,application/json" style="display:none;" />
+            </div>
+            <p class="backup-status" id="backup-status"></p>
+            <div class="backup-reminder-row">
+              <label for="backup-reminder-select" style="font-family:var(--sans);font-size:13px;color:var(--txt2);">remind me to back up</label>
+              <select id="backup-reminder-select">
+                <option value="3">every 3 days</option>
+                <option value="7">every 7 days</option>
+                <option value="14">every 14 days</option>
+                <option value="30">every 30 days</option>
+                <option value="0">never</option>
+              </select>
+            </div>
+            <p class="backup-status" id="storage-usage" style="margin-top:10px;"></p>
+            <hr style="border:none;border-top:1px solid var(--bdr);margin:14px 0;" />
+            <p style="font-family:var(--sans); font-size:13px; color:var(--txt2); margin-top:0;">Clearing removes all notes, tasks, cards, and images from this browser. Browser storage has a limit of a few megabytes total, so avoid pasting dozens of large images.</p>
+            <button class="btn btn-d" id="reset-data-btn"><span class="icon" data-icon="trash" aria-hidden="true"></span> clear all data</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="ch"><div class="ct"><span class="icon" data-icon="external-link" aria-hidden="true"></span>auto-fill (optional)</div></div>
+          <div class="cb p">
+            <p style="font-family:var(--sans); font-size:13px; color:var(--txt2); margin-top:0;">Library auto-fill for books, music, and papers works out of the box. Film &amp; TV lookup additionally needs a free TMDB API key — the app works fine without one; only the movie search stays off. Get a key at themoviedb.org (sign up → Settings → API), then paste it here.</p>
+            <div class="backup-reminder-row">
+              <label for="tmdb-key-input" style="font-family:var(--sans);font-size:13px;color:var(--txt2);">TMDB API key</label>
+              <input type="text" id="tmdb-key-input" placeholder="paste your key (optional)" style="flex:1;min-width:200px;" autocomplete="off" />
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="ch"><div class="ct"><span class="icon" data-icon="help" aria-hidden="true"></span>StudyDesk 사용 설명서</div></div>
+          <div class="cb p">
+            <details class="guide-details">
+              <summary>설명서 펼치기 / 접기</summary>
+              <div class="guide-body">
+
+                <h3>StudyDesk란?</h3>
+                <p>StudyDesk는 코넬(Cornell) 노트 필기법을 기반으로 한 개인 공부 노트 앱입니다. 강의, 독서, 자습 등 여러 활동을 과목별 노트북으로 나누어 기록하고, 학습 일정과 노트를 연결해 "오늘 공부할 것"에서 클릭 한 번으로 필기를 이어갈 수 있도록 설계되었습니다.</p>
+                <ul>
+                  <li><b>설치 없음</b> — 브라우저에서 바로 실행됩니다. 별도 프로그램 설치나 회원 가입이 필요 없습니다.</li>
+                  <li><b>데이터는 내 브라우저에만</b> — 모든 노트는 이 브라우저 안(localStorage)에만 저장됩니다. 외부 서버로 전송되지 않아 사생활이 보호됩니다.</li>
+                  <li><b>필기 흐름 자동화</b> — 새 페이지를 만들면 날짜가 자동 입력되고, 필기가 페이지를 넘치면 다음 페이지가 자동으로 생성되며, 일정의 <b>go to note</b> 버튼으로 해당 노트북의 마지막 페이지가 바로 열립니다.</li>
+                </ul>
+
+                <h3>페이지별 기능</h3>
+                <dl>
+                  <dt>Notebooks</dt>
+                  <dd>메인 화면입니다. 노트북 목록·검색·필터, 코넬 노트 편집기, 오늘의 공부 목록이 모여 있습니다. (아래 상세 참고)</dd>
+                  <dt>Library</dt>
+                  <dd>공부한 자료(책·영화·인강·논문·음악 등)의 카탈로그입니다. 제목 검색으로 정보를 자동으로 채우고, 상태(want / in progress / done)와 진행률·별점을 관리하며, <b>go to note</b>로 해당 자료의 노트북과 연결할 수 있습니다. (아래 상세 참고)</dd>
+                  <dt>Calendar</dt>
+                  <dd>한 달 달력에 반복 일정과 단발 일정이 표시됩니다. 날짜의 <b>+N more</b>를 누르면 그날의 전체 일정과 <b>go to note</b> 버튼이 나옵니다.</dd>
+                  <dt>Schedule manager</dt>
+                  <dd>반복 일정(요일 선택)과 단발 일정(날짜 지정)을 등록·삭제합니다. 모든 일정에 과목(subject)과 활동 유형(type)을 붙여 노트북과 연결합니다. (아래 상세 참고)</dd>
+                  <dt>Flashcards</dt>
+                  <dd>과목별 암기 카드를 만들고 <b>review mode</b>로 복습합니다. 카드를 클릭하면 앞/뒤가 뒤집힙니다.</dd>
+                  <dt>Settings</dt>
+                  <dd>글꼴 스타일(<b>handwritten</b> / <b>clean sans-serif</b>), 노트 글자 크기, 데이터 초기화, 그리고 이 설명서가 있습니다.</dd>
+                </dl>
+
+                <h3>코넬 노트 작성 자세히</h3>
+                <p>노트북 하나는 "한 과목의 한 활동"을 담습니다. 예를 들어 economics 과목이라도 강의 노트(lecture)와 독서 노트(book)는 서로 다른 노트북입니다.</p>
+                <dl>
+                  <dt>고정 정보 — 노트북을 만들 때 한 번 정합니다</dt>
+                  <dd><b>SUBJECT</b>(과목), <b>TYPE</b>(활동 유형: lecture / book / movie / project / self-study / other), <b>TOPIC</b>(노트북 이름)</dd>
+                  <dt>페이지별 정보 — 공부한 날마다 바뀝니다</dt>
+                  <dd><b>chapter / subtitle</b>(그날 다룬 챕터), <b>tags / keywords</b>(키워드), 날짜(새 페이지 생성 시 오늘 날짜가 자동 입력)</dd>
+                </dl>
+                <p>본문은 코넬 노트의 3구역 구조입니다. 왼쪽 <b>CUE</b>에 복습용 질문·키워드를, 오른쪽 <b>MAIN NOTES</b>에 본 필기를, 아래 <b>SUMMARY</b>에 요약을 적습니다.</p>
+                <ul>
+                  <li><b>서식 도구</b> — MAIN NOTES 위 도구줄에서 굵게·기울임·형광펜·글자색(검정/빨강/파랑)·들여쓰기·라벨·링크·이미지를 사용할 수 있습니다.</li>
+                  <li><b>마크다운 단축 입력</b> — <b>**굵게**</b>, <b>*기울임*</b>, <b>==형광펜==</b>을 입력하면 즉시 서식으로 바뀝니다.</li>
+                  <li><b>이미지</b> — 이미지 버튼으로 파일을 선택하거나, 복사한 이미지를 Ctrl+V로 바로 붙여넣을 수 있습니다. 큰 이미지는 저장 공간 보호를 위해 자동으로 축소됩니다(긴 변 1280px).</li>
+                  <li><b>페이지 넘기기</b> — 노트 좌우의 ◀ ▶ 화살표로 이동합니다. 마지막 페이지에서 ▶를 누르면 새 페이지가 만들어집니다. 필기가 화면을 넘치면 자동으로 다음 페이지가 생성됩니다.</li>
+                  <li><b>페이지 바로 이동</b> — 하단의 페이지 번호(<b>N / M</b>)를 클릭하면 전체 페이지 목록(챕터·날짜·미리보기)이 열리고, 원하는 페이지로 바로 이동할 수 있습니다.</li>
+                  <li><b>self-test (복습 모드)</b> — 하단의 <b>self-test</b> 버튼을 누르면 MAIN NOTES가 흐려져 가려집니다. 왼쪽 CUE의 질문·키워드만 보고 내용을 스스로 떠올려 보세요 — 코넬 필기법의 핵심 복습 단계입니다. <b>show notes</b>를 누르면 다시 보입니다.</li>
+                  <li><b>저장</b> — 입력하는 즉시 자동 저장됩니다. <b>save</b> 버튼은 저장 상태를 확인하는 용도입니다.</li>
+                </ul>
+
+                <h3>일정과 노트 연결하기 (추천 워크플로우)</h3>
+                <ol>
+                  <li><b>Schedule manager</b>에서 반복 일정을 등록합니다. 예: 제목 "economics 101 lecture", 과목 economics, 유형 lecture, 요일 월·수·금.</li>
+                  <li>해당 요일이 되면 <b>Notebooks</b> 페이지의 <b>today's study list</b>에 그 일정이 자동으로 나타납니다.</li>
+                  <li>공부를 시작할 때 일정 옆의 <b>go to note</b> 버튼을 누릅니다. 그 과목·유형의 노트북이 <b>마지막 페이지</b>(지난 필기)로 열립니다. 노트북이 없으면 자동으로 만들어집니다.</li>
+                  <li>지난 내용을 훑어본 뒤 ▶ 화살표로 새 페이지를 만들고, chapter에 오늘 진도를 적고 필기를 시작합니다.</li>
+                  <li>공부가 끝나면 목록의 체크박스를 눌러 완료 표시합니다.</li>
+                </ol>
+
+                <h3>Library 사용하기</h3>
+                <p>공부에 쓰는 모든 자료를 한 곳에서 관리합니다. 노트북과는 별개의 목록이므로, 노트를 쓰지 않은 자료도 자유롭게 등록할 수 있습니다. 등록 흐름은 "검색 한 번, 나머지는 확인만" 입니다 — 맨 위 검색창에 제목을 넣고 결과를 클릭하면 아래 필드가 자동으로 채워집니다.</p>
+                <ul>
+                  <li><b>자동 채우기</b> — 유형을 고르고 제목을 검색하면 저자·출판사·표지 등이 채워집니다. 책(Google Books)·음악(MusicBrainz)·논문(Crossref)은 바로 되고, 영화/TV는 무료 TMDB 키를 <b>Settings → auto-fill</b>에 넣으면 켜집니다(선택사항). 직접 입력한 칸은 자동 채우기가 <b>절대 덮어쓰지 않습니다.</b></li>
+                  <li><b>표지</b> — 표지 박스 하나가 전부입니다: 클릭하면 파일 선택, 이미지를 끌어다 놓거나, 복사한 이미지를 모달 안에서 Ctrl+V 하면 바로 들어갑니다(자동 압축). 박스 아래 <b>↻ 90°</b>로 회전, <b>search google images</b>로 표지를 찾을 수 있습니다.</li>
+                  <li><b>Category와 Genre</b> — Category는 자료의 <b>형태</b>(Novel, Documentary, Online Course...), Genre는 <b>주제</b>(Economics, History...)입니다. 같은 저자·시리즈("Write Right 2 - Beginner"와 "Write Right 3"도 같은 시리즈로 인식)의 자료를 추가하면 이전 분류·출판사를 빈 칸에 자동으로 이어받습니다.</li>
+                  <li><b>상태와 진행률</b> — 등록할 때는 핵심 정보만 입력하고, 상태(want / in progress / done)·진행률·별점·청구기호는 <b>편집(연필 버튼)</b>에서 관리합니다. 진행 중인 자료는 카드에 진행률 막대가 표시됩니다.</li>
+                  <li><b>레벨</b> — 영화는 연령등급(Rated PG), 강의·영상은 난이도(Beginner...), 논문은 연도를 넣으면 배지가 표시됩니다. 책과 음악에는 레벨 항목이 없습니다.</li>
+                  <li><b>노트북 연결</b> — 카드의 <b>go to note</b>를 누르면 과목을 골라 그 자료의 노트북을 만들거나 열 수 있습니다. 삭제는 편집 화면 왼쪽 아래의 <b>Delete</b> 버튼입니다.</li>
+                  <li><b>일괄 편집</b> — 카드의 체크박스로 여러 개를 선택하면 상단에 <b>bulk edit</b> 바가 나타나 Category/Genre/상태를 한 번에 바꿀 수 있습니다.</li>
+                </ul>
+
+                <h3>데이터 보관 — 꼭 읽어주세요</h3>
+                <p>모든 데이터(노트·일정·카드·이미지)는 <b>지금 사용 중인 브라우저 한 곳에만</b> 저장됩니다. 다음 경우 데이터가 사라지거나 보이지 않으니 주의하세요.</p>
+                <ul>
+                  <li>브라우저의 인터넷 사용 기록(쿠키·사이트 데이터) 삭제 시 <b>모든 노트가 삭제되며 복구할 수 없습니다.</b></li>
+                  <li>다른 브라우저(예: Chrome ↔ Edge)나 다른 컴퓨터에서 열면 빈 상태로 시작합니다. 기기 간 동기화 기능은 아직 없습니다.</li>
+                  <li>시크릿/비공개 창에서는 창을 닫는 순간 데이터가 사라집니다.</li>
+                  <li><b>Settings → data → download backup</b>으로 백업 파일(JSON)을 주기적으로 내려받아 두세요. 데이터가 사라졌을 때 <b>load backup</b>으로 복원할 수 있는 유일한 수단이며, 다른 브라우저나 컴퓨터로 노트를 옮길 때도 이 파일을 사용합니다.</li>
+                  <li>마지막 백업 후 일정 기간이 지나면 화면 상단에 백업 알림 배너가 나타납니다. 배너의 <b>backup now</b>를 누르면 바로 내려받아지고, 알림 주기는 <b>Settings → data → remind me to back up</b>에서 3·7·14·30일 또는 끄기(never)로 바꿀 수 있습니다.</li>
+                  <li>저장 공간은 브라우저당 수 MB로 제한됩니다. 큰 스크린샷을 수십 장 붙여넣으면 저장이 실패할 수 있습니다.</li>
+                </ul>
+
+                <h3>자주 묻는 질문</h3>
+                <p><b>화면 표시</b></p>
+                <dl>
+                  <dt>서식 버튼(굵게, 색상 등) 일부가 안 보여요.</dt>
+                  <dd>창 폭이 좁으면 도구줄이 가로로 스크롤됩니다. 도구줄 위에서 마우스 휠(또는 트랙패드 가로 스와이프)로 옆으로 밀면 나머지 버튼이 나타납니다. 창을 넓혀도 해결됩니다.</dd>
+                  <dt>아이콘이 있어야 할 자리가 빈 네모로 보여요.</dt>
+                  <dd>구버전에서 외부 아이콘 글꼴이 차단될 때 생기던 문제입니다. 현재 버전은 아이콘이 앱 안에 내장되어 있어 인터넷이 끊겨도 항상 표시됩니다. 이 증상이 보인다면 예전 파일을 열고 계신 것이니 최신 파일로 교체하세요.</dd>
+                </dl>
+                <p><b>데이터</b></p>
+                <dl>
+                  <dt>어제 쓴 노트가 전부 사라졌어요.</dt>
+                  <dd>먼저 (1) 같은 브라우저가 맞는지, (2) 시크릿 창이 아닌지, (3) 최근 브라우저 데이터 정리를 했는지 확인하세요. 다른 브라우저에서 열면 데이터가 없는 것이 정상입니다. 백업 파일이 있다면 <b>Settings → data → load backup</b>으로 복원할 수 있습니다. 백업이 없는 상태에서 브라우저 데이터를 삭제한 경우에는 복구할 수 없습니다.</dd>
+                  <dt>이미지를 붙여넣은 뒤 저장이 느리거나 실패해요.</dt>
+                  <dd>브라우저 저장 공간(수 MB) 한도에 가까워졌을 가능성이 큽니다. 저장에 실패하면 <b>"save failed — storage full"</b> 문구와 함께 안내창이 뜹니다. 현재 사용량은 <b>Settings → data</b>에서 확인할 수 있으며, 큰 이미지를 지우고 다시 편집하면 저장됩니다. (큰 이미지는 자동 축소되지만, 수십 장이 쌓이면 한도에 도달할 수 있습니다.)</dd>
+                  <dt>"not saving — this browser is blocking storage" 라고 떠요.</dt>
+                  <dd>시크릿(비공개) 창이거나 브라우저가 사이트 데이터를 차단한 상태입니다. 이 상태에서는 필기가 저장되지 않습니다. 일반 창에서 열어주세요. 이미 작업한 내용이 있다면 창을 닫기 전에 <b>Settings → data → download backup</b>으로 파일을 먼저 받아두세요.</dd>
+                  <dt>백업 파일을 불러왔는데 "that backup could not be loaded" 라고 떠요.</dt>
+                  <dd>파일이 손상되었거나 이 앱의 백업 형식이 아닙니다. 이 경우 <b>기존 노트는 그대로 유지되며 덮어써지지 않습니다.</b> 다른 백업 파일로 다시 시도해 보세요.</dd>
+                  <dt>Library에서 영화를 검색하면 키가 필요하다고 해요.</dt>
+                  <dd>영화/TV 자동 채우기만 무료 TMDB 키가 필요합니다(책·음악·논문은 키 없이 동작). themoviedb.org에서 가입 후 설정의 API 메뉴에서 키를 발급받아 <b>Settings → auto-fill</b>에 붙여넣으면 됩니다. "the API key was rejected" 메시지가 나오면 키를 잘못 붙여넣었는지 확인하세요. 키 없이도 모든 정보를 직접 입력할 수 있습니다.</dd>
+                  <dt>Library 검색이 계속 실패해요.</dt>
+                  <dd>인터넷 연결을 먼저 확인하세요. 오프라인이거나 응답이 15초를 넘으면 검색이 중단되고 안내가 표시됩니다. 짧은 시간에 여러 번 검색하면 "search limit reached" 가 뜰 수 있으며 몇 분 뒤 다시 시도하면 됩니다. 검색이 안 되어도 모든 항목은 직접 입력으로 등록할 수 있습니다.</dd>
+                </dl>
+                <p><b>편집</b></p>
+                <dl>
+                  <dt>chapter를 입력했는데 페이지를 넘겼다 오니 사라져 있어요.</dt>
+                  <dd>구버전의 저장 버그입니다. 현재 버전은 chapter·tags를 포함한 모든 입력이 즉시 자동 저장되도록 수정되었습니다. 최신 파일인지 확인하세요.</dd>
+                  <dt>글자색·형광펜 버튼을 눌러도 아무 일이 없어요.</dt>
+                  <dd>색을 입힐 글자를 먼저 드래그로 선택한 다음 버튼을 눌러야 합니다. 선택 없이 누르면 "select text first" 안내가 표시됩니다.</dd>
+                  <dt>(파일을 직접 수정하는 경우) 메뉴 이름을 바꿨는데 상단 제목은 그대로예요.</dt>
+                  <dd>사이드바 메뉴 글자는 index.html에, 페이지 상단 제목은 app.js의 <b>PAGE_TITLES</b>에 각각 있습니다. 두 곳을 모두 고쳐야 하며, <b>showPage('...')</b> 괄호 안의 내부 이름은 바꾸면 페이지가 열리지 않으니 그대로 두세요.</dd>
+                </dl>
+
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============ STUDY MODE OVERLAY ============ -->
+<div class="study-overlay" id="study-overlay">
+  <div class="study-modal">
+    <p class="study-progress" id="study-progress"></p>
+    <div class="study-card" id="study-card"></div>
+    <div class="study-controls">
+      <button class="btn" id="study-prev"><span class="icon" data-icon="chevron-left" aria-hidden="true"></span></button>
+      <button class="btn" id="study-flip">flip</button>
+      <button class="btn" id="study-next"><span class="icon" data-icon="chevron-right" aria-hidden="true"></span></button>
+      <button class="btn" id="study-close">close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SUBJECT MODAL ============ -->
+<div class="mo" id="mo-subject">
+  <div class="mb">
+    <div class="mt"><span>Add subject</span><button class="bic" id="subject-modal-close"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>
+    <div class="fg"><label>Subject name</label><input type="text" id="subject-name-input" placeholder="e.g. economics, french, startup" /></div>
+    <div class="mf">
+      <button class="btn" id="subject-modal-cancel">Cancel</button>
+      <button class="btn btn-p" id="subject-modal-save">Add subject</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ LIBRARY ITEM MODAL ============ -->
+<div class="mo" id="mo-library">
+  <div class="mb mb-wide">
+    <div class="mt"><span id="lib-modal-title">Add to library</span><button class="bic" id="lib-modal-close"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>
+
+    <!-- search first: this is the primary input; everything below is confirmation -->
+    <div class="lib-search-top">
+      <select id="lib-type" title="type">
+        <option value="book">book</option>
+        <option value="movie">movie</option>
+        <option value="series">series / TV</option>
+        <option value="lecture">lecture / course</option>
+        <option value="video">video</option>
+        <option value="paper">paper</option>
+        <option value="article">article / news</option>
+        <option value="music">music</option>
+        <option value="other">other</option>
+      </select>
+      <input type="text" id="lib-search-input" placeholder="search a title to auto-fill everything below" />
+      <button class="btn btn-p" id="lib-search-btn"><span class="icon" data-icon="search" aria-hidden="true"></span> search</button>
+    </div>
+    <p class="lib-lookup-status" id="lib-lookup-status"></p>
+    <div class="lib-results" id="lib-results"></div>
+
+    <div class="lib-form-grid-v2">
+      <!-- left: the cover IS the drop zone / paste target / upload button -->
+      <div class="lib-cover-col">
+        <div class="lib-cover-preview empty" id="lib-cover-preview" tabindex="0" title="paste, drag, or click to upload"></div>
+        <input type="hidden" id="lib-cover-url" />
+        <input type="file" id="lib-cover-file" accept="image/*" style="display:none;" />
+        <div class="lib-cover-links">
+          <button type="button" class="lib-link" id="lib-cover-rotate" title="rotate 90&deg;"><span class="icon" data-icon="rotate" aria-hidden="true"></span> 90&deg;</button>
+          <button type="button" class="lib-link" id="lib-cover-remove">remove</button>
+          <button type="button" class="lib-link" id="lib-cover-google">search google images</button>
+        </div>
+      </div>
+
+      <!-- right: 2-column grid, related fields paired -->
+      <div class="lib-fields">
+        <div class="fr c2">
+          <div class="fg"><label>Title *</label><input type="text" id="lib-title" /></div>
+          <div class="fg"><label>Publisher / studio / year</label><input type="text" id="lib-publisher" /></div>
+        </div>
+        <div class="fr c2">
+          <div class="fg"><label>Author / creator</label><input type="text" id="lib-author" /></div>
+          <div class="fg" id="lib-illustrator-wrap"><label>Illustrator</label><input type="text" id="lib-illustrator" /></div>
+        </div>
+        <div class="fr c2">
+          <div class="fg"><label>Category <span class="fg-hint">(form)</span></label><select id="lib-category"></select></div>
+          <div class="fg"><label>Genre <span class="fg-hint">(subject)</span></label><select id="lib-genre"></select></div>
+        </div>
+        <div class="fr c2">
+          <div class="fg"><label>ISBN / DOI</label><input type="text" id="lib-isbn" /></div>
+          <div class="fg" id="lib-level-wrap"><label>Level</label><input type="text" id="lib-level" /></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- tracking lives in the EDIT phase; hidden while registering -->
+    <div class="lib-tracking" id="lib-tracking" style="display:none;">
+      <div class="fr c4">
+        <div class="fg"><label>Status</label>
+          <select id="lib-status">
+            <option value="want">want</option>
+            <option value="in progress">in progress</option>
+            <option value="done">done</option>
+          </select>
+        </div>
+        <div class="fg"><label>Progress %</label><input type="number" id="lib-progress" min="0" max="100" step="5" /></div>
+        <div class="fg"><label>Rating (0-5)</label><input type="number" id="lib-rating" min="0" max="5" step="1" /></div>
+        <div class="fg"><label>Call no.</label><input type="text" id="lib-callno" placeholder="auto" /></div>
+      </div>
+    </div>
+
+    <div class="fg"><label>Notes</label><textarea id="lib-notes" rows="2"></textarea></div>
+    <p class="lib-notebook-link" id="lib-notebook-link"></p>
+
+    <!-- destructive action isolated on the far left, away from Save -->
+    <div class="mf mf-split">
+      <button class="btn lib-delete-btn" id="lib-delete-btn" style="display:none;"><span class="icon" data-icon="trash" aria-hidden="true"></span> Delete</button>
+      <div class="mf-right">
+        <button class="btn" id="lib-modal-cancel">Cancel</button>
+        <button class="btn btn-p" id="lib-modal-save">Save item</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<datalist id="dl-authors"></datalist>
+<datalist id="dl-illustrators"></datalist>
+<datalist id="dl-publishers"></datalist>
+
+<!-- ============ BULK EDIT MODAL ============ -->
+<div class="mo" id="mo-bulk">
+  <div class="mb">
+    <div class="mt"><span>Bulk edit</span><button class="bic" id="bulk-modal-close"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>
+    <p class="bulk-count-label" id="bulk-count-label"></p>
+    <p style="font-family:var(--sans);font-size:12px;color:var(--txt3);margin:0 0 10px;">Leave a field on "(keep)" to change only the other ones.</p>
+    <div class="fg"><label>Category</label><select id="bulk-category"></select></div>
+    <div class="fg"><label>Genre</label><select id="bulk-genre"></select></div>
+    <div class="fg"><label>Status</label><select id="bulk-status"></select></div>
+    <div class="mf">
+      <button class="btn" id="bulk-modal-cancel">Cancel</button>
+      <button class="btn btn-p" id="bulk-modal-save">Apply to selected</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ PAGE LIST (jump) MODAL ============ -->
+<div class="mo" id="mo-page-list">
+  <div class="mb">
+    <div class="mt"><span>Pages in this notebook</span><button class="bic" id="page-list-modal-close"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>
+    <div class="page-list" id="page-list-body"></div>
+  </div>
+</div>
+
+<!-- ============ NEW NOTEBOOK MODAL ============ -->
+<div class="mo" id="mo-new-notebook">
+  <div class="mb">
+    <div class="mt"><span>New notebook</span><button class="bic" id="new-notebook-modal-close"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>
+    <div class="fg"><label>Subject</label><select id="new-notebook-subject"></select></div>
+    <div class="fg"><label>Type</label>
+      <select id="new-notebook-type">
+        <option value="lecture">lecture</option>
+        <option value="book">book</option>
+        <option value="movie">movie</option>
+        <option value="project">project</option>
+        <option value="self-study">self-study</option>
+        <option value="other">other</option>
+      </select>
+    </div>
+    <div class="fg"><label>Topic / name</label><input type="text" id="new-notebook-title" placeholder='e.g. "Econ 101", "Freakonomics"' /></div>
+    <p style="font-family:var(--sans); font-size:12px; color:var(--txt3); margin:0;">A subject can have one notebook per type - e.g. economics/lecture and economics/book are different notebooks.</p>
+    <div class="mf">
+      <button class="btn" id="new-notebook-modal-cancel">Cancel</button>
+      <button class="btn btn-p" id="new-notebook-modal-save">Create notebook</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ FLASHCARD MODAL ============ -->
+<div class="mo" id="mo-card">
+  <div class="mb">
+    <div class="mt"><span>Add flashcard</span><button class="bic" id="card-modal-close"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>
+    <div class="fg"><label>Question / front</label><textarea id="card-front-input" rows="2"></textarea></div>
+    <div class="fg"><label>Answer / back</label><textarea id="card-back-input" rows="2"></textarea></div>
+    <div class="mf">
+      <button class="btn" id="card-modal-cancel">Cancel</button>
+      <button class="btn btn-p" id="card-modal-save">Add card</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ LABEL MODAL ============ -->
+<div class="mo" id="mo-label">
+  <div class="mb">
+    <div class="mt"><span>Insert label</span><button class="bic" id="label-modal-close"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>
+    <div class="fg"><label>Label text</label><input type="text" id="label-text-input" placeholder='e.g. "exam tip", "definition"' /></div>
+    <div class="mf">
+      <button class="btn" id="label-modal-cancel">Cancel</button>
+      <button class="btn btn-p" id="label-modal-save">Insert</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ LINK MODAL ============ -->
+<div class="mo" id="mo-link">
+  <div class="mb">
+    <div class="mt"><span>Insert link</span><button class="bic" id="link-modal-close"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>
+    <div class="fg"><label>URL</label><input type="text" id="link-url-input" placeholder="https://..." /></div>
+    <div class="fg"><label>Link text (optional)</label><input type="text" id="link-text-input" placeholder="leave blank to use the URL" /></div>
+    <div class="mf">
+      <button class="btn" id="link-modal-cancel">Cancel</button>
+      <button class="btn btn-p" id="link-modal-save">Insert</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ DAY EVENTS MODAL (calendar "+N more") ============ -->
+<div class="mo" id="mo-day-events">
+  <div class="mb">
+    <div class="mt"><span id="day-events-title">Tasks</span><button class="bic" id="day-events-modal-close"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>
+    <div id="day-events-list"></div>
+    <div class="mf">
+      <button class="btn" id="day-events-modal-cancel">Close</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
