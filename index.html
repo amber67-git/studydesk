@@ -529,9 +529,9 @@ Write the main idea in your own words."></textarea>
 
 <!-- ============ STUDY MODE OVERLAY ============ -->
 <div class="study-overlay" id="study-overlay">
-  <div class="study-modal">
-    <p class="study-progress" id="study-progress"></p>
-    <div class="study-card" id="study-card"></div>
+  <div class="study-modal" role="dialog" aria-modal="true" aria-label="review mode">
+    <p class="study-progress" id="study-progress" aria-live="polite"></p>
+    <div class="study-card" id="study-card" aria-live="polite"></div>
     <div class="study-controls">
       <button class="btn" id="study-prev" aria-label="previous card"><span class="icon" data-icon="chevron-left" aria-hidden="true"></span></button>
       <button class="btn" id="study-flip">flip</button>

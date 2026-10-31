@@ -2876,8 +2876,9 @@
         if (deck.length === 0) { alert('No cards to review.'); return; }
         AppState.studyIdx = 0;
         AppState.studyFlipped = false;
+        overlay.classList.add('open');
+        renderCard();   // card text first, then focus, so the question is there when focus lands
         openOverlay();
-        renderCard();
       });
       // Listen on the document: after tabbing past the last button, focus sits on
       // <body>, and Escape must still close the overlay from there.
