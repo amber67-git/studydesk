@@ -4,7 +4,7 @@ A personal study notes app (formerly "My notebook") — Cornell-style notebooks,
 
 ## Running it
 
-**Hosted:** https://amber67-git.github.io/studydesk/ (GitHub Pages, deployed from `main` by `.github/workflows/pages.yml`). On a phone, open that URL and use "Add to Home Screen" / "Install app": StudyDesk is a PWA, so the installed app opens full-screen and works offline (`manifest.webmanifest`, `sw.js`). Data is still per device until sync lands.
+**Hosted:** https://amber67-git.github.io/studydesk/ (GitHub Pages, deployed from `main` by `.github/workflows/pages.yml`; one-time setup: repository Settings → Pages → Source: "GitHub Actions"). On a phone, open that URL and use "Add to Home Screen" / "Install app": StudyDesk is a PWA, so the installed app opens full-screen and works offline (`manifest.webmanifest`, `sw.js`). Data is still per device until sync lands.
 
 **Local:** just open `index.html` in a browser. No server, no install. (The service worker only registers over http(s), so offline caching is not active from `file://`.)
 

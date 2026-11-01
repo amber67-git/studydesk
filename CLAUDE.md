@@ -66,7 +66,7 @@ Icons(인라인 SVG, CDN 금지 — 아이콘 폰트 차단으로 빈 네모 버
 6. 핵심 로직은 Node 시뮬레이션으로 케이스 검증 (예: seriesKey, nextCallNo, computeLevel, 날짜 계산)
 
 ## 배포 산출물 (현재 방식)
-- **GitHub Pages**: `main`에 push하면 `.github/workflows/pages.yml`이 저장소 루트를 그대로 배포한다 → https://amber67-git.github.io/studydesk/ . 빌드 단계 없음.
+- **GitHub Pages**: `main`에 push하면 `.github/workflows/pages.yml`이 저장소 루트를 그대로 배포한다 → https://amber67-git.github.io/studydesk/ . 빌드 단계 없음. 최초 1회 저장소 Settings → Pages → Source를 "GitHub Actions"로 바꿔야 한다(GITHUB_TOKEN으로는 Pages를 켤 수 없음). 이 origin(amber67-git.github.io)은 소유자의 다른 프로젝트 페이지와 공유되므로 서비스 워커는 자기 캐시(`studydesk-*`)와 SHELL 목록의 URL만 건드린다.
 - **PWA**: `manifest.webmanifest` + `sw.js` + `icons/`. 서비스 워커는 앱 셸(HTML/CSS/JS는 network-first, 폰트·아이콘은 cache-first, Google Fonts는 stale-while-revalidate)만 캐시하고 외부 API(Google Books/MusicBrainz/Crossref/TMDB/표지 이미지)는 가로채지 않는다. localStorage는 건드리지 않는다. 등록은 app.js `App.init` 끝에서 http(s)일 때만 하므로 file://로 열어도 동작한다. 셸 파일을 추가하면 `sw.js`의 SHELL 목록에도 넣을 것(하나라도 404면 install 전체가 실패한다).
 - 3파일 분리본(index.html/style.css/app.js) + **단일 HTML 병합본**(link/script 태그를 inline style/script 블록으로 치환). 병합 스크립트는 단순 문자열 치환이라 두 태그가 정확히 1개씩이어야 함.
 - 라틴 웹폰트는 `fonts/`(woff2 8개, ~250KB)에 자체 호스팅하고 style.css 상단 `@font-face`에서 `src: url(fonts/...), url(https://fonts.gstatic.com/...)` 순으로 선언한다. 병합본을 fonts/ 없이 단독으로 열어도 두 번째 src(CDN)로 넘어가므로 같은 글꼴이 나온다. CJK 손글씨 3종(Nanum Pen Script/Yomogi/Zhi Mang Xing)은 Google Fonts가 각 ~100개 조각으로 쪼개 주기 때문에 번들하지 않고 CDN `<link>`를 유지한다.
