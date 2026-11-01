@@ -3733,13 +3733,17 @@
       uid = user.uid; userEmail = user.email || '';
       ready = false; snapshot = {}; pendingPages = {}; pushQueue = Promise.resolve();
       // The local copy belongs to the account it was last synced with. Another
-      // account must not inherit (and upload) it.
+      // account must not inherit (and upload) any of it: notes, subjects, settings
+      // (incl. API keys). It is replaced after the download; the user is only asked
+      // when there is content worth keeping.
       var wipeFp = null, prev = storedUid();
-      if (prev && prev !== user.uid && hasLocalContent() && !stillSample()) {
-        var ok = confirm('The notes in this browser were synced with a different Google account.\n\n' +
-          'OK = replace them with the notes of ' + userEmail + ' from the cloud (the local copy is discarded; ' +
-          'download a backup first if you want to keep it).\nCancel = sign out and keep the local notes.');
-        if (!ok) { setStatus('syncing', 'signing out'); auth.signOut(); return; }
+      if (prev && prev !== user.uid) {
+        if (hasLocalContent() && !stillSample()) {
+          var ok = confirm('The notes in this browser were synced with a different Google account.\n\n' +
+            'OK = replace them with the notes of ' + userEmail + ' from the cloud (the local copy is discarded; ' +
+            'download a backup first if you want to keep it).\nCancel = sign out and keep the local notes.');
+          if (!ok) { setStatus('syncing', 'signing out'); auth.signOut(); return; }
+        }
         wipeFp = SyncCore.fingerprint(AppState);   // emptied inside initialMerge, only once the download has succeeded
       }
       setStatus('syncing', 'downloading');
