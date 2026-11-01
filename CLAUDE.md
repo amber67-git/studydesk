@@ -48,6 +48,7 @@
 - 검색은 본문(body) 포함 전 필드 관통.
 - 백업 리마인더 배너: 마지막 백업 후 N일(기본 7, 설정 가능, 0=끄기) 경과 시 표시. 노트 0개면 안 띄움.
 - Library 등록 모달: 검색바 최상단("검색 한 번, 나머지는 확인만"), 표지 박스 하나가 클릭업로드+드래그+Ctrl+V 3-in-1(버튼 없음), Status/Progress/Rating/CallNo는 편집 모드에서만 표시, Delete는 왼쪽 빨강으로 격리.
+- **Backup은 사이드바의 전용 페이지**(내부 키 `backup`, `page-backup`): download/load backup, 리마인더 주기, 저장 용량, 전체 삭제(별도 카드)가 여기 있다. Settings에는 글꼴·글자 크기·auto-fill 키·설명서만 남긴다.
 - Settings에 한국어 사용 설명서(guide) 내장 — **기능 바꾸면 설명서도 같이 갱신** (FAQ는 실제 겪은 문제의 에러 문구 그대로).
 
 ## 현재 코드 구조 (app.js, IIFE 모듈)
@@ -66,9 +67,10 @@ Icons(인라인 SVG, CDN 금지 — 아이콘 폰트 차단으로 빈 네모 버
 
 ## 배포 산출물 (현재 방식)
 - 3파일 분리본(index.html/style.css/app.js) + **단일 HTML 병합본**(link/script 태그를 inline style/script 블록으로 치환). 병합 스크립트는 단순 문자열 치환이라 두 태그가 정확히 1개씩이어야 함.
+- 라틴 웹폰트는 `fonts/`(woff2 8개, ~250KB)에 자체 호스팅하고 style.css 상단 `@font-face`에서 `src: url(fonts/...), url(https://fonts.gstatic.com/...)` 순으로 선언한다. 병합본을 fonts/ 없이 단독으로 열어도 두 번째 src(CDN)로 넘어가므로 같은 글꼴이 나온다. CJK 손글씨 3종(Nanum Pen Script/Yomogi/Zhi Mang Xing)은 Google Fonts가 각 ~100개 조각으로 쪼개 주기 때문에 번들하지 않고 CDN `<link>`를 유지한다.
 
 ## 미해결 과제 (우선순위순)
-1. **모바일 폰트 불일치 (미해결 버그)** — PC와 폰에서 글씨체가 다르게 보임. 유력 원인: Google Fonts CDN 로딩 실패 시 시스템 폰트 폴백. 진단에 필요한 정보(폰에서 어떻게 열었는지 / 손글씨가 아예 안 나오는지 vs 다른 손글씨인지)를 사용자가 아직 안 줌. 해결 방향 후보: 폰트 로컬 번들 or 폴백 스택 정비.
+1. **모바일 폰트 불일치 (1차 조치 완료, 사용자 확인 대기)** — PC와 폰에서 글씨체가 다르게 보이던 문제. 원인으로 확인된 것: 글꼴 스택의 마지막이 generic `cursive`였고, 웹폰트가 실패하면 Android는 Dancing Script, iOS는 Snell Roundhand를 골라 기기마다 다른 글씨가 됐다. 조치: 라틴 폰트 자체 호스팅(`fonts/`) + 스택 끝을 시스템 한글 고딕 → `sans-serif`로 교체(위 배포 산출물 참조). 남은 확인: 폰에서 실제로 같은 글꼴이 나오는지 사용자 확인. 여전히 다르면 "폰에서 어떻게 열었는지(파일 직접 / 서버) / 손글씨가 아예 안 나오는지 vs 다른 손글씨인지"를 받아 진단.
 2. **Google Books API 키 입력란 (선택)** — 429 "search limit reached" 재발 시 추가. TMDB 키 입력란(Settings → auto-fill)과 동일 패턴, 키 있으면 `&key=` 붙이기. 무료 1,000회/일.
 3. **GitHub Pages 배포** — 아직 안 올림. 정적 파일이라 그대로 올리면 됨. 폰 접속 가능해지지만 데이터는 여전히 기기별.
 4. **구글 캘린더 단방향 가져오기** — 설계 합의됨: 전용 "공부" 캘린더 구독 방식, OAuth 클라이언트 필요, localhost에서 동작. 가져온 일정→subject 매핑 규칙 필요.

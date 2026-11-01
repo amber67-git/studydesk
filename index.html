@@ -6,7 +6,8 @@
 <title>StudyDesk</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Architects+Daughter&family=Nanum+Pen+Script&family=Yomogi&family=Zhi+Mang+Xing&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- Latin fonts are self-hosted in fonts/ (declared in style.css); only the CJK handwriting fonts come from the CDN -->
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&family=Yomogi&family=Zhi+Mang+Xing&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -24,6 +25,7 @@
       <button class="ni" data-page="schedule" onclick="showPage('schedule')"><span class="icon" data-icon="calendar" aria-hidden="true"></span>Calendar</button>
       <button class="ni" data-page="manager" onclick="showPage('manager')"><span class="icon" data-icon="list-check" aria-hidden="true"></span>Schedule manager</button>
       <button class="ni" data-page="cards" onclick="showPage('cards')"><span class="icon" data-icon="cards" aria-hidden="true"></span>Flashcards</button>
+      <button class="ni" data-page="backup" onclick="showPage('backup')"><span class="icon" data-icon="database" aria-hidden="true"></span>Backup</button>
       <button class="ni" data-page="settings" onclick="showPage('settings')"><span class="icon" data-icon="settings" aria-hidden="true"></span>Settings</button>
     </nav>
     <div class="sb-foot">stored only in this browser</div>
@@ -60,8 +62,8 @@
             <div id="today-task-list"></div>
             <div class="add-task-row">
               <input type="text" id="adhoc-task-input" placeholder="add a one-off task for today" />
-              <select id="adhoc-task-subject"></select>
-              <select id="adhoc-task-type">
+              <select id="adhoc-task-subject" aria-label="subject"></select>
+              <select id="adhoc-task-type" aria-label="type">
                 <option value="lecture">lecture</option>
                 <option value="book">book</option>
                 <option value="movie">movie</option>
@@ -105,11 +107,11 @@
                     <div class="ch-row ch-row-3">
                       <div class="ch-cell">
                         <div class="cell-label">SUBJECT</div>
-                        <select id="note-subject-select" class="cell-input"></select>
+                        <select id="note-subject-select" class="cell-input" aria-label="subject"></select>
                       </div>
                       <div class="ch-cell">
                         <div class="cell-label">TYPE</div>
-                        <select id="note-type-select" class="cell-input">
+                        <select id="note-type-select" class="cell-input" aria-label="type">
                           <option value="lecture">lecture</option>
                           <option value="book">book</option>
                           <option value="movie">movie</option>
@@ -120,7 +122,7 @@
                       </div>
                       <div class="ch-cell">
                         <div class="cell-label">TOPIC</div>
-                        <input type="text" id="note-title" class="cell-input" placeholder="name, topic, class" />
+                        <input type="text" id="note-title" class="cell-input" placeholder="name, topic, class" aria-label="topic" />
                       </div>
                     </div>
                     <div class="ch-meta-row">
@@ -156,7 +158,7 @@ Key words / Questions / Vocabulary"></textarea>
                       <span class="fmt-sep"></span>
                       <button type="button" class="fmt-btn" id="insert-image-btn" title="insert image" aria-label="insert image"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6" fill="currentColor" stroke="none"/><path d="M21 16l-5-5-4 4-2-2-5 5"/></svg></button>
                     </div>
-                    <div id="notes-body" class="lined notes-body-editable" contenteditable="true" data-placeholder="Take notes here.
+                    <div id="notes-body" class="lined notes-body-editable" contenteditable="true" role="textbox" aria-multiline="true" aria-label="main notes" data-placeholder="Take notes here.
 
 Use short sentences, bullet points, symbols, and diagrams."></div>
                     <input type="file" id="image-file-input" accept="image/*" style="display:none;" />
@@ -219,9 +221,9 @@ Write the main idea in your own words."></textarea>
         <div class="card" style="padding:0">
           <div class="ch"><div class="ct"><span class="icon" data-icon="calendar-month" aria-hidden="true"></span>calendar</div>
             <div class="month-nav">
-              <button class="bic" id="cal-prev-btn"><span class="icon" data-icon="chevron-left" aria-hidden="true"></span></button>
+              <button class="bic" id="cal-prev-btn" aria-label="previous month"><span class="icon" data-icon="chevron-left" aria-hidden="true"></span></button>
               <span id="cal-month-label" class="mn-label"></span>
-              <button class="bic" id="cal-next-btn"><span class="icon" data-icon="chevron-right" aria-hidden="true"></span></button>
+              <button class="bic" id="cal-next-btn" aria-label="next month"><span class="icon" data-icon="chevron-right" aria-hidden="true"></span></button>
             </div>
           </div>
           <div class="cal-weekdays">
@@ -289,7 +291,7 @@ Write the main idea in your own words."></textarea>
       <div class="pc">
         <div class="card">
           <div class="fbar">
-            <select id="deck-filter"></select>
+            <select id="deck-filter" aria-label="filter cards by subject"></select>
             <button class="btn" id="study-mode-btn"><span class="icon" data-icon="player-play" aria-hidden="true"></span> review mode</button>
             <div style="margin-left:auto"><button class="btn btn-p" id="add-card-btn"><span class="icon" data-icon="plus" aria-hidden="true"></span> card</button></div>
           </div>
@@ -297,6 +299,44 @@ Write the main idea in your own words."></textarea>
             <div class="card-grid" id="card-grid"></div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- ============ BACKUP PAGE ============ -->
+    <div class="page" id="page-backup">
+      <div class="pc">
+        <div class="card">
+          <div class="ch"><div class="ct"><span class="icon" data-icon="database" aria-hidden="true"></span>backup &amp; restore</div></div>
+          <div class="cb p">
+            <p style="font-family:var(--sans); font-size:13px; color:var(--txt2); margin-top:0;">Everything is stored only in this browser (localStorage), including any images you add to notes. Download a backup file regularly — it's the only way to recover your notes if browser data gets cleared, and it also lets you move your notes to another browser or computer. Loading a backup replaces what is in this browser with the file's contents.</p>
+            <div class="backup-row">
+              <button class="btn btn-p" id="export-data-btn"><span class="icon" data-icon="download" aria-hidden="true"></span> download backup</button>
+              <button class="btn" id="import-data-btn"><span class="icon" data-icon="upload" aria-hidden="true"></span> load backup</button>
+              <input type="file" id="import-file-input" accept=".json,application/json" style="display:none;" />
+            </div>
+            <p class="backup-status" id="backup-status"></p>
+            <div class="backup-reminder-row">
+              <label for="backup-reminder-select" style="font-family:var(--sans);font-size:13px;color:var(--txt2);">remind me to back up</label>
+              <select id="backup-reminder-select">
+                <option value="3">every 3 days</option>
+                <option value="7">every 7 days</option>
+                <option value="14">every 14 days</option>
+                <option value="30">every 30 days</option>
+                <option value="0">never</option>
+              </select>
+            </div>
+            <p class="backup-status" id="storage-usage" style="margin-top:10px;"></p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="ch"><div class="ct"><span class="icon" data-icon="trash" aria-hidden="true"></span>clear all data</div></div>
+          <div class="cb p">
+            <p style="font-family:var(--sans); font-size:13px; color:var(--txt2); margin-top:0;">Clearing removes all notes, tasks, cards, and images from this browser. Browser storage has a limit of a few megabytes total, so avoid pasting dozens of large images.</p>
+            <button class="btn btn-d" id="reset-data-btn"><span class="icon" data-icon="trash" aria-hidden="true"></span> clear all data</button>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -350,33 +390,6 @@ Write the main idea in your own words."></textarea>
         </div>
 
         <div class="card">
-          <div class="ch"><div class="ct"><span class="icon" data-icon="database" aria-hidden="true"></span>data</div></div>
-          <div class="cb p">
-            <p style="font-family:var(--sans); font-size:13px; color:var(--txt2); margin-top:0;">Everything is stored only in this browser (localStorage), including any images you add to notes. Download a backup file regularly — it's the only way to recover your notes if browser data gets cleared, and it also lets you move your notes to another browser or computer.</p>
-            <div class="backup-row">
-              <button class="btn btn-p" id="export-data-btn"><span class="icon" data-icon="download" aria-hidden="true"></span> download backup</button>
-              <button class="btn" id="import-data-btn"><span class="icon" data-icon="upload" aria-hidden="true"></span> load backup</button>
-              <input type="file" id="import-file-input" accept=".json,application/json" style="display:none;" />
-            </div>
-            <p class="backup-status" id="backup-status"></p>
-            <div class="backup-reminder-row">
-              <label for="backup-reminder-select" style="font-family:var(--sans);font-size:13px;color:var(--txt2);">remind me to back up</label>
-              <select id="backup-reminder-select">
-                <option value="3">every 3 days</option>
-                <option value="7">every 7 days</option>
-                <option value="14">every 14 days</option>
-                <option value="30">every 30 days</option>
-                <option value="0">never</option>
-              </select>
-            </div>
-            <p class="backup-status" id="storage-usage" style="margin-top:10px;"></p>
-            <hr style="border:none;border-top:1px solid var(--bdr);margin:14px 0;" />
-            <p style="font-family:var(--sans); font-size:13px; color:var(--txt2); margin-top:0;">Clearing removes all notes, tasks, cards, and images from this browser. Browser storage has a limit of a few megabytes total, so avoid pasting dozens of large images.</p>
-            <button class="btn btn-d" id="reset-data-btn"><span class="icon" data-icon="trash" aria-hidden="true"></span> clear all data</button>
-          </div>
-        </div>
-
-        <div class="card">
           <div class="ch"><div class="ct"><span class="icon" data-icon="external-link" aria-hidden="true"></span>auto-fill (optional)</div></div>
           <div class="cb p">
             <p style="font-family:var(--sans); font-size:13px; color:var(--txt2); margin-top:0;">Library auto-fill for books, music, and papers works out of the box. Film &amp; TV lookup additionally needs a free TMDB API key — the app works fine without one; only the movie search stays off. Get a key at themoviedb.org (sign up → Settings → API), then paste it here.</p>
@@ -413,9 +426,11 @@ Write the main idea in your own words."></textarea>
                   <dt>Schedule manager</dt>
                   <dd>반복 일정(요일 선택)과 단발 일정(날짜 지정)을 등록·삭제합니다. 모든 일정에 과목(subject)과 활동 유형(type)을 붙여 노트북과 연결합니다. (아래 상세 참고)</dd>
                   <dt>Flashcards</dt>
-                  <dd>과목별 암기 카드를 만들고 <b>review mode</b>로 복습합니다. 카드를 클릭하면 앞/뒤가 뒤집힙니다.</dd>
+                  <dd>과목별 암기 카드를 만들고 <b>review mode</b>로 복습합니다. 카드를 클릭하면 앞/뒤가 뒤집히고, <b>Esc</b> 키나 <b>close</b>로 닫습니다.</dd>
+                  <dt>Backup</dt>
+                  <dd>백업 파일 내려받기(<b>download backup</b>)·불러오기(<b>load backup</b>), 백업 알림 주기, 현재 저장 공간 사용량, 그리고 전체 데이터 삭제가 모여 있는 전용 페이지입니다. (아래 "데이터 보관" 참고)</dd>
                   <dt>Settings</dt>
-                  <dd>글꼴 스타일(<b>handwritten</b> / <b>clean sans-serif</b>), 노트 글자 크기, 데이터 초기화, 그리고 이 설명서가 있습니다.</dd>
+                  <dd>글꼴 스타일(<b>handwritten</b> / <b>clean sans-serif</b>), 노트 글자 크기, 자동 채우기 키, 그리고 이 설명서가 있습니다.</dd>
                 </dl>
 
                 <h3>코넬 노트 작성 자세히</h3>
@@ -464,8 +479,8 @@ Write the main idea in your own words."></textarea>
                   <li>브라우저의 인터넷 사용 기록(쿠키·사이트 데이터) 삭제 시 <b>모든 노트가 삭제되며 복구할 수 없습니다.</b></li>
                   <li>다른 브라우저(예: Chrome ↔ Edge)나 다른 컴퓨터에서 열면 빈 상태로 시작합니다. 기기 간 동기화 기능은 아직 없습니다.</li>
                   <li>시크릿/비공개 창에서는 창을 닫는 순간 데이터가 사라집니다.</li>
-                  <li><b>Settings → data → download backup</b>으로 백업 파일(JSON)을 주기적으로 내려받아 두세요. 데이터가 사라졌을 때 <b>load backup</b>으로 복원할 수 있는 유일한 수단이며, 다른 브라우저나 컴퓨터로 노트를 옮길 때도 이 파일을 사용합니다.</li>
-                  <li>마지막 백업 후 일정 기간이 지나면 화면 상단에 백업 알림 배너가 나타납니다. 배너의 <b>backup now</b>를 누르면 바로 내려받아지고, 알림 주기는 <b>Settings → data → remind me to back up</b>에서 3·7·14·30일 또는 끄기(never)로 바꿀 수 있습니다.</li>
+                  <li><b>Backup → download backup</b>으로 백업 파일(JSON)을 주기적으로 내려받아 두세요. 데이터가 사라졌을 때 <b>load backup</b>으로 복원할 수 있는 유일한 수단이며, 다른 브라우저나 컴퓨터로 노트를 옮길 때도 이 파일을 사용합니다.</li>
+                  <li>마지막 백업 후 일정 기간이 지나면 화면 상단에 백업 알림 배너가 나타납니다. 배너의 <b>backup now</b>를 누르면 바로 내려받아지고, 알림 주기는 <b>Backup → remind me to back up</b>에서 3·7·14·30일 또는 끄기(never)로 바꿀 수 있습니다.</li>
                   <li>저장 공간은 브라우저당 수 MB로 제한됩니다. 큰 스크린샷을 수십 장 붙여넣으면 저장이 실패할 수 있습니다.</li>
                 </ul>
 
@@ -480,11 +495,11 @@ Write the main idea in your own words."></textarea>
                 <p><b>데이터</b></p>
                 <dl>
                   <dt>어제 쓴 노트가 전부 사라졌어요.</dt>
-                  <dd>먼저 (1) 같은 브라우저가 맞는지, (2) 시크릿 창이 아닌지, (3) 최근 브라우저 데이터 정리를 했는지 확인하세요. 다른 브라우저에서 열면 데이터가 없는 것이 정상입니다. 백업 파일이 있다면 <b>Settings → data → load backup</b>으로 복원할 수 있습니다. 백업이 없는 상태에서 브라우저 데이터를 삭제한 경우에는 복구할 수 없습니다.</dd>
+                  <dd>먼저 (1) 같은 브라우저가 맞는지, (2) 시크릿 창이 아닌지, (3) 최근 브라우저 데이터 정리를 했는지 확인하세요. 다른 브라우저에서 열면 데이터가 없는 것이 정상입니다. 백업 파일이 있다면 <b>Backup → load backup</b>으로 복원할 수 있습니다. 백업이 없는 상태에서 브라우저 데이터를 삭제한 경우에는 복구할 수 없습니다.</dd>
                   <dt>이미지를 붙여넣은 뒤 저장이 느리거나 실패해요.</dt>
-                  <dd>브라우저 저장 공간(수 MB) 한도에 가까워졌을 가능성이 큽니다. 저장에 실패하면 <b>"save failed — storage full"</b> 문구와 함께 안내창이 뜹니다. 현재 사용량은 <b>Settings → data</b>에서 확인할 수 있으며, 큰 이미지를 지우고 다시 편집하면 저장됩니다. (큰 이미지는 자동 축소되지만, 수십 장이 쌓이면 한도에 도달할 수 있습니다.)</dd>
+                  <dd>브라우저 저장 공간(수 MB) 한도에 가까워졌을 가능성이 큽니다. 저장에 실패하면 <b>"save failed — storage full"</b> 문구와 함께 안내창이 뜹니다. 현재 사용량은 <b>Backup</b> 페이지에서 확인할 수 있으며, 큰 이미지를 지우고 다시 편집하면 저장됩니다. (큰 이미지는 자동 축소되지만, 수십 장이 쌓이면 한도에 도달할 수 있습니다.)</dd>
                   <dt>"not saving — this browser is blocking storage" 라고 떠요.</dt>
-                  <dd>시크릿(비공개) 창이거나 브라우저가 사이트 데이터를 차단한 상태입니다. 이 상태에서는 필기가 저장되지 않습니다. 일반 창에서 열어주세요. 이미 작업한 내용이 있다면 창을 닫기 전에 <b>Settings → data → download backup</b>으로 파일을 먼저 받아두세요.</dd>
+                  <dd>시크릿(비공개) 창이거나 브라우저가 사이트 데이터를 차단한 상태입니다. 이 상태에서는 필기가 저장되지 않습니다. 일반 창에서 열어주세요. 이미 작업한 내용이 있다면 창을 닫기 전에 <b>Backup → download backup</b>으로 파일을 먼저 받아두세요.</dd>
                   <dt>백업 파일을 불러왔는데 "that backup could not be loaded" 라고 떠요.</dt>
                   <dd>파일이 손상되었거나 이 앱의 백업 형식이 아닙니다. 이 경우 <b>기존 노트는 그대로 유지되며 덮어써지지 않습니다.</b> 다른 백업 파일로 다시 시도해 보세요.</dd>
                   <dt>Library에서 영화를 검색하면 키가 필요하다고 해요.</dt>
@@ -514,13 +529,13 @@ Write the main idea in your own words."></textarea>
 
 <!-- ============ STUDY MODE OVERLAY ============ -->
 <div class="study-overlay" id="study-overlay">
-  <div class="study-modal">
-    <p class="study-progress" id="study-progress"></p>
-    <div class="study-card" id="study-card"></div>
+  <div class="study-modal" role="dialog" aria-modal="true" aria-label="review mode">
+    <p class="study-progress" id="study-progress" aria-live="polite"></p>
+    <div class="study-card" id="study-card" aria-live="polite"></div>
     <div class="study-controls">
-      <button class="btn" id="study-prev"><span class="icon" data-icon="chevron-left" aria-hidden="true"></span></button>
+      <button class="btn" id="study-prev" aria-label="previous card"><span class="icon" data-icon="chevron-left" aria-hidden="true"></span></button>
       <button class="btn" id="study-flip">flip</button>
-      <button class="btn" id="study-next"><span class="icon" data-icon="chevron-right" aria-hidden="true"></span></button>
+      <button class="btn" id="study-next" aria-label="next card"><span class="icon" data-icon="chevron-right" aria-hidden="true"></span></button>
       <button class="btn" id="study-close">close</button>
     </div>
   </div>
@@ -529,8 +544,8 @@ Write the main idea in your own words."></textarea>
 <!-- ============ SUBJECT MODAL ============ -->
 <div class="mo" id="mo-subject">
   <div class="mb">
-    <div class="mt"><span>Add subject</span><button class="bic" id="subject-modal-close"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>
-    <div class="fg"><label>Subject name</label><input type="text" id="subject-name-input" placeholder="e.g. economics, french, startup" /></div>
+    <div class="mt"><span>Add subject</span><button class="bic" id="subject-modal-close" aria-label="close"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>
+    <div class="fg"><label for="subject-name-input">Subject name</label><input type="text" id="subject-name-input" placeholder="e.g. economics, french, startup" /></div>
     <div class="mf">
       <button class="btn" id="subject-modal-cancel">Cancel</button>
       <button class="btn btn-p" id="subject-modal-save">Add subject</button>
@@ -541,7 +556,7 @@ Write the main idea in your own words."></textarea>
 <!-- ============ LIBRARY ITEM MODAL ============ -->
 <div class="mo" id="mo-library">
   <div class="mb mb-wide">
-    <div class="mt"><span id="lib-modal-title">Add to library</span><button class="bic" id="lib-modal-close"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>
+    <div class="mt"><span id="lib-modal-title">Add to library</span><button class="bic" id="lib-modal-close" aria-label="close"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>
 
     <!-- search first: this is the primary input; everything below is confirmation -->
     <div class="lib-search-top">
@@ -578,20 +593,20 @@ Write the main idea in your own words."></textarea>
       <!-- right: 2-column grid, related fields paired -->
       <div class="lib-fields">
         <div class="fr c2">
-          <div class="fg"><label>Title *</label><input type="text" id="lib-title" /></div>
-          <div class="fg"><label>Publisher / studio / year</label><input type="text" id="lib-publisher" /></div>
+          <div class="fg"><label for="lib-title">Title *</label><input type="text" id="lib-title" /></div>
+          <div class="fg"><label for="lib-publisher">Publisher / studio / year</label><input type="text" id="lib-publisher" /></div>
         </div>
         <div class="fr c2">
-          <div class="fg"><label>Author / creator</label><input type="text" id="lib-author" /></div>
-          <div class="fg" id="lib-illustrator-wrap"><label>Illustrator</label><input type="text" id="lib-illustrator" /></div>
+          <div class="fg"><label for="lib-author">Author / creator</label><input type="text" id="lib-author" /></div>
+          <div class="fg" id="lib-illustrator-wrap"><label for="lib-illustrator">Illustrator</label><input type="text" id="lib-illustrator" /></div>
         </div>
         <div class="fr c2">
-          <div class="fg"><label>Category <span class="fg-hint">(form)</span></label><select id="lib-category"></select></div>
-          <div class="fg"><label>Genre <span class="fg-hint">(subject)</span></label><select id="lib-genre"></select></div>
+          <div class="fg"><label for="lib-category">Category <span class="fg-hint">(form)</span></label><select id="lib-category"></select></div>
+          <div class="fg"><label for="lib-genre">Genre <span class="fg-hint">(subject)</span></label><select id="lib-genre"></select></div>
         </div>
         <div class="fr c2">
-          <div class="fg"><label>ISBN / DOI</label><input type="text" id="lib-isbn" /></div>
-          <div class="fg" id="lib-level-wrap"><label>Level</label><input type="text" id="lib-level" /></div>
+          <div class="fg"><label for="lib-isbn">ISBN / DOI</label><input type="text" id="lib-isbn" /></div>
+          <div class="fg" id="lib-level-wrap"><label for="lib-level">Level</label><input type="text" id="lib-level" /></div>
         </div>
       </div>
     </div>
@@ -599,20 +614,20 @@ Write the main idea in your own words."></textarea>
     <!-- tracking lives in the EDIT phase; hidden while registering -->
     <div class="lib-tracking" id="lib-tracking" style="display:none;">
       <div class="fr c4">
-        <div class="fg"><label>Status</label>
+        <div class="fg"><label for="lib-status">Status</label>
           <select id="lib-status">
             <option value="want">want</option>
             <option value="in progress">in progress</option>
             <option value="done">done</option>
           </select>
         </div>
-        <div class="fg"><label>Progress %</label><input type="number" id="lib-progress" min="0" max="100" step="5" /></div>
-        <div class="fg"><label>Rating (0-5)</label><input type="number" id="lib-rating" min="0" max="5" step="1" /></div>
-        <div class="fg"><label>Call no.</label><input type="text" id="lib-callno" placeholder="auto" /></div>
+        <div class="fg"><label for="lib-progress">Progress %</label><input type="number" id="lib-progress" min="0" max="100" step="5" /></div>
+        <div class="fg"><label for="lib-rating">Rating (0-5)</label><input type="number" id="lib-rating" min="0" max="5" step="1" /></div>
+        <div class="fg"><label for="lib-callno">Call no.</label><input type="text" id="lib-callno" placeholder="auto" /></div>
       </div>
     </div>
 
-    <div class="fg"><label>Notes</label><textarea id="lib-notes" rows="2"></textarea></div>
+    <div class="fg"><label for="lib-notes">Notes</label><textarea id="lib-notes" rows="2"></textarea></div>
     <p class="lib-notebook-link" id="lib-notebook-link"></p>
 
     <!-- destructive action isolated on the far left, away from Save -->
@@ -633,12 +648,12 @@ Write the main idea in your own words."></textarea>
 <!-- ============ BULK EDIT MODAL ============ -->
 <div class="mo" id="mo-bulk">
   <div class="mb">
-    <div class="mt"><span>Bulk edit</span><button class="bic" id="bulk-modal-close"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>
+    <div class="mt"><span>Bulk edit</span><button class="bic" id="bulk-modal-close" aria-label="close"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>
     <p class="bulk-count-label" id="bulk-count-label"></p>
     <p style="font-family:var(--sans);font-size:12px;color:var(--txt3);margin:0 0 10px;">Leave a field on "(keep)" to change only the other ones.</p>
-    <div class="fg"><label>Category</label><select id="bulk-category"></select></div>
-    <div class="fg"><label>Genre</label><select id="bulk-genre"></select></div>
-    <div class="fg"><label>Status</label><select id="bulk-status"></select></div>
+    <div class="fg"><label for="bulk-category">Category</label><select id="bulk-category"></select></div>
+    <div class="fg"><label for="bulk-genre">Genre</label><select id="bulk-genre"></select></div>
+    <div class="fg"><label for="bulk-status">Status</label><select id="bulk-status"></select></div>
     <div class="mf">
       <button class="btn" id="bulk-modal-cancel">Cancel</button>
       <button class="btn btn-p" id="bulk-modal-save">Apply to selected</button>
@@ -649,7 +664,7 @@ Write the main idea in your own words."></textarea>
 <!-- ============ PAGE LIST (jump) MODAL ============ -->
 <div class="mo" id="mo-page-list">
   <div class="mb">
-    <div class="mt"><span>Pages in this notebook</span><button class="bic" id="page-list-modal-close"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>
+    <div class="mt"><span>Pages in this notebook</span><button class="bic" id="page-list-modal-close" aria-label="close"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>
     <div class="page-list" id="page-list-body"></div>
   </div>
 </div>
@@ -657,9 +672,9 @@ Write the main idea in your own words."></textarea>
 <!-- ============ NEW NOTEBOOK MODAL ============ -->
 <div class="mo" id="mo-new-notebook">
   <div class="mb">
-    <div class="mt"><span>New notebook</span><button class="bic" id="new-notebook-modal-close"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>
-    <div class="fg"><label>Subject</label><select id="new-notebook-subject"></select></div>
-    <div class="fg"><label>Type</label>
+    <div class="mt"><span>New notebook</span><button class="bic" id="new-notebook-modal-close" aria-label="close"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>
+    <div class="fg"><label for="new-notebook-subject">Subject</label><select id="new-notebook-subject"></select></div>
+    <div class="fg"><label for="new-notebook-type">Type</label>
       <select id="new-notebook-type">
         <option value="lecture">lecture</option>
         <option value="book">book</option>
@@ -669,7 +684,7 @@ Write the main idea in your own words."></textarea>
         <option value="other">other</option>
       </select>
     </div>
-    <div class="fg"><label>Topic / name</label><input type="text" id="new-notebook-title" placeholder='e.g. "Econ 101", "Freakonomics"' /></div>
+    <div class="fg"><label for="new-notebook-title">Topic / name</label><input type="text" id="new-notebook-title" placeholder='e.g. "Econ 101", "Freakonomics"' /></div>
     <p style="font-family:var(--sans); font-size:12px; color:var(--txt3); margin:0;">A subject can have one notebook per type - e.g. economics/lecture and economics/book are different notebooks.</p>
     <div class="mf">
       <button class="btn" id="new-notebook-modal-cancel">Cancel</button>
@@ -681,9 +696,9 @@ Write the main idea in your own words."></textarea>
 <!-- ============ FLASHCARD MODAL ============ -->
 <div class="mo" id="mo-card">
   <div class="mb">
-    <div class="mt"><span>Add flashcard</span><button class="bic" id="card-modal-close"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>
-    <div class="fg"><label>Question / front</label><textarea id="card-front-input" rows="2"></textarea></div>
-    <div class="fg"><label>Answer / back</label><textarea id="card-back-input" rows="2"></textarea></div>
+    <div class="mt"><span>Add flashcard</span><button class="bic" id="card-modal-close" aria-label="close"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>
+    <div class="fg"><label for="card-front-input">Question / front</label><textarea id="card-front-input" rows="2"></textarea></div>
+    <div class="fg"><label for="card-back-input">Answer / back</label><textarea id="card-back-input" rows="2"></textarea></div>
     <div class="mf">
       <button class="btn" id="card-modal-cancel">Cancel</button>
       <button class="btn btn-p" id="card-modal-save">Add card</button>
@@ -694,8 +709,8 @@ Write the main idea in your own words."></textarea>
 <!-- ============ LABEL MODAL ============ -->
 <div class="mo" id="mo-label">
   <div class="mb">
-    <div class="mt"><span>Insert label</span><button class="bic" id="label-modal-close"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>
-    <div class="fg"><label>Label text</label><input type="text" id="label-text-input" placeholder='e.g. "exam tip", "definition"' /></div>
+    <div class="mt"><span>Insert label</span><button class="bic" id="label-modal-close" aria-label="close"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>
+    <div class="fg"><label for="label-text-input">Label text</label><input type="text" id="label-text-input" placeholder='e.g. "exam tip", "definition"' /></div>
     <div class="mf">
       <button class="btn" id="label-modal-cancel">Cancel</button>
       <button class="btn btn-p" id="label-modal-save">Insert</button>
@@ -706,9 +721,9 @@ Write the main idea in your own words."></textarea>
 <!-- ============ LINK MODAL ============ -->
 <div class="mo" id="mo-link">
   <div class="mb">
-    <div class="mt"><span>Insert link</span><button class="bic" id="link-modal-close"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>
-    <div class="fg"><label>URL</label><input type="text" id="link-url-input" placeholder="https://..." /></div>
-    <div class="fg"><label>Link text (optional)</label><input type="text" id="link-text-input" placeholder="leave blank to use the URL" /></div>
+    <div class="mt"><span>Insert link</span><button class="bic" id="link-modal-close" aria-label="close"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>
+    <div class="fg"><label for="link-url-input">URL</label><input type="text" id="link-url-input" placeholder="https://..." /></div>
+    <div class="fg"><label for="link-text-input">Link text (optional)</label><input type="text" id="link-text-input" placeholder="leave blank to use the URL" /></div>
     <div class="mf">
       <button class="btn" id="link-modal-cancel">Cancel</button>
       <button class="btn btn-p" id="link-modal-save">Insert</button>
@@ -719,7 +734,7 @@ Write the main idea in your own words."></textarea>
 <!-- ============ DAY EVENTS MODAL (calendar "+N more") ============ -->
 <div class="mo" id="mo-day-events">
   <div class="mb">
-    <div class="mt"><span id="day-events-title">Tasks</span><button class="bic" id="day-events-modal-close"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>
+    <div class="mt"><span id="day-events-title">Tasks</span><button class="bic" id="day-events-modal-close" aria-label="close"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>
     <div id="day-events-list"></div>
     <div class="mf">
       <button class="btn" id="day-events-modal-cancel">Close</button>

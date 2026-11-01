@@ -14,6 +14,7 @@ For live-reload while editing in VS Code, the **Live Server** extension works we
 
 - `index.html` — markup only
 - `style.css` — all styles
+- `fonts/` — self-hosted Latin webfonts (Patrick Hand, Architects Daughter, Inter, JetBrains Mono); the CJK handwriting fonts load from Google Fonts
 - `app.js` — all behavior, organized into modules (see the header comment at the top of the file for the module map: Icons, Utils, Storage, AppState, Modal, Nav, Subjects, NotesModule, Library, Schedule, Flashcards, Settings, Stats, App)
 
 ## Data model
@@ -24,7 +25,7 @@ For live-reload while editing in VS Code, the **Live Server** extension works we
 
 ## Storage
 
-Everything is saved to `localStorage` under the key `study-notes-app-chalkboard-v2` (kept as-is from an earlier name so existing saved data isn't lost — renaming this key would make the app act like all your notebooks vanished). Clearing browser storage wipes everything, so use Settings → data → **download backup** regularly; **load backup** restores from that JSON file and also works for moving notes to another browser or computer. There is no cloud sync yet.
+Everything is saved to `localStorage` under the key `study-notes-app-chalkboard-v2` (kept as-is from an earlier name so existing saved data isn't lost — renaming this key would make the app act like all your notebooks vanished). Clearing browser storage wipes everything, so use the **Backup** page → **download backup** regularly; **load backup** restores from that JSON file and also works for moving notes to another browser or computer. There is no cloud sync yet.
 
 ## Known limitations
 
