@@ -10,7 +10,7 @@
  * Data is NOT touched here: notes live in localStorage, which a service worker
  * never reads or writes.
  */
-var CACHE = 'studydesk-shell-v1';
+var CACHE = 'studydesk-shell-v2';
 var FONT_CACHE = 'studydesk-fonts-v1';
 // Absolute URLs of the shell, so same-origin requests outside it are left alone
 // (the GitHub Pages origin is shared with the owner's other project sites).
@@ -19,7 +19,8 @@ var SHELL = [
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/apple-touch-icon.png',
   './fonts/patrick-hand-400-latin.woff2', './fonts/patrick-hand-400-latin-ext.woff2', './fonts/patrick-hand-400-vietnamese.woff2',
   './fonts/architects-daughter-400-latin.woff2', './fonts/architects-daughter-400-latin-ext.woff2',
-  './fonts/inter-var-latin.woff2', './fonts/inter-var-latin-ext.woff2', './fonts/jetbrains-mono-var-latin.woff2'
+  './fonts/inter-var-latin.woff2', './fonts/inter-var-latin-ext.woff2', './fonts/jetbrains-mono-var-latin.woff2',
+  './vendor/firebase/firebase-app-compat.js', './vendor/firebase/firebase-auth-compat.js', './vendor/firebase/firebase-firestore-compat.js'
 ];
 var ROOT = new URL('./', self.location.href).href;
 var SHELL_URLS = SHELL.map(function (p) { return new URL(p, self.location.href).href; });
