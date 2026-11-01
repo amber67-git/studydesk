@@ -14,7 +14,7 @@ For live-reload while editing in VS Code, the **Live Server** extension works we
 
 ## Sync (cross-device)
 
-Optional. `Backup → cloud sync → sign in with Google` on each device. Firebase Auth (Google) + Firestore, one tree per user (`users/{uid}/…`), per-document last-write-wins on `updatedAt`, tombstones for deletions, offline queue via Firestore persistence. Only changed documents are written; pages are separate documents so images never hit the 1 MB document limit. The SDK is self-hosted in `vendor/firebase/`; the project config lives in `app.js` (`FIREBASE_CONFIG`), security rules in `firestore.rules`. Without a config the app is local-only.
+Optional. `Backup → cloud sync → sign in with Google` on each device. Firebase Auth (Google) + Firestore, one tree per user (`users/{uid}/…`), per-document last-write-wins on `syncAt`, tombstones for deletions, offline queue via Firestore persistence. Only changed documents are written; pages are separate documents; a page whose serialized size exceeds 900 KB (Firestore's hard limit is 1 MiB) is kept local and flagged on the Backup page. The SDK is self-hosted in `vendor/firebase/`; the project config lives in `app.js` (`FIREBASE_CONFIG`), security rules in `firestore.rules`. Without a config the app is local-only.
 
 ## File structure
 

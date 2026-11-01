@@ -3708,8 +3708,9 @@
       var ops = d.puts.concat(d.tombstones);
       if (!ops.length || !db) return;
       setStatus('syncing', 'uploading ' + ops.length);
-      var prev = ops.map(function (op) { snapshot[op.col] = snapshot[op.col] || {}; return snapshot[op.col][op.id]; });
-      ops.forEach(function (op) { snapshot[op.col][op.id] = op.json; });
+      var snap = snapshot;   // the signed-in session this push belongs to (stop() replaces the object)
+      var prev = ops.map(function (op) { snap[op.col] = snap[op.col] || {}; return snap[op.col][op.id]; });
+      ops.forEach(function (op) { snap[op.col][op.id] = op.json; });
       var chunks = [];
       for (var i = 0; i < ops.length; i += 400) chunks.push(ops.slice(i, i + 400));
       chunks.reduce(function (p, chunk) {
@@ -3719,11 +3720,13 @@
           return batch.commit();
         });
       }, Promise.resolve()).then(function () {
+        if (snap !== snapshot) return;   // signed out (or in again) meanwhile
         if (phase !== 'error') setStatus(navigator.onLine ? 'synced' : 'offline');
       }).catch(function (e) {
+        if (snap !== snapshot) return;   // signed out meanwhile: nothing to roll back
         // put the snapshot back exactly as it was, so the next save retries puts AND tombstones
         ops.forEach(function (op, k) {
-          if (prev[k] === undefined) delete snapshot[op.col][op.id]; else snapshot[op.col][op.id] = prev[k];
+          if (prev[k] === undefined) delete snap[op.col][op.id]; else snap[op.col][op.id] = prev[k];
         });
         setStatus('error', describe(e));
       });
@@ -3741,7 +3744,7 @@
         }
         return o.col + ' ' + o.id;
       });
-      el.textContent = 'not synced (over the 1 MB per-page limit, too many images): ' + parts.join(', ') + '. These stay on this device only; remove or shrink an image to sync them.';
+      el.textContent = 'not synced (over the 900 KB per-page limit, too many images): ' + parts.join(', ') + '. These stay on this device only; remove or shrink an image to sync them.';
     }
 
     function setup() {
