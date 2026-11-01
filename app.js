@@ -15,6 +15,7 @@
  *   Schedule       - calendar + today's list + recurring/one-off tasks
  *   Flashcards     - card grid + study mode
  *   Settings       - font style + text size + data reset
+ *   SyncCore/Sync  - cross-device sync: pure merge rules + Firebase (Google sign-in, Firestore)
  *   Stats          - dashboard counters at the top of the Notebooks page
  *   App            - init() and renderAll(), the main entry point
  *
@@ -22,6 +23,12 @@
  * ============================================================================ */
 (function () {
   'use strict';
+
+  /* Firebase project settings for cross-device sync (stage 3). A web config is
+     not a secret: access is controlled by Google sign-in + Firestore rules.
+     null = sync not configured, the app runs local-only exactly as before.
+     (window.STUDYDESK_FIREBASE_CONFIG lets a test page inject one.) */
+  var FIREBASE_CONFIG = (typeof window !== 'undefined' && window.STUDYDESK_FIREBASE_CONFIG) || null;
 
   /* ===========================================================
    * Icons - inline SVG icon set. No external icon font is loaded,
@@ -169,6 +176,7 @@
     studyIdx: 0,
     studyFlipped: false,
     calMonth: null,
+    seededThisSession: false,   // true when this run started from sample data (nothing was saved before)
 
     /* Notebook "type" = the kind of activity a note tracks within a subject
        (lecture, book, movie, etc). A subject can have several notes, one per
@@ -593,6 +601,8 @@
       var status = Utils.$('save-status');
       if (!storageAvailable()) { warnBlockedOnce(); return; }
       if (status) status.textContent = 'saving...';
+      // cloud sync: stamp changed entities first so the timestamp lands in this write too
+      var pending = (typeof Sync !== 'undefined' && Sync.collectChanges) ? Sync.collectChanges() : null;
       try {
         localStorage.setItem(KEY, JSON.stringify({
           subjects: AppState.subjects,
@@ -605,6 +615,7 @@
           settings: AppState.settings
         }));
         updateUsageDisplay();
+        if (pending) Sync.push(pending);
         if (status) {
           status.textContent = 'saved';
           setTimeout(function () {
@@ -949,6 +960,31 @@
       exitReviewMode(); // don't carry a hidden-notes state into another notebook
       AppState.ensurePages(n);
       AppState.activePageIndex = n.pages.length - 1;
+      Utils.$('note-title').value = n.title || '';
+      Utils.$('note-subject-select').value = n.subjectId || '';
+      Utils.$('note-type-select').value = n.type || 'other';
+      renderActivePage();
+      renderList();
+    }
+
+    /** Re-render the open notebook after a remote (sync) change without moving
+        the user: keeps the current page index when it still exists. If the open
+        notebook was deleted elsewhere, falls back to the first notebook. */
+    function refreshEditor() {
+      var n = AppState.currentNote();
+      if (!n) {
+        AppState.activeNoteId = null;
+        if (AppState.notes.length > 0) { selectNote(AppState.notes[0].id); return; }
+        ['note-title', 'note-chapter', 'note-tags', 'note-date', 'cues', 'summary'].forEach(function (id) {
+          Utils.$(id).value = '';
+        });
+        Utils.$('notes-body').innerHTML = '';
+        renderPageIndicator();
+        renderList();
+        return;
+      }
+      AppState.ensurePages(n);
+      if (AppState.activePageIndex >= n.pages.length) AppState.activePageIndex = n.pages.length - 1;
       Utils.$('note-title').value = n.title || '';
       Utils.$('note-subject-select').value = n.subjectId || '';
       Utils.$('note-type-select').value = n.type || 'other';
@@ -1451,6 +1487,7 @@
     return {
       renderList: renderList,
       selectNote: selectNote,
+      refreshEditor: refreshEditor,
       setupEditor: setupEditor,
       setupFormatModals: setupFormatModals,
       setupNewNotebookModal: setupNewNotebookModal
@@ -3021,7 +3058,11 @@
         Storage.scheduleSave();
       });
       Utils.$('reset-data-btn').addEventListener('click', function () {
-        if (!confirm('This will permanently delete all notes, tasks, and flashcards in this browser. Continue?')) return;
+        var msg = Sync.isSignedIn()
+          ? 'Cloud sync is on: this clears only the copy in this browser and downloads your notes again from the cloud after the reload.\n\n'
+            + 'To delete notes everywhere, delete them inside the app (deletions sync too). Continue?'
+          : 'This will permanently delete all notes, tasks, and flashcards in this browser. Continue?';
+        if (!confirm(msg)) return;
         Storage.reset();
         location.reload();
       });
@@ -3171,6 +3212,521 @@
   };
 
   /* ===========================================================
+   * SyncCore - pure helpers for cross-device sync (no DOM, no Firebase).
+   * Exported on window for the Node simulation tests.
+   *
+   * Cloud layout (Firestore), everything under users/{uid}:
+   *   subjects/{id} recurring/{id} adhocTasks/{id} cards/{id} library/{id}
+   *   notes/{id}            the note WITHOUT its pages, plus pageCount
+   *   pages/{noteId}_{idx}  one document per page (keeps every document far
+   *                         below Firestore's 1 MB limit even with images)
+   *   completions/{key}     { done: true }
+   *   meta/settings         the settings object
+   * Every document carries updatedAt (ms since epoch, stamped by the device
+   * that changed it). Deleted things become tombstones { deleted: true,
+   * updatedAt } so a device that was offline still learns about the deletion.
+   * Conflict rule: last write wins per document, compared on updatedAt.
+   *
+   * The local data contract is untouched: localStorage key, backup format and
+   * schema stay as they are; updatedAt is the only field added, and only on
+   * things that were actually changed while sync was on.
+   * =========================================================== */
+  var SyncCore = (function () {
+    var ENTITY_COLLECTIONS = ['subjects', 'notes', 'recurring', 'adhocTasks', 'cards', 'library'];
+    var ALL_COLLECTIONS = ENTITY_COLLECTIONS.concat(['pages', 'completions', 'meta']);
+    var MAX_DOC_BYTES = 900 * 1024;   // Firestore limit is 1 MiB; keep a margin for metadata
+
+    function byteLength(str) {
+      if (typeof TextEncoder !== 'undefined') return new TextEncoder().encode(str).length;
+      return str.length;
+    }
+
+    function blankPage() {
+      return { chapter: '', tags: '', date: '', cues: '', body: '', summary: '' };
+    }
+
+    function noteHead(note) {
+      var h = {};
+      Object.keys(note).forEach(function (k) { if (k !== 'pages') h[k] = note[k]; });
+      h.pageCount = Array.isArray(note.pages) ? note.pages.length : 0;
+      return h;
+    }
+
+    function pageId(noteId, idx) { return noteId + '_' + idx; }
+
+    function splitPageId(id) {
+      var at = id.lastIndexOf('_');
+      return { noteId: id.slice(0, at), idx: parseInt(id.slice(at + 1), 10) };
+    }
+
+    /** Flatten app data into cloud documents: { data: {col: {id: doc}}, src: {col: {id: object to stamp}} }.
+        src points at the live objects so a stamp (updatedAt) lands in AppState too. */
+    function flatten(state) {
+      var data = {}, src = {};
+      ALL_COLLECTIONS.forEach(function (c) { data[c] = {}; src[c] = {}; });
+      ENTITY_COLLECTIONS.forEach(function (c) {
+        (state[c] || []).forEach(function (e) {
+          if (!e || !e.id) return;
+          data[c][e.id] = (c === 'notes') ? noteHead(e) : e;
+          src[c][e.id] = e;
+        });
+      });
+      (state.notes || []).forEach(function (n) {
+        if (!n || !n.id) return;
+        (n.pages || []).forEach(function (p, i) {
+          var id = pageId(n.id, i);
+          var doc = { noteId: n.id, idx: i };
+          Object.keys(p).forEach(function (k) { doc[k] = p[k]; });
+          data.pages[id] = doc;
+          src.pages[id] = p;
+        });
+      });
+      Object.keys(state.completions || {}).forEach(function (k) {
+        if (state.completions[k]) data.completions[k] = { done: true };
+      });
+      data.meta.settings = state.settings || {};
+      src.meta.settings = state.settings || null;
+      return { data: data, src: src };
+    }
+
+    function sortKeys(v) {
+      if (Array.isArray(v)) return v.map(sortKeys);
+      if (!v || typeof v !== 'object') return v;
+      var out = {};
+      Object.keys(v).sort().forEach(function (k) { out[k] = sortKeys(v[k]); });
+      return out;
+    }
+
+    /** Content fingerprint: key order and the updatedAt stamp are ignored, so a
+        document rebuilt from the cloud (different key order) or a completion
+        (no live object to carry the stamp) does not look "changed". */
+    function canon(doc) {
+      return JSON.stringify(sortKeys(doc), function (k, v) { return k === 'updatedAt' ? undefined : v; });
+    }
+
+    function sameContent(json, doc) {
+      if (typeof json !== 'string') return false;
+      var parsed;
+      try { parsed = JSON.parse(json); } catch (e) { return false; }
+      return canon(parsed) === canon(doc);
+    }
+
+    /** Compare local documents with what we know is in the cloud. Changed or new
+        documents are stamped with `now` (on the live object, so the next local
+        save persists the stamp too) and returned as puts; documents that
+        disappeared locally become tombstones. Oversized documents are reported,
+        not sent. */
+    function diff(flat, snapshot, now) {
+      var puts = [], tombstones = [], oversized = [];
+      Object.keys(flat.data).forEach(function (c) {
+        var docs = flat.data[c], snap = snapshot[c] || {};
+        Object.keys(docs).forEach(function (id) {
+          var doc = docs[id];
+          if (sameContent(snap[id], doc)) return;
+          var live = flat.src[c] && flat.src[c][id];
+          if (live) live.updatedAt = now;
+          doc.updatedAt = now;
+          var json = JSON.stringify(doc);
+          if (byteLength(json) > MAX_DOC_BYTES) { oversized.push({ col: c, id: id }); return; }
+          puts.push({ col: c, id: id, json: json });
+        });
+        Object.keys(snap).forEach(function (id) {
+          if (docs[id]) return;
+          if (snap[id].indexOf('"deleted":true') !== -1) return;  // already a tombstone
+          var t = { deleted: true, updatedAt: now };
+          tombstones.push({ col: c, id: id, json: JSON.stringify(t) });
+        });
+      });
+      return { puts: puts, tombstones: tombstones, oversized: oversized };
+    }
+
+    function findIndexById(arr, id) {
+      for (var i = 0; i < arr.length; i++) if (arr[i] && arr[i].id === id) return i;
+      return -1;
+    }
+
+    /** Apply one cloud document to the local state with last-write-wins.
+        Returns true when local data changed. `state` is AppState-shaped. */
+    function applyRemote(state, c, id, remote) {
+      if (!remote || typeof remote !== 'object') return false;
+      var ts = remote.updatedAt || 0;
+
+      if (c === 'meta') {
+        if (id !== 'settings') return false;
+        if (remote.deleted) return false;
+        if (ts <= ((state.settings && state.settings.updatedAt) || 0)) return false;
+        state.settings = JSON.parse(JSON.stringify(remote));
+        return true;
+      }
+
+      if (c === 'completions') {
+        state.completions = state.completions || {};
+        if (remote.deleted) {
+          if (!state.completions[id]) return false;
+          delete state.completions[id];
+          return true;
+        }
+        if (state.completions[id]) return false;
+        state.completions[id] = true;
+        return true;
+      }
+
+      if (c === 'pages') {
+        var ref = splitPageId(id);
+        var noteId = remote.noteId || ref.noteId;
+        var idx = (typeof remote.idx === 'number') ? remote.idx : ref.idx;
+        var ni = findIndexById(state.notes || [], noteId);
+        if (ni === -1 || isNaN(idx)) return false;   // head not here (yet): the head carries pageCount
+        var note = state.notes[ni];
+        if (!Array.isArray(note.pages)) note.pages = [];
+        if (remote.deleted) {
+          // page deletions always trim from the end (indices are positional)
+          if (idx !== note.pages.length - 1 || note.pages.length <= 1) return false;
+          if (((note.pages[idx] || {}).updatedAt || 0) > ts) return false;
+          note.pages.pop();
+          return true;
+        }
+        var localPage = note.pages[idx];
+        if (localPage && (localPage.updatedAt || 0) >= ts) return false;
+        var p = JSON.parse(JSON.stringify(remote));
+        delete p.noteId; delete p.idx; delete p.deleted;
+        while (note.pages.length <= idx) note.pages.push(blankPage());
+        note.pages[idx] = p;
+        return true;
+      }
+
+      if (ENTITY_COLLECTIONS.indexOf(c) === -1) return false;
+      var arr = state[c] = state[c] || [];
+      var i = findIndexById(arr, id);
+      if (remote.deleted) {
+        if (i === -1) return false;
+        if ((arr[i].updatedAt || 0) > ts) return false;
+        arr.splice(i, 1);
+        return true;
+      }
+      if (i !== -1 && (arr[i].updatedAt || 0) >= ts) return false;
+      var e = JSON.parse(JSON.stringify(remote));
+      if (c === 'notes') {
+        var count = e.pageCount || 0;
+        delete e.pageCount;
+        var pages = (i !== -1 && Array.isArray(arr[i].pages)) ? arr[i].pages.slice(0, count) : [];
+        while (pages.length < count) pages.push(blankPage());
+        e.pages = pages;
+      }
+      if (i === -1) arr.push(e); else arr[i] = e;
+      return true;
+    }
+
+    return {
+      ENTITY_COLLECTIONS: ENTITY_COLLECTIONS,
+      ALL_COLLECTIONS: ALL_COLLECTIONS,
+      MAX_DOC_BYTES: MAX_DOC_BYTES,
+      byteLength: byteLength,
+      flatten: flatten,
+      diff: diff,
+      applyRemote: applyRemote,
+      splitPageId: splitPageId,
+      noteHead: noteHead,
+      canon: canon
+    };
+  })();
+
+  /* ===========================================================
+   * Sync - Firebase (Google sign-in + Firestore) wiring around SyncCore.
+   *
+   * Local-first: the app always loads and saves localStorage exactly as before.
+   * When signed in, every local save also pushes the changed documents, and a
+   * realtime listener per collection merges other devices' changes in.
+   * Nothing is pushed until the initial download + merge has finished, so an
+   * app start can never overwrite the cloud with stale local data.
+   * The SDK is loaded from vendor/firebase/ (self-hosted) only when a config
+   * exists; without one, or if loading fails, the app simply runs local-only.
+   * =========================================================== */
+  var Sync = (function () {
+    var SDK_VERSION = '10.14.1';
+    var SDK_FILES = ['firebase-app-compat.js', 'firebase-auth-compat.js', 'firebase-firestore-compat.js'];
+    var auth = null, db = null, uid = null, userEmail = '';
+    var snapshot = {};        // col -> id -> JSON of the document as last seen/sent in the cloud
+    var ready = false;        // initial merge done: only then do local saves push
+    var unsubscribers = [];
+    var lastInputAt = 0;
+    var refreshTimer = null;
+    var phase = 'off', detail = '', lastSyncAt = null;
+
+    function $(id) { return Utils.$(id); }
+
+    function timeLabel(d) {
+      return (d.getHours() < 10 ? '0' : '') + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes();
+    }
+
+    function setStatus(p, d) {
+      phase = p; detail = d || '';
+      if (p === 'synced') lastSyncAt = new Date();
+      var card = $('sync-status'), foot = $('sb-foot-status');
+      var who = userEmail ? ' as ' + userEmail : '';
+      var text, footText;
+      switch (p) {
+        case 'unconfigured':
+          text = 'cloud sync is not set up yet: this build has no Firebase config, so notes stay in this browser only.';
+          footText = 'stored only in this browser'; break;
+        case 'loading':
+          text = 'loading sync…'; footText = 'stored only in this browser'; break;
+        case 'signedout':
+          text = 'not signed in: notes stay only in this browser. Sign in with the same Google account on every device to keep them in sync.';
+          footText = 'stored only in this browser'; break;
+        case 'syncing':
+          text = 'syncing' + who + (detail ? ' (' + detail + ')' : '') + '…'; footText = 'syncing…'; break;
+        case 'synced':
+          text = 'synced' + who + ' · last change ' + timeLabel(lastSyncAt);
+          footText = 'synced · ' + (userEmail.split('@')[0] || 'signed in'); break;
+        case 'offline':
+          text = 'offline' + who + ': changes are kept here and sent when you are back online.';
+          footText = 'offline · will sync'; break;
+        case 'error':
+          text = 'sync error: ' + detail; footText = 'sync error'; break;
+        default:
+          text = ''; footText = 'stored only in this browser';
+      }
+      if (card) card.textContent = text;
+      if (foot) foot.textContent = footText;
+      var inBtn = $('sync-signin-btn'), outBtn = $('sync-signout-btn');
+      var signedIn = !!uid;
+      if (inBtn) inBtn.style.display = (p === 'unconfigured' || signedIn) ? 'none' : '';
+      if (outBtn) outBtn.style.display = signedIn ? '' : 'none';
+    }
+
+    function describe(e) {
+      var code = (e && e.code) || '';
+      if (code === 'permission-denied') return 'Firestore rejected this account (permission denied). Check the security rules in the Firebase console (firestore.rules in the repository).';
+      if (code === 'unavailable') return 'Firestore is unreachable right now; retrying automatically.';
+      if (code === 'auth/unauthorized-domain') return 'this site is not on the Firebase "authorized domains" list (Authentication → Settings).';
+      if (code === 'auth/operation-not-allowed') return 'Google sign-in is not enabled in the Firebase console (Authentication → Sign-in method).';
+      return (code ? code + ': ' : '') + ((e && e.message) || String(e));
+    }
+
+    function loadScript(src, cb) {
+      var s = document.createElement('script');
+      s.src = src; s.async = false;
+      s.onload = function () { cb(null); };
+      s.onerror = function () { cb(new Error('failed to load ' + src)); };
+      document.head.appendChild(s);
+    }
+
+    /** Load the three compat bundles in order. Local copy first; Google's CDN
+        is the fallback for a build that ships without vendor/ (single-file). */
+    function loadSdk(cb) {
+      var i = 0;
+      (function next() {
+        if (i >= SDK_FILES.length) { cb(null); return; }
+        var file = SDK_FILES[i++];
+        loadScript('vendor/firebase/' + file, function (err) {
+          if (!err) { next(); return; }
+          loadScript('https://www.gstatic.com/firebasejs/' + SDK_VERSION + '/' + file, function (err2) {
+            if (err2) { cb(err2); return; }
+            next();
+          });
+        });
+      })();
+    }
+
+    function col(name) { return db.collection('users').doc(uid).collection(name); }
+
+    function emptyLocal() {
+      AppState.subjects = []; AppState.notes = []; AppState.recurring = []; AppState.adhocTasks = [];
+      AppState.completions = {}; AppState.cards = []; AppState.library = [];
+      AppState.activeNoteId = null; AppState.activePageIndex = 0;
+    }
+
+    function refreshUI() {
+      AppState.migrateNotesToPages();
+      Storage.save();            // persists the merged state; pushes only what is genuinely local
+      App.renderAll();
+      NotesModule.refreshEditor();
+    }
+
+    function scheduleRefresh() {
+      clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(tryRefresh, 300);
+    }
+
+    function tryRefresh() {
+      // don't yank the editor while the user is typing: wait for a pause
+      if (Date.now() - lastInputAt < 2500) { refreshTimer = setTimeout(tryRefresh, 1500); return; }
+      refreshUI();
+    }
+
+    /** First download after sign-in: cloud documents are merged into local data
+        (last write wins), then the local save that follows pushes whatever only
+        exists here. A device that only holds the sample data drops it when the
+        cloud already has real notes. */
+    function initialMerge() {
+      var cols = SyncCore.ALL_COLLECTIONS;
+      return Promise.all(cols.map(function (c) { return col(c).get(); })).then(function (snaps) {
+        var cloudHasData = snaps.some(function (s) { return !s.empty; });
+        var changed = false;
+        if (AppState.seededThisSession && cloudHasData) { emptyLocal(); changed = true; }
+        snaps.forEach(function (s, k) {
+          var c = cols[k];
+          snapshot[c] = {};
+          s.forEach(function (d) {
+            var data = d.data();
+            snapshot[c][d.id] = JSON.stringify(data);
+            if (SyncCore.applyRemote(AppState, c, d.id, data)) changed = true;
+          });
+        });
+        return changed;
+      });
+    }
+
+    function listen() {
+      SyncCore.ALL_COLLECTIONS.forEach(function (c) {
+        unsubscribers.push(col(c).onSnapshot({ includeMetadataChanges: true }, function (qs) {
+          var changed = false;
+          qs.docChanges().forEach(function (ch) {
+            if (ch.type === 'removed') return;                  // we never hard-delete; tombstones instead
+            if (ch.doc.metadata.hasPendingWrites) return;        // echo of our own write
+            var data = ch.doc.data();
+            var json = JSON.stringify(data);
+            snapshot[c] = snapshot[c] || {};
+            if (snapshot[c][ch.doc.id] === json) return;        // already known
+            snapshot[c][ch.doc.id] = json;
+            if (SyncCore.applyRemote(AppState, c, ch.doc.id, data)) changed = true;
+          });
+          if (changed) scheduleRefresh();
+          if (phase !== 'error' && phase !== 'syncing') setStatus(qs.metadata.fromCache && !navigator.onLine ? 'offline' : 'synced');
+        }, function (err) {
+          setStatus('error', describe(err));
+        }));
+      });
+    }
+
+    function start(user) {
+      uid = user.uid; userEmail = user.email || '';
+      ready = false; snapshot = {};
+      setStatus('syncing', 'downloading');
+      initialMerge().then(function (changed) {
+        ready = true;
+        listen();
+        if (changed) refreshUI(); else Storage.save();   // either way: push local-only data
+        setStatus(navigator.onLine ? 'synced' : 'offline');
+      }).catch(function (e) {
+        setStatus('error', describe(e));
+      });
+    }
+
+    function stop() {
+      unsubscribers.forEach(function (u) { try { u(); } catch (e) { /* listener already gone */ } });
+      unsubscribers = [];
+      ready = false; uid = null; userEmail = ''; snapshot = {};
+      setStatus('signedout');
+    }
+
+    function signIn() {
+      if (!auth) return;
+      var provider = new firebase.auth.GoogleAuthProvider();
+      setStatus('syncing', 'signing in');
+      auth.signInWithPopup(provider).catch(function (e) {
+        var code = (e && e.code) || '';
+        if (/popup/.test(code)) { auth.signInWithRedirect(provider); return; }
+        setStatus('error', describe(e));
+      });
+    }
+
+    function signOut() {
+      if (!auth) return;
+      auth.signOut().catch(function (e) { setStatus('error', describe(e)); });
+    }
+
+    /* ---- hooks used by Storage.save ---- */
+
+    /** Called before the local write: stamps changed entities and returns the
+        write set (or null). Nothing is pushed before the initial merge. */
+    function collectChanges() {
+      if (!ready || !db) return null;
+      var d = SyncCore.diff(SyncCore.flatten(AppState), snapshot, Date.now());
+      reportOversized(d.oversized);
+      return (d.puts.length || d.tombstones.length) ? d : null;
+    }
+
+    function docRef(c, id) { return col(c).doc(id); }
+
+    /** Batched writes. The snapshot is updated optimistically so a save while a
+        previous batch is still in flight (offline queue) does not resend it;
+        a real failure rolls those entries back so the next save retries. */
+    function push(d) {
+      var ops = d.puts.concat(d.tombstones);
+      if (!ops.length || !db) return;
+      setStatus('syncing', 'uploading ' + ops.length);
+      ops.forEach(function (op) { snapshot[op.col] = snapshot[op.col] || {}; snapshot[op.col][op.id] = op.json; });
+      var chunks = [];
+      for (var i = 0; i < ops.length; i += 400) chunks.push(ops.slice(i, i + 400));
+      chunks.reduce(function (p, chunk) {
+        return p.then(function () {
+          var batch = db.batch();
+          chunk.forEach(function (op) { batch.set(docRef(op.col, op.id), JSON.parse(op.json)); });
+          return batch.commit();
+        });
+      }, Promise.resolve()).then(function () {
+        if (phase !== 'error') setStatus(navigator.onLine ? 'synced' : 'offline');
+      }).catch(function (e) {
+        ops.forEach(function (op) { if (snapshot[op.col]) delete snapshot[op.col][op.id]; });
+        setStatus('error', describe(e));
+      });
+    }
+
+    function reportOversized(list) {
+      var el = $('sync-oversized');
+      if (!el) return;
+      if (!list.length) { el.textContent = ''; return; }
+      var parts = list.map(function (o) {
+        if (o.col === 'pages') {
+          var ref = SyncCore.splitPageId(o.id);
+          var n = AppState.notes.find(function (x) { return x.id === ref.noteId; });
+          return 'page ' + (ref.idx + 1) + ' of "' + ((n && n.title) || 'untitled') + '"';
+        }
+        return o.col + ' ' + o.id;
+      });
+      el.textContent = 'not synced (over the 1 MB per-page limit, too many images): ' + parts.join(', ') + '. These stay on this device only; remove or shrink an image to sync them.';
+    }
+
+    function setup() {
+      document.addEventListener('input', function () { lastInputAt = Date.now(); }, true);
+      var inBtn = $('sync-signin-btn'), outBtn = $('sync-signout-btn');
+      if (inBtn) inBtn.addEventListener('click', signIn);
+      if (outBtn) outBtn.addEventListener('click', signOut);
+      window.addEventListener('online', function () { if (uid && phase === 'offline') setStatus('syncing', 'reconnecting'); });
+      window.addEventListener('offline', function () { if (uid) setStatus('offline'); });
+
+      if (!FIREBASE_CONFIG) { setStatus('unconfigured'); return; }
+      setStatus('loading');
+      loadSdk(function (err) {
+        if (err) { setStatus('error', 'the sync library could not be loaded (' + err.message + '). The app keeps working locally.'); return; }
+        try {
+          firebase.initializeApp(FIREBASE_CONFIG);
+          auth = firebase.auth();
+          db = firebase.firestore();
+        } catch (e) { setStatus('error', describe(e)); return; }
+        // offline queue + cache (IndexedDB); if another tab holds it we still sync, just without cache
+        db.enablePersistence({ synchronizeTabs: true }).catch(function (e) {
+          console.warn('StudyDesk sync: offline persistence not available:', e && e.code);
+        });
+        auth.getRedirectResult().catch(function (e) { setStatus('error', describe(e)); });
+        auth.onAuthStateChanged(function (user) {
+          if (user) start(user); else stop();
+        });
+      });
+    }
+
+    return {
+      setup: setup,
+      collectChanges: collectChanges,
+      push: push,
+      isSignedIn: function () { return !!uid; },
+      phase: function () { return phase; }
+    };
+  })();
+
+  /* ===========================================================
    * App - main entry point. init() wires everything together,
    *       renderAll() refreshes every view (used after settings changes)
    * =========================================================== */
@@ -3203,6 +3759,7 @@
       var hadData = Storage.load();
       if (!hadData || AppState.subjects.length === 0) {
         AppState.seedSampleData();
+        AppState.seededThisSession = true;
       }
       AppState.migrateNotesToPages();
       AppState.calMonth = Utils.currentMonthStr();
@@ -3233,6 +3790,9 @@
       Settings.checkBackupReminder();
       Storage.updateUsageDisplay();
 
+      // cloud sync (stage 3): local-only until FIREBASE_CONFIG is set
+      Sync.setup();
+
       // PWA: the service worker caches the app shell so the installed app opens
       // offline. Only on http(s): file:// has no service workers, and the app
       // must keep working there too.
@@ -3246,6 +3806,7 @@
 
   // expose App.renderAll for Settings module's cross-call
   window.App = App;
+  window.SyncCore = SyncCore;   // pure sync helpers, used by the Node simulation tests
 
   /* ===========================================================
    * Boot

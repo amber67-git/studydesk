@@ -4,7 +4,7 @@ A personal study notes app (formerly "My notebook") — Cornell-style notebooks,
 
 ## Running it
 
-**Hosted:** https://amber67-git.github.io/studydesk/ (GitHub Pages, deployed from `main` by `.github/workflows/pages.yml`; one-time setup: repository Settings → Pages → Source: "GitHub Actions"). On a phone, open that URL and use "Add to Home Screen" / "Install app": StudyDesk is a PWA, so the installed app opens full-screen and works offline (`manifest.webmanifest`, `sw.js`). Data is still per device until sync lands.
+**Hosted:** https://amber67-git.github.io/studydesk/ (GitHub Pages, deployed from `main` by `.github/workflows/pages.yml`; one-time setup: repository Settings → Pages → Source: "GitHub Actions"). On a phone, open that URL and use "Add to Home Screen" / "Install app": StudyDesk is a PWA, so the installed app opens full-screen and works offline (`manifest.webmanifest`, `sw.js`). Sign in with Google on the Backup page to sync across devices (see below).
 
 **Local:** just open `index.html` in a browser. No server, no install. (The service worker only registers over http(s), so offline caching is not active from `file://`.)
 
@@ -12,10 +12,15 @@ For live-reload while editing in VS Code, the **Live Server** extension works we
 1. Install the "Live Server" extension (ritwickdey.LiveServer)
 2. Right-click `index.html` → "Open with Live Server"
 
+## Sync (cross-device)
+
+Optional. `Backup → cloud sync → sign in with Google` on each device. Firebase Auth (Google) + Firestore, one tree per user (`users/{uid}/…`), per-document last-write-wins on `updatedAt`, tombstones for deletions, offline queue via Firestore persistence. Only changed documents are written; pages are separate documents so images never hit the 1 MB document limit. The SDK is self-hosted in `vendor/firebase/`; the project config lives in `app.js` (`FIREBASE_CONFIG`), security rules in `firestore.rules`. Without a config the app is local-only.
+
 ## File structure
 
 - `index.html` — markup only
 - `style.css` — all styles
+- `vendor/firebase/` — Firebase compat SDK (app, auth, firestore); `firestore.rules` — security rules to paste into the console
 - `manifest.webmanifest`, `sw.js`, `icons/` — PWA install metadata, offline service worker (app shell only; API calls are never cached) and app icons
 - `fonts/` — self-hosted Latin webfonts (Patrick Hand, Architects Daughter, Inter, JetBrains Mono); the CJK handwriting fonts load from Google Fonts
 - `app.js` — all behavior, organized into modules (see the header comment at the top of the file for the module map: Icons, Utils, Storage, AppState, Modal, Nav, Subjects, NotesModule, Library, Schedule, Flashcards, Settings, Stats, App)

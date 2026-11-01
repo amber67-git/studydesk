@@ -1,0 +1,13 @@
+rules_version = '2';
+// StudyDesk: every signed-in user may read and write only their own tree.
+// Paste this into Firebase console → Firestore Database → Rules → Publish.
+// Optional hardening: after you have signed in once, turn off new sign-ups in
+// Authentication → Settings → User actions ("Enable create"), so nobody else
+// can create an account in this project.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}

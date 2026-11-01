@@ -26,6 +26,7 @@
   - library item: `{ id, title, author, illustrator, publisher, isbn, coverUrl, coverRotation(0|90|180|270), type, category, genre, callNo, levelInput, status, progress(0-100), rating(0-5), notes, noteId, createdAt, updatedAt }`
     — type ∈ book|movie|series|lecture|video|paper|article|music|other, status ∈ want|in progress|done
   - settings: `{ fontMode('hand'|'clean'), noteFontSize(13-22), backupReminderDays, lastBackupAt, tmdbKey }`
+  - 동기화가 켜진 뒤 바뀐 항목에는 `updatedAt`(ms)이 추가로 붙는다(note/page/subject/task/card/library item/settings). 추가 필드일 뿐이라 옛 백업 파일과 호환된다.
 
 ### 2. 도메인 불변 규칙 (실수로 겪고 확정된 것들)
 - **청구기호(callNo)는 실물 라벨**: 한 번 부여하면 삭제 후에도 재사용·재배열 금지. 다음 번호 = 같은 접두어 내 max+1 (count+1 아님).
@@ -49,11 +50,20 @@
 - 백업 리마인더 배너: 마지막 백업 후 N일(기본 7, 설정 가능, 0=끄기) 경과 시 표시. 노트 0개면 안 띄움.
 - Library 등록 모달: 검색바 최상단("검색 한 번, 나머지는 확인만"), 표지 박스 하나가 클릭업로드+드래그+Ctrl+V 3-in-1(버튼 없음), Status/Progress/Rating/CallNo는 편집 모드에서만 표시, Delete는 왼쪽 빨강으로 격리.
 - **Backup은 사이드바의 전용 페이지**(내부 키 `backup`, `page-backup`): download/load backup, 리마인더 주기, 저장 용량, 전체 삭제(별도 카드)가 여기 있다. Settings에는 글꼴·글자 크기·auto-fill 키·설명서만 남긴다.
+- **기기 간 동기화**는 Backup 페이지의 cloud sync 카드에서 Google 로그인으로 켠다. 사이드바 맨 아래(`sb-foot-status`)가 상태 표시: stored only in this browser / syncing / synced · 이름 / offline · will sync / sync error. 로그아웃해도 로컬 사본은 남는다. clear all data는 로그인 중이면 로컬 사본만 지우고 재다운로드한다.
 - Settings에 한국어 사용 설명서(guide) 내장 — **기능 바꾸면 설명서도 같이 갱신** (FAQ는 실제 겪은 문제의 에러 문구 그대로).
 
 ## 현재 코드 구조 (app.js, IIFE 모듈)
 
-Icons(인라인 SVG, CDN 금지 — 아이콘 폰트 차단으로 빈 네모 버그 겪음) → Utils → Storage(probe/fail-open/손상보관) → AppState(+migrateNotesToPages: 로드마다 전체 스키마 복구) → Modal → Nav → Subjects → NotesModule → Library → Schedule → Flashcards → Settings → Stats → App(boot try/catch 오버레이).
+Icons(인라인 SVG, CDN 금지 — 아이콘 폰트 차단으로 빈 네모 버그 겪음) → Utils → Storage(probe/fail-open/손상보관) → AppState(+migrateNotesToPages: 로드마다 전체 스키마 복구) → Modal → Nav → Subjects → NotesModule → Library → Schedule → Flashcards → Settings → Stats → SyncCore/Sync → App(boot try/catch 오버레이).
+
+### 동기화 (SyncCore + Sync, app.js)
+- **구성**: Firebase Auth(Google) + Firestore. `FIREBASE_CONFIG`(app.js 상단)가 null이면 완전히 비활성. SDK는 `vendor/firebase/*-compat.js`(자체 호스팅, 10.14.1)를 필요할 때만 `<script>`로 로드하고 실패 시 gstatic CDN으로 폴백. 규칙은 `firestore.rules`(uid 트리만 읽기/쓰기).
+- **클라우드 구조**: `users/{uid}/` 아래 `subjects|notes|recurring|adhocTasks|cards|library/{id}`, `pages/{noteId}_{idx}`(노트 문서에는 pages 대신 `pageCount`), `completions/{key}`({done:true}), `meta/settings`. 모든 문서에 `updatedAt`(기기 시각 ms). 삭제는 `{deleted:true, updatedAt}` 톰스톤.
+- **규칙**: 문서 단위 last-write-wins(`updatedAt` 비교). 페이지는 인덱스 기반 문서라 페이지 삭제는 항상 끝에서만 잘리는 것으로 가정(앱의 페이지 삭제 동작과 일치). 900KB를 넘는 문서는 보내지 않고 Backup 페이지에 빨간 글씨로 표시(이미지 과다 페이지).
+- **흐름**: `Storage.save()`가 `Sync.collectChanges()`(스냅샷과 JSON 비교 → 바뀐 것에 updatedAt 스탬프)를 먼저 부르고 localStorage에 쓴 뒤 `Sync.push()`(400개씩 batch). 로그인 직후 `initialMerge()`가 전체를 내려받아 LWW로 합친 다음에야 `ready`가 되어 push가 시작된다(앱 시작이 클라우드를 덮어쓰는 일 방지). 샘플 데이터만 있던 새 기기(`AppState.seededThisSession`)는 클라우드에 데이터가 있으면 샘플을 버린다. 이후 컬렉션별 `onSnapshot`이 원격 변경을 LWW로 반영하고, 사용자가 타이핑 중(마지막 input 2.5초 이내)이면 화면 갱신을 미룬다. `NotesModule.refreshEditor()`는 현재 페이지 인덱스를 유지한 채 편집기를 다시 그린다.
+- **백업 import와의 관계**: import로 바뀐 내용도 diff를 통해 그대로 클라우드에 반영된다(없어진 id는 톰스톤). 즉 백업 복원은 모든 기기에 전파된다.
+- **검증**: `SyncCore`는 window에 노출돼 Node 시뮬레이션(scratch의 sync-core.test.js)으로 diff/merge/톰스톤/용량 케이스를 돌린다. 실제 Firebase 왕복은 콘솔 프로젝트가 있는 기기에서 수동 확인.
 
 외부 API (Library 자동채우기): Google Books(키 불필요, intitle:), MusicBrainz, Crossref, TMDB(선택 — settings.tmdbKey, 없으면 영화 검색만 비활성·수동입력 가능). 모든 fetch: navigator.onLine 체크 + AbortController 15초 + 429/401·403 친절 메시지.
 
@@ -72,11 +82,11 @@ Icons(인라인 SVG, CDN 금지 — 아이콘 폰트 차단으로 빈 네모 버
 - 라틴 웹폰트는 `fonts/`(woff2 8개, ~250KB)에 자체 호스팅하고 style.css 상단 `@font-face`에서 `src: url(fonts/...), url(https://fonts.gstatic.com/...)` 순으로 선언한다. 병합본을 fonts/ 없이 단독으로 열어도 두 번째 src(CDN)로 넘어가므로 같은 글꼴이 나온다. CJK 손글씨 3종(Nanum Pen Script/Yomogi/Zhi Mang Xing)은 Google Fonts가 각 ~100개 조각으로 쪼개 주기 때문에 번들하지 않고 CDN `<link>`를 유지한다.
 
 ## 미해결 과제 (우선순위순)
-1. **모바일 폰트 불일치 (1차 조치 완료, 사용자 확인 대기)** — PC와 폰에서 글씨체가 다르게 보이던 문제. 원인으로 확인된 것: 글꼴 스택의 마지막이 generic `cursive`였고, 웹폰트가 실패하면 Android는 Dancing Script, iOS는 Snell Roundhand를 골라 기기마다 다른 글씨가 됐다. 조치: 라틴 폰트 자체 호스팅(`fonts/`) + 스택 끝을 시스템 한글 고딕 → `sans-serif`로 교체(위 배포 산출물 참조). 남은 확인: 폰에서 실제로 같은 글꼴이 나오는지 사용자 확인. 여전히 다르면 "폰에서 어떻게 열었는지(파일 직접 / 서버) / 손글씨가 아예 안 나오는지 vs 다른 손글씨인지"를 받아 진단.
+1. **모바일 폰트 불일치 (해결, Android에서 확인)** — PC와 폰에서 글씨체가 다르게 보이던 문제. 원인으로 확인된 것: 글꼴 스택의 마지막이 generic `cursive`였고, 웹폰트가 실패하면 Android는 Dancing Script, iOS는 Snell Roundhand를 골라 기기마다 다른 글씨가 됐다. 조치: 라틴 폰트 자체 호스팅(`fonts/`) + 스택 끝을 시스템 한글 고딕 → `sans-serif`로 교체(위 배포 산출물 참조). 남은 확인: 폰에서 실제로 같은 글꼴이 나오는지 사용자 확인. 여전히 다르면 "폰에서 어떻게 열었는지(파일 직접 / 서버) / 손글씨가 아예 안 나오는지 vs 다른 손글씨인지"를 받아 진단.
 2. **Google Books API 키 입력란 (선택)** — 429 "search limit reached" 재발 시 추가. TMDB 키 입력란(Settings → auto-fill)과 동일 패턴, 키 있으면 `&key=` 붙이기. 무료 1,000회/일.
 3. **GitHub Pages 배포 + PWA 설치 (완료)** — https://amber67-git.github.io/studydesk/ , 홈 화면 설치·오프라인 동작. 데이터는 여전히 기기별(5번에서 해결). 설명서에 설치 방법 섹션 있음.
 4. **구글 캘린더 단방향 가져오기** — 설계 합의됨: 전용 "공부" 캘린더 구독 방식, OAuth 클라이언트 필요, localhost에서 동작. 가져온 일정→subject 매핑 규칙 필요.
-5. **기기 간 실시간 동기화** — 백엔드 필요(Firebase/Supabase 후보). Storage 모듈이 이 교체를 위해 격리돼 있음. 로그인 필수(개인 데이터). ※ 사용자는 ClassDesk라는 별개 앱에서 Firebase 전환 경험 있음 — 혼동 주의: ClassDesk(학생 관리)와 이 앱은 다른 프로젝트.
+5. **기기 간 실시간 동기화 (구현 완료, Firebase 설정 대기)** — 위 '동기화' 절 참조. 남은 일: 소유자가 Firebase 프로젝트(studydesk 전용, ClassDesk와 별개)를 만들고 웹 설정을 `FIREBASE_CONFIG`에 넣기, `firestore.rules` 게시, Authentication에 Google 로그인과 승인 도메인(amber67-git.github.io) 등록, 로그인 1회 후 신규 가입 차단. ※ ClassDesk(학생 관리)와 이 앱은 다른 프로젝트 — 혼동 주의.
 
 ## 사용자 작업 스타일
 - 한국어, 짧은 지시. 근본 원인 설명을 원함. 문제는 빨간 펜 스크린샷으로 보고.
