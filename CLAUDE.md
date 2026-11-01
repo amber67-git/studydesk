@@ -26,7 +26,7 @@
   - library item: `{ id, title, author, illustrator, publisher, isbn, coverUrl, coverRotation(0|90|180|270), type, category, genre, callNo, levelInput, status, progress(0-100), rating(0-5), notes, noteId, createdAt, updatedAt }`
     — type ∈ book|movie|series|lecture|video|paper|article|music|other, status ∈ want|in progress|done
   - settings: `{ fontMode('hand'|'clean'), noteFontSize(13-22), backupReminderDays, lastBackupAt, tmdbKey }`
-  - 이 브라우저의 데이터가 마지막으로 동기화된 계정 uid는 `study-notes-app-chalkboard-v2:sync-uid`(별도 localStorage 키)에 둔다. 다른 uid로 로그인하면 로컬에 내용이 있을 때 confirm으로 묻고(확인=로컬 폐기 후 내려받기, 취소=로그아웃) 두 계정의 데이터가 섞여 올라가는 것을 막는다. clear all data가 이 키도 지운다.
+  - 이 브라우저의 데이터가 마지막으로 동기화된 계정 uid는 `study-notes-app-chalkboard-v2:sync-uid`(별도 localStorage 키)에 둔다. 다른 uid로 로그인하면 로컬에 내용이 있을 때 confirm으로 묻고(확인=서버에서 실제로 내려받은 뒤 설정까지 포함해 로컬 폐기, 취소=로그아웃) 두 계정의 데이터가 섞여 올라가는 것을 막는다. 내려받는 동안 편집이 있었으면 한 번 더 묻는다. 첫 다운로드는 `get({source:'server'})`라 오프라인 캐시로는 절대 로컬을 대체하지 않는다. clear all data가 이 키도 지운다.
   - 동기화가 켜진 뒤 바뀐 항목에는 `syncAt`(ms)이 추가로 붙는다(note/page/subject/task/card/library item/settings). 추가 필드일 뿐이라 옛 백업 파일과 호환된다. **library item의 `updatedAt`(ISO 문자열)과는 별개 필드**다(라이브러리 정렬이 `localeCompare`를 쓰므로 숫자를 넣으면 깨진다). 아직 받지 못한 클라우드 페이지의 자리표시 페이지는 `placeholder: true`로 표시되며 비어 있는 동안 업로드되지 않는다.
 
 ### 2. 도메인 불변 규칙 (실수로 겪고 확정된 것들)

@@ -3593,10 +3593,13 @@
 
     function col(name) { return db.collection('users').doc(uid).collection(name); }
 
-    function emptyLocal() {
+    /** Drop everything local. includeSettings is for an account switch: the previous
+        account's settings (and their sync stamp) must not be uploaded to the new one. */
+    function emptyLocal(includeSettings) {
       AppState.subjects = []; AppState.notes = []; AppState.recurring = []; AppState.adhocTasks = [];
       AppState.completions = {}; AppState.completionSync = {}; AppState.cards = []; AppState.library = [];
       AppState.activeNoteId = null; AppState.activePageIndex = 0;
+      if (includeSettings) { AppState.settings = {}; Storage.applySettingDefaults(); }
     }
 
     function hasLocalContent() {
@@ -3635,14 +3638,30 @@
         (last write wins), then the local save that follows pushes whatever only
         exists here. A device that only holds the sample data drops it when the
         cloud already has real notes. */
-    function initialMerge(gen, wipe) {
+    /** Download everything and merge it into the local state (LWW).
+        wipeFingerprint: set when the user agreed to replace the local copy (account switch);
+        it is the content fingerprint at the time of that answer. Resolves null when the
+        replacement was abandoned (the user is signed out again). */
+    function initialMerge(gen, wipeFingerprint) {
       var cols = SyncCore.ALL_COLLECTIONS;
-      return Promise.all(cols.map(function (c) { return col(c).get(); })).then(function (snaps) {
+      // source: 'server' — with offline persistence a plain get() can answer from an
+      // incomplete cache; local data is only ever replaced by a real download
+      return Promise.all(cols.map(function (c) { return col(c).get({ source: 'server' }); })).then(function (snaps) {
         if (gen !== generation) return false;                    // signed out (or in again) while downloading
         var cloudHasData = snaps.some(function (s) { return !s.empty; });
         var changed = false;
-        // only drop local data when it is still exactly the sample data this session started with
-        if (wipe || (stillSample() && cloudHasData)) { emptyLocal(); changed = true; }
+        if (wipeFingerprint) {
+          // edits made while the download was running are not thrown away silently
+          if (SyncCore.fingerprint(AppState) !== wipeFingerprint &&
+              !confirm('You changed notes while the download was running. Discard those changes too and use the cloud copy of ' +
+                userEmail + '?\n\nCancel = sign out and keep the local notes.')) {
+            setStatus('syncing', 'signing out'); auth.signOut(); return null;
+          }
+          emptyLocal(true); changed = true;
+        } else if (stillSample() && cloudHasData) {
+          // only drop local data when it is still exactly the sample data this session started with
+          emptyLocal(false); changed = true;
+        }
         snaps.forEach(function (s, k) {
           var c = cols[k];
           snapshot[c] = {};
@@ -3715,17 +3734,17 @@
       ready = false; snapshot = {}; pendingPages = {}; pushQueue = Promise.resolve();
       // The local copy belongs to the account it was last synced with. Another
       // account must not inherit (and upload) it.
-      var wiped = false, prev = storedUid();
+      var wipeFp = null, prev = storedUid();
       if (prev && prev !== user.uid && hasLocalContent() && !stillSample()) {
         var ok = confirm('The notes in this browser were synced with a different Google account.\n\n' +
           'OK = replace them with the notes of ' + userEmail + ' from the cloud (the local copy is discarded; ' +
           'download a backup first if you want to keep it).\nCancel = sign out and keep the local notes.');
         if (!ok) { setStatus('syncing', 'signing out'); auth.signOut(); return; }
-        wiped = true;   // emptied inside initialMerge, only once the download has succeeded
+        wipeFp = SyncCore.fingerprint(AppState);   // emptied inside initialMerge, only once the download has succeeded
       }
       setStatus('syncing', 'downloading');
-      initialMerge(gen, wiped).then(function (changed) {
-        if (gen !== generation) return;
+      initialMerge(gen, wipeFp).then(function (changed) {
+        if (gen !== generation || changed === null) return;      // session ended, or replacement abandoned
         rememberUid(user.uid);
         ready = true;
         listen();
