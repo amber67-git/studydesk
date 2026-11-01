@@ -14,7 +14,7 @@
 - localStorage 키: `study-notes-app-chalkboard-v2` — **절대 이름 변경 금지.**
   사용자의 실제 필기 데이터가 이 키에 있다. 키를 바꾸면 "노트가 전부 사라진" 것처럼 보인다.
   (이름이 chalkboard인 이유: 앱의 옛 이름. 데이터 보존을 위해 의도적으로 유지 중)
-- 백업 JSON 형식: `{ app: "studydesk", backupVersion: 1, exportedAt, data: { subjects, notes, recurring, adhocTasks, completions, cards, library, settings } }`
+- 백업 JSON 형식: `{ app: "studydesk", backupVersion: 1, exportedAt, data: { subjects, notes, recurring, adhocTasks, completions, completionSync(선택, 동기화 켠 뒤에만 의미 있음), cards, library, settings } }`
   — import 시 `app`이 `"studydesk"` **또는 옛 이름 `"my-notebook"`** 이면 수용할 것 (사용자가 이미 내려받은 옛 백업 파일 호환). 래퍼 없는 raw data 객체도 수용.
 - 스키마 (현재 shape):
   - subject: `{ id, name }`
@@ -60,7 +60,7 @@ Icons(인라인 SVG, CDN 금지 — 아이콘 폰트 차단으로 빈 네모 버
 
 ### 동기화 (SyncCore + Sync, app.js)
 - **구성**: Firebase Auth(Google) + Firestore. `FIREBASE_CONFIG`(app.js 상단)가 null이면 완전히 비활성. SDK는 `vendor/firebase/*-compat.js`(자체 호스팅, 10.14.1)를 필요할 때만 `<script>`로 로드하고 실패 시 gstatic CDN으로 폴백. 규칙은 `firestore.rules`(uid 트리만 읽기/쓰기).
-- **클라우드 구조**: `users/{uid}/` 아래 `subjects|notes|recurring|adhocTasks|cards|library/{id}`, `pages/{noteId}_{idx}`(노트 문서에는 pages 대신 `pageCount`), `completions/{key}`({done:true}), `meta/settings`. 모든 문서에 `syncAt`(기기 시각 ms). 삭제는 `{deleted:true, syncAt}` 톰스톤.
+- **클라우드 구조**: `users/{uid}/` 아래 `subjects|notes|recurring|adhocTasks|cards|library/{id}`, `pages/{noteId}_{idx}`(노트 문서에는 pages 대신 `pageCount`), `completions/{date|taskKey}`({done:true}), `meta/settings`. 모든 문서에 `syncAt`(기기 시각 ms). 삭제는 `{deleted:true, syncAt}` 톰스톤.
 - **규칙**: 문서 단위 last-write-wins(`syncAt` 비교). 페이지는 인덱스 기반 문서라 페이지 삭제는 항상 끝에서만 잘리는 것으로 가정(앱의 페이지 삭제 동작과 일치). 900KB를 넘는 문서는 보내지 않고(스탬프도 찍지 않아 줄어들면 다시 시도) Backup 페이지에 빨간 글씨로 표시(이미지 과다 페이지).
 - **흐름**: `Storage.save()`가 `Sync.collectChanges()`(스냅샷과 정규화 JSON 비교 → 바뀐 것에 syncAt 스탬프)를 먼저 부르고 localStorage에 쓴 뒤 `Sync.push()`(400개씩 batch). 로그인 직후 `initialMerge()`가 전체를 내려받아 LWW로 합친 다음에야 `ready`가 되어 push가 시작된다(앱 시작이 클라우드를 덮어쓰는 일 방지). 샘플 데이터만 있던 새 기기(`AppState.seededThisSession` + 시드 직후 `seedFingerprint`와 현재 내용이 같을 때만)는 클라우드에 데이터가 있으면 샘플을 버린다. 컬렉션별 리스너가 따로 오므로 노트 헤드보다 먼저 온 페이지 문서는 `pendingPages`에 두었다가 헤드가 오면 적용하고 그때 스냅샷에 넣는다. push 실패 시 스냅샷을 이전 값으로 되돌려 put과 톰스톤 모두 다음 저장에서 재시도된다. 한 세션의 push는 `pushQueue`로 직렬화되고(400개 묶음이 서로 끼어들지 않음), `generation` 카운터로 로그아웃/재로그인 이후 도착한 옛 세션의 비동기 결과(첫 다운로드·배치)는 무시한다. 첫 다운로드가 `unavailable`/오프라인으로 실패하면 `offline · download pending` 상태로 두고 `online` 이벤트에서 `start()`를 다시 부른다. 이후 컬렉션별 `onSnapshot`이 원격 변경을 LWW로 반영하고, 사용자가 타이핑 중(마지막 input 2.5초 이내)이면 화면 갱신을 미룬다. `NotesModule.refreshEditor()`는 현재 페이지 인덱스를 유지한 채 편집기를 다시 그린다.
 - **백업 import와의 관계**: import로 바뀐 내용도 diff를 통해 그대로 클라우드에 반영된다(없어진 id는 톰스톤). 즉 백업 복원은 모든 기기에 전파된다.

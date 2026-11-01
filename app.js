@@ -3635,14 +3635,14 @@
         (last write wins), then the local save that follows pushes whatever only
         exists here. A device that only holds the sample data drops it when the
         cloud already has real notes. */
-    function initialMerge(gen) {
+    function initialMerge(gen, wipe) {
       var cols = SyncCore.ALL_COLLECTIONS;
       return Promise.all(cols.map(function (c) { return col(c).get(); })).then(function (snaps) {
         if (gen !== generation) return false;                    // signed out (or in again) while downloading
         var cloudHasData = snaps.some(function (s) { return !s.empty; });
         var changed = false;
         // only drop local data when it is still exactly the sample data this session started with
-        if (stillSample() && cloudHasData) { emptyLocal(); changed = true; }
+        if (wipe || (stillSample() && cloudHasData)) { emptyLocal(); changed = true; }
         snaps.forEach(function (s, k) {
           var c = cols[k];
           snapshot[c] = {};
@@ -3721,15 +3721,15 @@
           'OK = replace them with the notes of ' + userEmail + ' from the cloud (the local copy is discarded; ' +
           'download a backup first if you want to keep it).\nCancel = sign out and keep the local notes.');
         if (!ok) { setStatus('syncing', 'signing out'); auth.signOut(); return; }
-        emptyLocal(); wiped = true;
+        wiped = true;   // emptied inside initialMerge, only once the download has succeeded
       }
       setStatus('syncing', 'downloading');
-      initialMerge(gen).then(function (changed) {
+      initialMerge(gen, wiped).then(function (changed) {
         if (gen !== generation) return;
         rememberUid(user.uid);
         ready = true;
         listen();
-        if (changed || wiped) refreshUI(); else Storage.save();   // either way: push local-only data
+        if (changed) refreshUI(); else Storage.save();   // either way: push local-only data
         setStatus(navigator.onLine ? 'synced' : 'offline');
       }).catch(function (e) {
         if (gen !== generation) return;
@@ -3755,7 +3755,8 @@
       setStatus('syncing', 'signing in');
       auth.signInWithPopup(provider).catch(function (e) {
         var code = (e && e.code) || '';
-        if (/popup/.test(code)) { auth.signInWithRedirect(provider); return; }
+        if (code === 'auth/popup-blocked') { auth.signInWithRedirect(provider); return; }   // browser refused the popup: full-page flow
+        if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') { setStatus('signedout'); return; }   // the user changed their mind
         setStatus('error', describe(e));
       });
     }
