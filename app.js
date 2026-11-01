@@ -647,7 +647,7 @@
     }
 
     function reset() {
-      try { localStorage.removeItem(KEY); localStorage.removeItem(KEY + ':sync-uid'); } catch (e) { /* ignore */ }
+      try { localStorage.removeItem(KEY); localStorage.removeItem(KEY + ':sync-uid'); localStorage.removeItem(KEY + ':sync-known'); } catch (e) { /* ignore */ }
     }
 
     return {
@@ -998,18 +998,25 @@
     function saveCurrentFields() {
       var n = AppState.currentNote();
       if (!n) return;
-      n.title = Utils.$('note-title').value;
-      n.subjectId = Utils.$('note-subject-select').value;
-      n.type = Utils.$('note-type-select').value;
+      var head = { title: Utils.$('note-title').value, subjectId: Utils.$('note-subject-select').value, type: Utils.$('note-type-select').value };
+      var headChanged = false, pageChanged = false;
+      Object.keys(head).forEach(function (k) { if (n[k] !== head[k]) { n[k] = head[k]; headChanged = true; } });
       AppState.ensurePages(n);
       var page = AppState.currentPage();
       if (page) {
-        page.chapter = Utils.$('note-chapter').value;
-        page.tags = Utils.$('note-tags').value;
-        page.date = Utils.$('note-date').value;
-        page.cues = Utils.$('cues').value;
-        page.summary = Utils.$('summary').value;
-        page.body = Utils.$('notes-body').innerHTML;
+        var fields = {
+          chapter: Utils.$('note-chapter').value, tags: Utils.$('note-tags').value, date: Utils.$('note-date').value,
+          cues: Utils.$('cues').value, summary: Utils.$('summary').value, body: Utils.$('notes-body').innerHTML
+        };
+        Object.keys(fields).forEach(function (k) { if (page[k] !== fields[k]) { page[k] = fields[k]; pageChanged = true; } });
+      }
+      // cloud sync: stamp the edit right away. The debounced save stamps too, but while
+      // the user keeps typing it never fires, and a remote copy with an older stamp must
+      // not be allowed to replace what is being typed in the meantime.
+      if ((headChanged || pageChanged) && typeof Sync !== 'undefined' && Sync.isSignedIn && Sync.isSignedIn()) {
+        var now = Date.now();
+        if (headChanged) n.syncAt = now;
+        if (pageChanged) page.syncAt = now;
       }
     }
 
@@ -1651,6 +1658,10 @@
       var t = Utils.todayStr();
       if (!AppState.completions[t]) AppState.completions[t] = {};
       AppState.completions[t][key] = done;
+      // cloud sync: stamp now, so a remote copy of this completion that arrives before
+      // the debounced save cannot undo the click
+      if (!AppState.completionSync || typeof AppState.completionSync !== 'object') AppState.completionSync = {};
+      AppState.completionSync[SyncCore.completionId(t, key)] = Date.now();
       Storage.scheduleSave();
     }
 
@@ -3276,6 +3287,25 @@
       return h;
     }
 
+    /** Ids of every document this device holds, per collection (settings excluded).
+        Stored at sign-out, so the next sign-in can tell "deleted here while signed out"
+        from "created elsewhere while signed out". */
+    function knownIds(state) {
+      var data = flatten(state).data, ids = {};
+      Object.keys(data).forEach(function (c) { if (c !== 'meta') ids[c] = Object.keys(data[c]); });
+      return ids;
+    }
+
+    /** True when this device already held `doc` when it signed out (same id, and the
+        cloud copy has not changed since): the local state is then the newer one,
+        whatever happened to it while signed out (edit, deletion, page cut). */
+    function seenBeforeSignOut(known, c, id, doc) {
+      if (!known || !known.ids || !doc || doc.deleted) return false;
+      var list = known.ids[c];
+      if (!list || list.indexOf(id) === -1) return false;
+      return (doc.syncAt || 0) <= (known.at || 0);
+    }
+
     function completionId(date, key) { return date + '|' + key; }
 
     /** "<YYYY-MM-DD>|<taskKey>" -> { date, key }; null for anything else. */
@@ -3481,6 +3511,8 @@
       splitPageId: splitPageId,
       completionId: completionId,
       splitCompletionId: splitCompletionId,
+      knownIds: knownIds,
+      seenBeforeSignOut: seenBeforeSignOut,
       noteHead: noteHead,
       canon: canon,
       fingerprint: fingerprint,
@@ -3509,6 +3541,7 @@
     var currentUser = null;   // Firebase user of the active session (for the offline retry of the first download)
     var pushQueue = Promise.resolve();   // pushes of one session run strictly one after another
     var UID_KEY = Storage.KEY + ':sync-uid';   // the account this browser's data was last synced with
+    var KNOWN_KEY = Storage.KEY + ':sync-known';   // { uid, at, ids } written at sign-out (see SyncCore.knownIds)
     var ready = false;        // initial merge done: only then do local saves push
     var unsubscribers = [];
     var lastInputAt = 0;
@@ -3614,6 +3647,11 @@
     }
 
     function storedUid() { try { return localStorage.getItem(UID_KEY) || ''; } catch (e) { return ''; } }
+    function readKnown() {
+      try { var k = JSON.parse(localStorage.getItem(KNOWN_KEY) || 'null'); return (k && typeof k === 'object') ? k : null; } catch (e) { return null; }
+    }
+    function rememberKnown(k) { try { localStorage.setItem(KNOWN_KEY, JSON.stringify(k)); } catch (e) { /* storage blocked or full: deletions made while signed out may come back */ } }
+    function forgetKnown() { try { localStorage.removeItem(KNOWN_KEY); } catch (e) { /* nothing to forget */ } }
     function rememberUid(u) { try { localStorage.setItem(UID_KEY, u); } catch (e) { /* storage blocked: nothing to remember */ } }
 
     function refreshUI() {
@@ -3642,7 +3680,7 @@
         wipeFingerprint: set when the user agreed to replace the local copy (account switch);
         it is the content fingerprint at the time of that answer. Resolves null when the
         replacement was abandoned (the user is signed out again). */
-    function initialMerge(gen, wipeFingerprint) {
+    function initialMerge(gen, wipeFingerprint, wipeSettings) {
       var cols = SyncCore.ALL_COLLECTIONS;
       // source: 'server' — with offline persistence a plain get() can answer from an
       // incomplete cache; local data is only ever replaced by a real download
@@ -3650,27 +3688,35 @@
         if (gen !== generation) return false;                    // signed out (or in again) while downloading
         var cloudHasData = snaps.some(function (s) { return !s.empty; });
         var changed = false;
+        var replaced = false;
         if (wipeFingerprint) {
           // edits made while the download was running are not thrown away silently
-          if (SyncCore.fingerprint(AppState) !== wipeFingerprint &&
-              !confirm('You changed notes while the download was running. Discard those changes too and use the cloud copy of ' +
+          if ((SyncCore.fingerprint(AppState) !== wipeFingerprint || JSON.stringify(AppState.settings) !== wipeSettings) &&
+              !confirm('You changed notes or settings while the download was running. Discard those changes too and use the cloud copy of ' +
                 userEmail + '?\n\nCancel = sign out and keep the local notes.')) {
             setStatus('syncing', 'signing out'); auth.signOut(); return null;
           }
-          emptyLocal(true); changed = true;
+          emptyLocal(true); changed = true; replaced = true;
         } else if (stillSample() && cloudHasData) {
           // only drop local data when it is still exactly the sample data this session started with
-          emptyLocal(false); changed = true;
+          emptyLocal(false); changed = true; replaced = true;
         }
+        // Same account as at the last sign-out: documents the cloud still holds unchanged
+        // since then are ones this device already had, so the local state wins for them
+        // (a note deleted or a page cut while signed out stays gone; diff sends the tombstone).
+        var known = readKnown();
+        var useKnown = !replaced && !!(known && known.uid === uid && known.ids);
         snaps.forEach(function (s, k) {
           var c = cols[k];
           snapshot[c] = {};
           s.forEach(function (d) {
             var data = d.data();
             snapshot[c][d.id] = JSON.stringify(data);
+            if (useKnown && SyncCore.seenBeforeSignOut(known, c, d.id, data)) return;
             if (SyncCore.applyRemote(AppState, c, d.id, data)) changed = true;
           });
         });
+        forgetKnown();
         return changed;
       });
     }
@@ -3698,7 +3744,7 @@
     function listen() {
       SyncCore.ALL_COLLECTIONS.forEach(function (c) {
         unsubscribers.push(col(c).onSnapshot({ includeMetadataChanges: true }, function (qs) {
-          var changed = false;
+          var changed = false, stale = false;
           qs.docChanges().forEach(function (ch) {
             if (ch.type === 'removed') return;                  // we never hard-delete; tombstones instead
             if (ch.doc.metadata.hasPendingWrites) return;        // echo of our own write
@@ -3716,10 +3762,14 @@
               }
             }
             snapshot[c][ch.doc.id] = json;
-            if (SyncCore.applyRemote(AppState, c, ch.doc.id, data)) changed = true;
+            if (SyncCore.applyRemote(AppState, c, ch.doc.id, data)) changed = true; else stale = true;
             if (c === 'notes' && !data.deleted && applyPendingPages(ch.doc.id)) changed = true;
           });
           if (changed) scheduleRefresh();
+          // a remote copy that lost against a newer local one (e.g. another device's offline
+          // write landing late) is answered by re-sending ours, so the cloud converges now
+          // rather than at this device's next save
+          if (stale && ready) { var again = collectChanges(); if (again) push(again); }
           if (phase !== 'error' && phase !== 'syncing') setStatus(qs.metadata.fromCache && !navigator.onLine ? 'offline' : 'synced');
         }, function (err) {
           setStatus('error', describe(err));
@@ -3736,7 +3786,7 @@
       // account must not inherit (and upload) any of it: notes, subjects, settings
       // (incl. API keys). It is replaced after the download; the user is only asked
       // when there is content worth keeping.
-      var wipeFp = null, prev = storedUid();
+      var wipeFp = null, wipeSettings = null, prev = storedUid();
       if (prev && prev !== user.uid) {
         if (hasLocalContent() && !stillSample()) {
           var ok = confirm('The notes in this browser were synced with a different Google account.\n\n' +
@@ -3745,9 +3795,10 @@
           if (!ok) { setStatus('syncing', 'signing out'); auth.signOut(); return; }
         }
         wipeFp = SyncCore.fingerprint(AppState);   // emptied inside initialMerge, only once the download has succeeded
+        wipeSettings = JSON.stringify(AppState.settings);
       }
       setStatus('syncing', 'downloading');
-      initialMerge(gen, wipeFp).then(function (changed) {
+      initialMerge(gen, wipeFp, wipeSettings).then(function (changed) {
         if (gen !== generation || changed === null) return;      // session ended, or replacement abandoned
         rememberUid(user.uid);
         ready = true;
@@ -3765,6 +3816,7 @@
 
     function stop() {
       generation++;
+      if (uid && ready) rememberKnown({ uid: uid, at: Date.now(), ids: SyncCore.knownIds(AppState) });
       unsubscribers.forEach(function (u) { try { u(); } catch (e) { /* listener already gone */ } });
       unsubscribers = [];
       ready = false; uid = null; userEmail = ''; currentUser = null;
