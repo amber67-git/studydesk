@@ -4,7 +4,9 @@ A personal study notes app (formerly "My notebook") — Cornell-style notebooks,
 
 ## Running it
 
-Just open `index.html` in a browser. No server, no install.
+**Hosted:** https://amber67-git.github.io/studydesk/ (GitHub Pages, deployed from `main` by `.github/workflows/pages.yml`). On a phone, open that URL and use "Add to Home Screen" / "Install app": StudyDesk is a PWA, so the installed app opens full-screen and works offline (`manifest.webmanifest`, `sw.js`). Data is still per device until sync lands.
+
+**Local:** just open `index.html` in a browser. No server, no install. (The service worker only registers over http(s), so offline caching is not active from `file://`.)
 
 For live-reload while editing in VS Code, the **Live Server** extension works well:
 1. Install the "Live Server" extension (ritwickdey.LiveServer)
@@ -14,6 +16,7 @@ For live-reload while editing in VS Code, the **Live Server** extension works we
 
 - `index.html` — markup only
 - `style.css` — all styles
+- `manifest.webmanifest`, `sw.js`, `icons/` — PWA install metadata, offline service worker (app shell only; API calls are never cached) and app icons
 - `fonts/` — self-hosted Latin webfonts (Patrick Hand, Architects Daughter, Inter, JetBrains Mono); the CJK handwriting fonts load from Google Fonts
 - `app.js` — all behavior, organized into modules (see the header comment at the top of the file for the module map: Icons, Utils, Storage, AppState, Modal, Nav, Subjects, NotesModule, Library, Schedule, Flashcards, Settings, Stats, App)
 
