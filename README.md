@@ -23,7 +23,7 @@ Optional. `Backup → cloud sync → sign in with Google` on each device. Fireba
 - `vendor/firebase/` — Firebase compat SDK (app, auth, firestore); `firestore.rules` — security rules to paste into the console
 - `manifest.webmanifest`, `sw.js`, `icons/` — PWA install metadata, offline service worker (app shell only; API calls are never cached) and app icons
 - `fonts/` — self-hosted Latin webfonts (Patrick Hand, Architects Daughter, Inter, JetBrains Mono); the CJK handwriting fonts load from Google Fonts
-- `app.js` — all behavior, organized into modules (see the header comment at the top of the file for the module map: Icons, Utils, Storage, AppState, Modal, Nav, Subjects, NotesModule, Library, Schedule, Flashcards, Settings, Stats, App)
+- `app.js` — all behavior, organized into modules (see the header comment at the top of the file for the module map: Icons, Utils, Storage, AppState, Modal, Nav, Subjects, NotesModule, Library, Schedule, Flashcards, Settings, Stats, SyncCore, Sync, App)
 
 ## Data model
 
@@ -33,11 +33,11 @@ Optional. `Backup → cloud sync → sign in with Google` on each device. Fireba
 
 ## Storage
 
-Everything is saved to `localStorage` under the key `study-notes-app-chalkboard-v2` (kept as-is from an earlier name so existing saved data isn't lost — renaming this key would make the app act like all your notebooks vanished). Clearing browser storage wipes everything, so use the **Backup** page → **download backup** regularly; **load backup** restores from that JSON file and also works for moving notes to another browser or computer. There is no cloud sync yet.
+Everything is saved to `localStorage` under the key `study-notes-app-chalkboard-v2` (kept as-is from an earlier name so existing saved data isn't lost — renaming this key would make the app act like all your notebooks vanished). Clearing browser storage wipes everything, so use the **Backup** page → **download backup** regularly; **load backup** restores from that JSON file and also works for moving notes to another browser or computer. Cloud sync (previous section) is optional and keeps devices in step automatically.
 
 ## Known limitations
 
-- No backend — nothing syncs across devices/browsers
+- Without signing in, nothing syncs across devices/browsers; with sync on, the data also lives in your own Firebase project
 - Images pasted into notes are stored as base64 in localStorage, so don't paste too many large screenshots (a few MB total storage limit)
 
 ## For Claude Code (인수인계)

@@ -3222,14 +3222,17 @@
    *                         below Firestore's 1 MB limit even with images)
    *   completions/{key}     { done: true }
    *   meta/settings         the settings object
-   * Every document carries updatedAt (ms since epoch, stamped by the device
-   * that changed it). Deleted things become tombstones { deleted: true,
-   * updatedAt } so a device that was offline still learns about the deletion.
-   * Conflict rule: last write wins per document, compared on updatedAt.
+   * Every document carries syncAt (ms since epoch, stamped by the device
+   * that changed it; a separate field because library items already use
+   * updatedAt as an ISO string). Deleted things become tombstones { deleted: true,
+   * syncAt } so a device that was offline still learns about the deletion.
+   * Conflict rule: last write wins per document, compared on syncAt.
    *
    * The local data contract is untouched: localStorage key, backup format and
-   * schema stay as they are; updatedAt is the only field added, and only on
-   * things that were actually changed while sync was on.
+   * schema stay as they are; syncAt is the only field added, and only on
+   * things that were actually changed while sync was on. Pages created as
+   * stand-ins for cloud pages that have not arrived yet are flagged
+   * placeholder:true and never uploaded while they are still empty.
    * =========================================================== */
   var SyncCore = (function () {
     var ENTITY_COLLECTIONS = ['subjects', 'notes', 'recurring', 'adhocTasks', 'cards', 'library'];
@@ -3242,7 +3245,20 @@
     }
 
     function blankPage() {
-      return { chapter: '', tags: '', date: '', cues: '', body: '', summary: '' };
+      return { chapter: '', tags: '', date: '', cues: '', body: '', summary: '', placeholder: true };
+    }
+
+    function isEmptyPage(p) {
+      return !(p.body || p.cues || p.summary || p.chapter || p.tags);
+    }
+
+    /** Content fingerprint of the notes/tasks/cards/library (settings excluded):
+        used to tell "still just the sample data" from "the user wrote something". */
+    function fingerprint(state) {
+      var data = flatten(state).data;
+      var copy = {};
+      Object.keys(data).forEach(function (c) { if (c !== 'meta') copy[c] = data[c]; });
+      return canon(copy);
     }
 
     function noteHead(note) {
@@ -3260,7 +3276,7 @@
     }
 
     /** Flatten app data into cloud documents: { data: {col: {id: doc}}, src: {col: {id: object to stamp}} }.
-        src points at the live objects so a stamp (updatedAt) lands in AppState too. */
+        src points at the live objects so a stamp (syncAt) lands in AppState too. */
     function flatten(state) {
       var data = {}, src = {};
       ALL_COLLECTIONS.forEach(function (c) { data[c] = {}; src[c] = {}; });
@@ -3274,9 +3290,10 @@
       (state.notes || []).forEach(function (n) {
         if (!n || !n.id) return;
         (n.pages || []).forEach(function (p, i) {
+          if (p.placeholder && isEmptyPage(p)) return;   // stand-in for a cloud page not received yet
           var id = pageId(n.id, i);
           var doc = { noteId: n.id, idx: i };
-          Object.keys(p).forEach(function (k) { doc[k] = p[k]; });
+          Object.keys(p).forEach(function (k) { if (k !== 'placeholder') doc[k] = p[k]; });
           data.pages[id] = doc;
           src.pages[id] = p;
         });
@@ -3297,11 +3314,11 @@
       return out;
     }
 
-    /** Content fingerprint: key order and the updatedAt stamp are ignored, so a
+    /** Content fingerprint: key order and the syncAt stamp are ignored, so a
         document rebuilt from the cloud (different key order) or a completion
         (no live object to carry the stamp) does not look "changed". */
     function canon(doc) {
-      return JSON.stringify(sortKeys(doc), function (k, v) { return k === 'updatedAt' ? undefined : v; });
+      return JSON.stringify(sortKeys(doc), function (k, v) { return k === 'syncAt' ? undefined : v; });
     }
 
     function sameContent(json, doc) {
@@ -3323,17 +3340,20 @@
         Object.keys(docs).forEach(function (id) {
           var doc = docs[id];
           if (sameContent(snap[id], doc)) return;
+          var stamped = {};
+          Object.keys(doc).forEach(function (k) { stamped[k] = doc[k]; });
+          stamped.syncAt = now;
+          var json = JSON.stringify(stamped);
+          if (byteLength(json) > MAX_DOC_BYTES) { oversized.push({ col: c, id: id }); return; }  // left unstamped: retried when it shrinks
           var live = flat.src[c] && flat.src[c][id];
-          if (live) live.updatedAt = now;
-          doc.updatedAt = now;
-          var json = JSON.stringify(doc);
-          if (byteLength(json) > MAX_DOC_BYTES) { oversized.push({ col: c, id: id }); return; }
+          if (live) live.syncAt = now;
+          doc.syncAt = now;
           puts.push({ col: c, id: id, json: json });
         });
         Object.keys(snap).forEach(function (id) {
           if (docs[id]) return;
           if (snap[id].indexOf('"deleted":true') !== -1) return;  // already a tombstone
-          var t = { deleted: true, updatedAt: now };
+          var t = { deleted: true, syncAt: now };
           tombstones.push({ col: c, id: id, json: JSON.stringify(t) });
         });
       });
@@ -3349,12 +3369,12 @@
         Returns true when local data changed. `state` is AppState-shaped. */
     function applyRemote(state, c, id, remote) {
       if (!remote || typeof remote !== 'object') return false;
-      var ts = remote.updatedAt || 0;
+      var ts = remote.syncAt || 0;
 
       if (c === 'meta') {
         if (id !== 'settings') return false;
         if (remote.deleted) return false;
-        if (ts <= ((state.settings && state.settings.updatedAt) || 0)) return false;
+        if (ts <= ((state.settings && state.settings.syncAt) || 0)) return false;
         state.settings = JSON.parse(JSON.stringify(remote));
         return true;
       }
@@ -3382,12 +3402,12 @@
         if (remote.deleted) {
           // page deletions always trim from the end (indices are positional)
           if (idx !== note.pages.length - 1 || note.pages.length <= 1) return false;
-          if (((note.pages[idx] || {}).updatedAt || 0) > ts) return false;
+          if (((note.pages[idx] || {}).syncAt || 0) > ts) return false;
           note.pages.pop();
           return true;
         }
         var localPage = note.pages[idx];
-        if (localPage && (localPage.updatedAt || 0) >= ts) return false;
+        if (localPage && (localPage.syncAt || 0) >= ts) return false;
         var p = JSON.parse(JSON.stringify(remote));
         delete p.noteId; delete p.idx; delete p.deleted;
         while (note.pages.length <= idx) note.pages.push(blankPage());
@@ -3400,11 +3420,11 @@
       var i = findIndexById(arr, id);
       if (remote.deleted) {
         if (i === -1) return false;
-        if ((arr[i].updatedAt || 0) > ts) return false;
+        if ((arr[i].syncAt || 0) > ts) return false;
         arr.splice(i, 1);
         return true;
       }
-      if (i !== -1 && (arr[i].updatedAt || 0) >= ts) return false;
+      if (i !== -1 && (arr[i].syncAt || 0) >= ts) return false;
       var e = JSON.parse(JSON.stringify(remote));
       if (c === 'notes') {
         var count = e.pageCount || 0;
@@ -3427,7 +3447,9 @@
       applyRemote: applyRemote,
       splitPageId: splitPageId,
       noteHead: noteHead,
-      canon: canon
+      canon: canon,
+      fingerprint: fingerprint,
+      isEmptyPage: isEmptyPage
     };
   })();
 
@@ -3447,6 +3469,7 @@
     var SDK_FILES = ['firebase-app-compat.js', 'firebase-auth-compat.js', 'firebase-firestore-compat.js'];
     var auth = null, db = null, uid = null, userEmail = '';
     var snapshot = {};        // col -> id -> JSON of the document as last seen/sent in the cloud
+    var pendingPages = {};    // page documents whose note head has not arrived yet (listeners are per collection)
     var ready = false;        // initial merge done: only then do local saves push
     var unsubscribers = [];
     var lastInputAt = 0;
@@ -3564,7 +3587,10 @@
       return Promise.all(cols.map(function (c) { return col(c).get(); })).then(function (snaps) {
         var cloudHasData = snaps.some(function (s) { return !s.empty; });
         var changed = false;
-        if (AppState.seededThisSession && cloudHasData) { emptyLocal(); changed = true; }
+        // only drop local data when it is still exactly the sample data this session started with
+        var stillSample = AppState.seededThisSession && AppState.seedFingerprint &&
+          SyncCore.fingerprint(AppState) === AppState.seedFingerprint;
+        if (stillSample && cloudHasData) { emptyLocal(); changed = true; }
         snaps.forEach(function (s, k) {
           var c = cols[k];
           snapshot[c] = {};
@@ -3578,6 +3604,26 @@
       });
     }
 
+    function noteExists(noteId) {
+      return AppState.notes.some(function (n) { return n.id === noteId; });
+    }
+
+    /** Pages that arrived before their note head are applied once the head is here,
+        and only then recorded in the snapshot (so a placeholder can never be
+        mistaken for a local change to a page we have not actually received). */
+    function applyPendingPages(noteId) {
+      var changed = false;
+      Object.keys(pendingPages).forEach(function (id) {
+        var p = pendingPages[id];
+        if (p.noteId !== noteId) return;
+        delete pendingPages[id];
+        snapshot.pages = snapshot.pages || {};
+        snapshot.pages[id] = p.json;
+        if (SyncCore.applyRemote(AppState, 'pages', id, p.data)) changed = true;
+      });
+      return changed;
+    }
+
     function listen() {
       SyncCore.ALL_COLLECTIONS.forEach(function (c) {
         unsubscribers.push(col(c).onSnapshot({ includeMetadataChanges: true }, function (qs) {
@@ -3589,8 +3635,13 @@
             var json = JSON.stringify(data);
             snapshot[c] = snapshot[c] || {};
             if (snapshot[c][ch.doc.id] === json) return;        // already known
+            if (c === 'pages' && !data.deleted) {
+              var noteId = data.noteId || SyncCore.splitPageId(ch.doc.id).noteId;
+              if (!noteExists(noteId)) { pendingPages[ch.doc.id] = { noteId: noteId, data: data, json: json }; return; }
+            }
             snapshot[c][ch.doc.id] = json;
             if (SyncCore.applyRemote(AppState, c, ch.doc.id, data)) changed = true;
+            if (c === 'notes' && !data.deleted && applyPendingPages(ch.doc.id)) changed = true;
           });
           if (changed) scheduleRefresh();
           if (phase !== 'error' && phase !== 'syncing') setStatus(qs.metadata.fromCache && !navigator.onLine ? 'offline' : 'synced');
@@ -3617,7 +3668,7 @@
     function stop() {
       unsubscribers.forEach(function (u) { try { u(); } catch (e) { /* listener already gone */ } });
       unsubscribers = [];
-      ready = false; uid = null; userEmail = ''; snapshot = {};
+      ready = false; uid = null; userEmail = ''; snapshot = {}; pendingPages = {};
       setStatus('signedout');
     }
 
@@ -3657,7 +3708,8 @@
       var ops = d.puts.concat(d.tombstones);
       if (!ops.length || !db) return;
       setStatus('syncing', 'uploading ' + ops.length);
-      ops.forEach(function (op) { snapshot[op.col] = snapshot[op.col] || {}; snapshot[op.col][op.id] = op.json; });
+      var prev = ops.map(function (op) { snapshot[op.col] = snapshot[op.col] || {}; return snapshot[op.col][op.id]; });
+      ops.forEach(function (op) { snapshot[op.col][op.id] = op.json; });
       var chunks = [];
       for (var i = 0; i < ops.length; i += 400) chunks.push(ops.slice(i, i + 400));
       chunks.reduce(function (p, chunk) {
@@ -3669,7 +3721,10 @@
       }, Promise.resolve()).then(function () {
         if (phase !== 'error') setStatus(navigator.onLine ? 'synced' : 'offline');
       }).catch(function (e) {
-        ops.forEach(function (op) { if (snapshot[op.col]) delete snapshot[op.col][op.id]; });
+        // put the snapshot back exactly as it was, so the next save retries puts AND tombstones
+        ops.forEach(function (op, k) {
+          if (prev[k] === undefined) delete snapshot[op.col][op.id]; else snapshot[op.col][op.id] = prev[k];
+        });
         setStatus('error', describe(e));
       });
     }
@@ -3762,6 +3817,7 @@
         AppState.seededThisSession = true;
       }
       AppState.migrateNotesToPages();
+      if (AppState.seededThisSession) AppState.seedFingerprint = SyncCore.fingerprint(AppState);
       AppState.calMonth = Utils.currentMonthStr();
 
       // wire up every module's event handlers

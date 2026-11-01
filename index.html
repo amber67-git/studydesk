@@ -329,7 +329,7 @@ Write the main idea in your own words."></textarea>
         <div class="card">
           <div class="ch"><div class="ct"><span class="icon" data-icon="database" aria-hidden="true"></span>backup &amp; restore</div></div>
           <div class="cb p">
-            <p style="font-family:var(--sans); font-size:13px; color:var(--txt2); margin-top:0;">Everything is stored only in this browser (localStorage), including any images you add to notes. Download a backup file regularly — it's the only way to recover your notes if browser data gets cleared, and it also lets you move your notes to another browser or computer. Loading a backup replaces what is in this browser with the file's contents.</p>
+            <p style="font-family:var(--sans); font-size:13px; color:var(--txt2); margin-top:0;">Without cloud sync, everything is stored only in this browser (localStorage), including any images you add to notes. A backup file is still the way to recover your notes if browser data gets cleared, and to move them to a device that is not signed in. Loading a backup replaces what is in this browser with the file's contents (and, when signed in, that is what your other devices receive).</p>
             <div class="backup-row">
               <button class="btn btn-p" id="export-data-btn"><span class="icon" data-icon="download" aria-hidden="true"></span> download backup</button>
               <button class="btn" id="import-data-btn"><span class="icon" data-icon="upload" aria-hidden="true"></span> load backup</button>
@@ -432,7 +432,7 @@ Write the main idea in your own words."></textarea>
                 <p>StudyDesk는 코넬(Cornell) 노트 필기법을 기반으로 한 개인 공부 노트 앱입니다. 강의, 독서, 자습 등 여러 활동을 과목별 노트북으로 나누어 기록하고, 학습 일정과 노트를 연결해 "오늘 공부할 것"에서 클릭 한 번으로 필기를 이어갈 수 있도록 설계되었습니다.</p>
                 <ul>
                   <li><b>설치 없음</b> — 브라우저에서 바로 실행됩니다. 별도 프로그램 설치나 회원 가입이 필요 없습니다.</li>
-                  <li><b>데이터는 내 브라우저에만</b> — 모든 노트는 이 브라우저 안(localStorage)에만 저장됩니다. 외부 서버로 전송되지 않아 사생활이 보호됩니다.</li>
+                  <li><b>데이터는 기본적으로 내 브라우저에만</b> — 로그인하지 않으면 모든 노트는 이 브라우저 안(localStorage)에만 저장되고 어디로도 전송되지 않습니다. Backup 페이지에서 Google 계정으로 로그인하면 본인만 접근할 수 있는 클라우드 공간(Firebase)에 복사되어 다른 기기와 동기화됩니다.</li>
                   <li><b>필기 흐름 자동화</b> — 새 페이지를 만들면 날짜가 자동 입력되고, 필기가 페이지를 넘치면 다음 페이지가 자동으로 생성되며, 일정의 <b>go to note</b> 버튼으로 해당 노트북의 마지막 페이지가 바로 열립니다.</li>
                 </ul>
 
@@ -517,7 +517,7 @@ Write the main idea in your own words."></textarea>
                   <li><b>설치 직후에는 인터넷이 연결된 상태에서 앱을 한 번 열어주세요.</b> 그때 오프라인용 파일이 저장되고, 그 다음부터 인터넷 없이도 열립니다. 설치만 하고 바로 비행기 모드로 열면 빈 화면이 나올 수 있습니다.</li>
                   <li>설치된 앱은 인터넷이 연결돼 있으면 열 때마다 최신 버전을 받아옵니다. 예전 화면이 보이면 앱을 완전히 닫았다가 다시 여세요.</li>
                   <li>Library 자동 채우기(책·영화 검색)는 인터넷이 있을 때만 동작합니다. 필기·일정·카드는 오프라인에서도 모두 됩니다.</li>
-                  <li>데이터는 여전히 <b>기기마다 따로</b> 저장됩니다. 폰과 PC가 서로 다른 노트를 갖게 되니, 옮길 때는 <b>Backup</b> 페이지의 백업 파일을 쓰세요. 기기 간 자동 동기화는 다음 단계에서 추가됩니다.</li>
+                  <li>폰과 PC에서 같은 노트를 보려면 <b>Backup → cloud sync</b>에서 같은 Google 계정으로 로그인하세요(아래 "기기 간 동기화" 참고). 로그인하지 않은 기기는 자기 브라우저에만 저장합니다.</li>
                 </ul>
 
                 <h3>기기 간 동기화 (cloud sync)</h3>
