@@ -168,6 +168,7 @@
     recurring: [],
     adhocTasks: [],
     completions: {},
+    completionSync: {},   // "<date>|<taskKey>" -> syncAt of the last local/remote change (cloud sync only)
     cards: [],
     settings: { fontMode: 'hand', noteFontSize: 16 },
     activeNoteId: null,
@@ -565,6 +566,7 @@
       AppState.recurring = Array.isArray(d.recurring) ? d.recurring : [];
       AppState.adhocTasks = Array.isArray(d.adhocTasks) ? d.adhocTasks : [];
       AppState.completions = (d.completions && typeof d.completions === 'object') ? d.completions : {};
+      AppState.completionSync = (d.completionSync && typeof d.completionSync === 'object') ? d.completionSync : {};
       AppState.cards = Array.isArray(d.cards) ? d.cards : [];
       AppState.library = Array.isArray(d.library) ? d.library : [];
       AppState.settings = (d.settings && typeof d.settings === 'object') ? d.settings : {};
@@ -610,6 +612,7 @@
           recurring: AppState.recurring,
           adhocTasks: AppState.adhocTasks,
           completions: AppState.completions,
+          completionSync: AppState.completionSync,
           cards: AppState.cards,
           library: AppState.library,
           settings: AppState.settings
@@ -644,7 +647,7 @@
     }
 
     function reset() {
-      try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ }
+      try { localStorage.removeItem(KEY); localStorage.removeItem(KEY + ':sync-uid'); } catch (e) { /* ignore */ }
     }
 
     return {
@@ -2974,6 +2977,7 @@
           recurring: AppState.recurring,
           adhocTasks: AppState.adhocTasks,
           completions: AppState.completions,
+          completionSync: AppState.completionSync,
           cards: AppState.cards,
           library: AppState.library,
           settings: AppState.settings
@@ -3139,7 +3143,7 @@
           var snapshot = {
             subjects: AppState.subjects, notes: AppState.notes,
             recurring: AppState.recurring, adhocTasks: AppState.adhocTasks,
-            completions: AppState.completions, cards: AppState.cards,
+            completions: AppState.completions, completionSync: AppState.completionSync, cards: AppState.cards,
             library: AppState.library, settings: AppState.settings
           };
 
@@ -3149,6 +3153,7 @@
             AppState.recurring = Array.isArray(d.recurring) ? d.recurring : [];
             AppState.adhocTasks = Array.isArray(d.adhocTasks) ? d.adhocTasks : [];
             AppState.completions = (d.completions && typeof d.completions === 'object') ? d.completions : {};
+            AppState.completionSync = (d.completionSync && typeof d.completionSync === 'object') ? d.completionSync : {};
             AppState.cards = Array.isArray(d.cards) ? d.cards : [];
             AppState.library = Array.isArray(d.library) ? d.library : [];
             AppState.settings = (d.settings && typeof d.settings === 'object') ? d.settings : {};
@@ -3169,6 +3174,7 @@
             AppState.recurring = snapshot.recurring;
             AppState.adhocTasks = snapshot.adhocTasks;
             AppState.completions = snapshot.completions;
+            AppState.completionSync = snapshot.completionSync;
             AppState.cards = snapshot.cards;
             AppState.library = snapshot.library;
             AppState.settings = snapshot.settings;
@@ -3220,7 +3226,9 @@
    *   notes/{id}            the note WITHOUT its pages, plus pageCount
    *   pages/{noteId}_{idx}  one document per page (keeps every document far
    *                         below Firestore's 1 MB limit even with images)
-   *   completions/{key}     { done: true }
+   *   completions/{date|taskKey}  { done: true }  (local shape is completions[date][taskKey] = true|false;
+   *                         LWW stamps for these live in AppState.completionSync[date|taskKey],
+   *                         a local-only additive field, because the booleans have no room for one)
    *   meta/settings         the settings object
    * Every document carries syncAt (ms since epoch, stamped by the device
    * that changed it; a separate field because library items already use
@@ -3268,6 +3276,14 @@
       return h;
     }
 
+    function completionId(date, key) { return date + '|' + key; }
+
+    /** "<YYYY-MM-DD>|<taskKey>" -> { date, key }; null for anything else. */
+    function splitCompletionId(id) {
+      if (typeof id !== 'string' || id.length < 12 || id.charAt(10) !== '|') return null;
+      return { date: id.slice(0, 10), key: id.slice(11) };
+    }
+
     function pageId(noteId, idx) { return noteId + '_' + idx; }
 
     function splitPageId(id) {
@@ -3298,12 +3314,19 @@
           src.pages[id] = p;
         });
       });
-      Object.keys(state.completions || {}).forEach(function (k) {
-        if (state.completions[k]) data.completions[k] = { done: true };
+      var comp = state.completions || {};
+      Object.keys(comp).forEach(function (date) {
+        var byKey = comp[date];
+        if (!byKey || typeof byKey !== 'object') return;
+        Object.keys(byKey).forEach(function (k) {
+          if (byKey[k]) data.completions[completionId(date, k)] = { done: true };
+        });
       });
+      if (!state.completionSync || typeof state.completionSync !== 'object') state.completionSync = {};
+      var stamps = state.completionSync;
       data.meta.settings = state.settings || {};
       src.meta.settings = state.settings || null;
-      return { data: data, src: src };
+      return { data: data, src: src, stamps: stamps };
     }
 
     function sortKeys(v) {
@@ -3347,6 +3370,7 @@
           if (byteLength(json) > MAX_DOC_BYTES) { oversized.push({ col: c, id: id }); return; }  // left unstamped: retried when it shrinks
           var live = flat.src[c] && flat.src[c][id];
           if (live) live.syncAt = now;
+          if (c === 'completions' && flat.stamps) flat.stamps[id] = now;
           doc.syncAt = now;
           puts.push({ col: c, id: id, json: json });
         });
@@ -3354,6 +3378,7 @@
           if (docs[id]) return;
           if (snap[id].indexOf('"deleted":true') !== -1) return;  // already a tombstone
           var t = { deleted: true, syncAt: now };
+          if (c === 'completions' && flat.stamps) flat.stamps[id] = now;
           tombstones.push({ col: c, id: id, json: JSON.stringify(t) });
         });
       });
@@ -3380,14 +3405,22 @@
       }
 
       if (c === 'completions') {
+        var ref = splitCompletionId(id);
+        if (!ref) return false;                                   // not a "<date>|<taskKey>" document
         state.completions = state.completions || {};
+        if (!state.completionSync || typeof state.completionSync !== 'object') state.completionSync = {};
+        if (ts < (state.completionSync[id] || 0)) return false;   // this device changed it more recently
+        state.completionSync[id] = ts;
+        var day = state.completions[ref.date];
         if (remote.deleted) {
-          if (!state.completions[id]) return false;
-          delete state.completions[id];
+          if (!day || !day[ref.key]) return false;
+          delete day[ref.key];
+          if (!Object.keys(day).length) delete state.completions[ref.date];
           return true;
         }
-        if (state.completions[id]) return false;
-        state.completions[id] = true;
+        if (day && day[ref.key]) return false;
+        if (!day) day = state.completions[ref.date] = {};
+        day[ref.key] = true;
         return true;
       }
 
@@ -3446,6 +3479,8 @@
       diff: diff,
       applyRemote: applyRemote,
       splitPageId: splitPageId,
+      completionId: completionId,
+      splitCompletionId: splitCompletionId,
       noteHead: noteHead,
       canon: canon,
       fingerprint: fingerprint,
@@ -3470,6 +3505,10 @@
     var auth = null, db = null, uid = null, userEmail = '';
     var snapshot = {};        // col -> id -> JSON of the document as last seen/sent in the cloud
     var pendingPages = {};    // page documents whose note head has not arrived yet (listeners are per collection)
+    var generation = 0;       // bumped by start()/stop(); async work from an older session is ignored
+    var currentUser = null;   // Firebase user of the active session (for the offline retry of the first download)
+    var pushQueue = Promise.resolve();   // pushes of one session run strictly one after another
+    var UID_KEY = Storage.KEY + ':sync-uid';   // the account this browser's data was last synced with
     var ready = false;        // initial merge done: only then do local saves push
     var unsubscribers = [];
     var lastInputAt = 0;
@@ -3521,7 +3560,7 @@
     function describe(e) {
       var code = (e && e.code) || '';
       if (code === 'permission-denied') return 'Firestore rejected this account (permission denied). Check the security rules in the Firebase console (firestore.rules in the repository).';
-      if (code === 'unavailable') return 'Firestore is unreachable right now; retrying automatically.';
+      if (code === 'unavailable') return 'Firestore is unreachable right now; it retries when the connection returns.';
       if (code === 'auth/unauthorized-domain') return 'this site is not on the Firebase "authorized domains" list (Authentication → Settings).';
       if (code === 'auth/operation-not-allowed') return 'Google sign-in is not enabled in the Firebase console (Authentication → Sign-in method).';
       return (code ? code + ': ' : '') + ((e && e.message) || String(e));
@@ -3556,9 +3595,23 @@
 
     function emptyLocal() {
       AppState.subjects = []; AppState.notes = []; AppState.recurring = []; AppState.adhocTasks = [];
-      AppState.completions = {}; AppState.cards = []; AppState.library = [];
+      AppState.completions = {}; AppState.completionSync = {}; AppState.cards = []; AppState.library = [];
       AppState.activeNoteId = null; AppState.activePageIndex = 0;
     }
+
+    function hasLocalContent() {
+      return !!(AppState.notes.length || AppState.cards.length || AppState.library.length ||
+        AppState.recurring.length || AppState.adhocTasks.length);
+    }
+
+    /** True while the local data is still exactly the sample data this session started with. */
+    function stillSample() {
+      return !!(AppState.seededThisSession && AppState.seedFingerprint &&
+        SyncCore.fingerprint(AppState) === AppState.seedFingerprint);
+    }
+
+    function storedUid() { try { return localStorage.getItem(UID_KEY) || ''; } catch (e) { return ''; } }
+    function rememberUid(u) { try { localStorage.setItem(UID_KEY, u); } catch (e) { /* storage blocked: nothing to remember */ } }
 
     function refreshUI() {
       AppState.migrateNotesToPages();
@@ -3582,15 +3635,14 @@
         (last write wins), then the local save that follows pushes whatever only
         exists here. A device that only holds the sample data drops it when the
         cloud already has real notes. */
-    function initialMerge() {
+    function initialMerge(gen) {
       var cols = SyncCore.ALL_COLLECTIONS;
       return Promise.all(cols.map(function (c) { return col(c).get(); })).then(function (snaps) {
+        if (gen !== generation) return false;                    // signed out (or in again) while downloading
         var cloudHasData = snaps.some(function (s) { return !s.empty; });
         var changed = false;
         // only drop local data when it is still exactly the sample data this session started with
-        var stillSample = AppState.seededThisSession && AppState.seedFingerprint &&
-          SyncCore.fingerprint(AppState) === AppState.seedFingerprint;
-        if (stillSample && cloudHasData) { emptyLocal(); changed = true; }
+        if (stillSample() && cloudHasData) { emptyLocal(); changed = true; }
         snaps.forEach(function (s, k) {
           var c = cols[k];
           snapshot[c] = {};
@@ -3635,9 +3687,14 @@
             var json = JSON.stringify(data);
             snapshot[c] = snapshot[c] || {};
             if (snapshot[c][ch.doc.id] === json) return;        // already known
-            if (c === 'pages' && !data.deleted) {
+            if (c === 'pages') {
               var noteId = data.noteId || SyncCore.splitPageId(ch.doc.id).noteId;
-              if (!noteExists(noteId)) { pendingPages[ch.doc.id] = { noteId: noteId, data: data, json: json }; return; }
+              if (!noteExists(noteId)) {
+                // buffer puts AND tombstones, keeping the newer one, until the note head is here
+                var held = pendingPages[ch.doc.id];
+                if (!held || (held.data.syncAt || 0) <= (data.syncAt || 0)) pendingPages[ch.doc.id] = { noteId: noteId, data: data, json: json };
+                return;
+              }
             }
             snapshot[c][ch.doc.id] = json;
             if (SyncCore.applyRemote(AppState, c, ch.doc.id, data)) changed = true;
@@ -3652,23 +3709,43 @@
     }
 
     function start(user) {
+      var gen = ++generation;
+      currentUser = user;
       uid = user.uid; userEmail = user.email || '';
-      ready = false; snapshot = {};
+      ready = false; snapshot = {}; pendingPages = {}; pushQueue = Promise.resolve();
+      // The local copy belongs to the account it was last synced with. Another
+      // account must not inherit (and upload) it.
+      var wiped = false, prev = storedUid();
+      if (prev && prev !== user.uid && hasLocalContent() && !stillSample()) {
+        var ok = confirm('The notes in this browser were synced with a different Google account.\n\n' +
+          'OK = replace them with the notes of ' + userEmail + ' from the cloud (the local copy is discarded; ' +
+          'download a backup first if you want to keep it).\nCancel = sign out and keep the local notes.');
+        if (!ok) { setStatus('syncing', 'signing out'); auth.signOut(); return; }
+        emptyLocal(); wiped = true;
+      }
       setStatus('syncing', 'downloading');
-      initialMerge().then(function (changed) {
+      initialMerge(gen).then(function (changed) {
+        if (gen !== generation) return;
+        rememberUid(user.uid);
         ready = true;
         listen();
-        if (changed) refreshUI(); else Storage.save();   // either way: push local-only data
+        if (changed || wiped) refreshUI(); else Storage.save();   // either way: push local-only data
         setStatus(navigator.onLine ? 'synced' : 'offline');
       }).catch(function (e) {
+        if (gen !== generation) return;
+        var code = (e && e.code) || '';
+        // first download not possible right now: retried by the 'online' handler (start() again)
+        if (code === 'unavailable' || !navigator.onLine) { setStatus('offline', 'download pending'); return; }
         setStatus('error', describe(e));
       });
     }
 
     function stop() {
+      generation++;
       unsubscribers.forEach(function (u) { try { u(); } catch (e) { /* listener already gone */ } });
       unsubscribers = [];
-      ready = false; uid = null; userEmail = ''; snapshot = {}; pendingPages = {};
+      ready = false; uid = null; userEmail = ''; currentUser = null;
+      snapshot = {}; pendingPages = {}; pushQueue = Promise.resolve();
       setStatus('signedout');
     }
 
@@ -3713,17 +3790,20 @@
       ops.forEach(function (op) { snap[op.col][op.id] = op.json; });
       var chunks = [];
       for (var i = 0; i < ops.length; i += 400) chunks.push(ops.slice(i, i + 400));
-      chunks.reduce(function (p, chunk) {
-        return p.then(function () {
-          if (snap !== snapshot) return;   // signed out (or in again) between chunks: never write this session's ops under another uid
-          var batch = db.batch();
-          chunk.forEach(function (op) { batch.set(docRef(op.col, op.id), JSON.parse(op.json)); });
-          return batch.commit();
-        });
-      }, Promise.resolve()).then(function () {
+      // one queue per session: a later save never overtakes the chunks of an earlier one
+      pushQueue = pushQueue.then(function () {
+        return chunks.reduce(function (p, chunk) {
+          return p.then(function () {
+            if (snap !== snapshot) return;   // signed out (or in again): never write this session's ops under another uid
+            var batch = db.batch();
+            chunk.forEach(function (op) { batch.set(docRef(op.col, op.id), JSON.parse(op.json)); });
+            return batch.commit();
+          });
+        }, Promise.resolve());
+      }).then(function () {
         if (snap !== snapshot) return;   // signed out (or in again) meanwhile
         if (phase !== 'error') setStatus(navigator.onLine ? 'synced' : 'offline');
-      }).catch(function (e) {
+      }, function (e) {
         if (snap !== snapshot) return;   // signed out meanwhile: nothing to roll back
         // put the snapshot back exactly as it was, so the next save retries puts AND tombstones
         ops.forEach(function (op, k) {
@@ -3753,7 +3833,10 @@
       var inBtn = $('sync-signin-btn'), outBtn = $('sync-signout-btn');
       if (inBtn) inBtn.addEventListener('click', signIn);
       if (outBtn) outBtn.addEventListener('click', signOut);
-      window.addEventListener('online', function () { if (uid && phase === 'offline') setStatus('syncing', 'reconnecting'); });
+      window.addEventListener('online', function () {
+        if (uid && !ready && currentUser) { start(currentUser); return; }   // first download never finished
+        if (uid && phase === 'offline') setStatus('syncing', 'reconnecting');
+      });
       window.addEventListener('offline', function () { if (uid) setStatus('offline'); });
 
       if (!FIREBASE_CONFIG) { setStatus('unconfigured'); return; }

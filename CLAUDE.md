@@ -21,11 +21,12 @@
   - note(=notebook): `{ id, title, subjectId, type, pages[] }` — type ∈ lecture|book|movie|project|self-study|other
   - page: `{ chapter, tags, date(YYYY-MM-DD), cues, body(HTML), summary }`
   - recurring task: `{ id, title, subjectId, type, days[0-6] }` / adhoc task: `{ id, title, subjectId, type, date }`
-  - completions: `{ "<taskId>|<YYYY-MM-DD>": true }`
+  - completions: `{ "<YYYY-MM-DD>": { "rec:<id>" | "adhoc:<id>": true|false } }` — **날짜 → 태스크 키 중첩 구조**(코드 `isTaskDone/setTaskDone` 기준; 예전 이 문서의 `"<taskId>|<date>": true` 표기는 틀렸었다). 동기화는 `completions/<date>|<key>` 문서(`{done:true}`)로 펼치고, 해제는 톰스톤. LWW 비교용 시각은 불리언에 넣을 수 없어 **`completionSync: { "<date>|<key>": syncAt }`** 라는 추가 필드(로컬 저장/백업에 같이 들어가며 없어도 됨)에 둔다.
   - card: `{ id, front, back, subjectId }`
   - library item: `{ id, title, author, illustrator, publisher, isbn, coverUrl, coverRotation(0|90|180|270), type, category, genre, callNo, levelInput, status, progress(0-100), rating(0-5), notes, noteId, createdAt, updatedAt }`
     — type ∈ book|movie|series|lecture|video|paper|article|music|other, status ∈ want|in progress|done
   - settings: `{ fontMode('hand'|'clean'), noteFontSize(13-22), backupReminderDays, lastBackupAt, tmdbKey }`
+  - 이 브라우저의 데이터가 마지막으로 동기화된 계정 uid는 `study-notes-app-chalkboard-v2:sync-uid`(별도 localStorage 키)에 둔다. 다른 uid로 로그인하면 로컬에 내용이 있을 때 confirm으로 묻고(확인=로컬 폐기 후 내려받기, 취소=로그아웃) 두 계정의 데이터가 섞여 올라가는 것을 막는다. clear all data가 이 키도 지운다.
   - 동기화가 켜진 뒤 바뀐 항목에는 `syncAt`(ms)이 추가로 붙는다(note/page/subject/task/card/library item/settings). 추가 필드일 뿐이라 옛 백업 파일과 호환된다. **library item의 `updatedAt`(ISO 문자열)과는 별개 필드**다(라이브러리 정렬이 `localeCompare`를 쓰므로 숫자를 넣으면 깨진다). 아직 받지 못한 클라우드 페이지의 자리표시 페이지는 `placeholder: true`로 표시되며 비어 있는 동안 업로드되지 않는다.
 
 ### 2. 도메인 불변 규칙 (실수로 겪고 확정된 것들)
@@ -61,7 +62,7 @@ Icons(인라인 SVG, CDN 금지 — 아이콘 폰트 차단으로 빈 네모 버
 - **구성**: Firebase Auth(Google) + Firestore. `FIREBASE_CONFIG`(app.js 상단)가 null이면 완전히 비활성. SDK는 `vendor/firebase/*-compat.js`(자체 호스팅, 10.14.1)를 필요할 때만 `<script>`로 로드하고 실패 시 gstatic CDN으로 폴백. 규칙은 `firestore.rules`(uid 트리만 읽기/쓰기).
 - **클라우드 구조**: `users/{uid}/` 아래 `subjects|notes|recurring|adhocTasks|cards|library/{id}`, `pages/{noteId}_{idx}`(노트 문서에는 pages 대신 `pageCount`), `completions/{key}`({done:true}), `meta/settings`. 모든 문서에 `syncAt`(기기 시각 ms). 삭제는 `{deleted:true, syncAt}` 톰스톤.
 - **규칙**: 문서 단위 last-write-wins(`syncAt` 비교). 페이지는 인덱스 기반 문서라 페이지 삭제는 항상 끝에서만 잘리는 것으로 가정(앱의 페이지 삭제 동작과 일치). 900KB를 넘는 문서는 보내지 않고(스탬프도 찍지 않아 줄어들면 다시 시도) Backup 페이지에 빨간 글씨로 표시(이미지 과다 페이지).
-- **흐름**: `Storage.save()`가 `Sync.collectChanges()`(스냅샷과 정규화 JSON 비교 → 바뀐 것에 syncAt 스탬프)를 먼저 부르고 localStorage에 쓴 뒤 `Sync.push()`(400개씩 batch). 로그인 직후 `initialMerge()`가 전체를 내려받아 LWW로 합친 다음에야 `ready`가 되어 push가 시작된다(앱 시작이 클라우드를 덮어쓰는 일 방지). 샘플 데이터만 있던 새 기기(`AppState.seededThisSession` + 시드 직후 `seedFingerprint`와 현재 내용이 같을 때만)는 클라우드에 데이터가 있으면 샘플을 버린다. 컬렉션별 리스너가 따로 오므로 노트 헤드보다 먼저 온 페이지 문서는 `pendingPages`에 두었다가 헤드가 오면 적용하고 그때 스냅샷에 넣는다. push 실패 시 스냅샷을 이전 값으로 되돌려 put과 톰스톤 모두 다음 저장에서 재시도된다. 이후 컬렉션별 `onSnapshot`이 원격 변경을 LWW로 반영하고, 사용자가 타이핑 중(마지막 input 2.5초 이내)이면 화면 갱신을 미룬다. `NotesModule.refreshEditor()`는 현재 페이지 인덱스를 유지한 채 편집기를 다시 그린다.
+- **흐름**: `Storage.save()`가 `Sync.collectChanges()`(스냅샷과 정규화 JSON 비교 → 바뀐 것에 syncAt 스탬프)를 먼저 부르고 localStorage에 쓴 뒤 `Sync.push()`(400개씩 batch). 로그인 직후 `initialMerge()`가 전체를 내려받아 LWW로 합친 다음에야 `ready`가 되어 push가 시작된다(앱 시작이 클라우드를 덮어쓰는 일 방지). 샘플 데이터만 있던 새 기기(`AppState.seededThisSession` + 시드 직후 `seedFingerprint`와 현재 내용이 같을 때만)는 클라우드에 데이터가 있으면 샘플을 버린다. 컬렉션별 리스너가 따로 오므로 노트 헤드보다 먼저 온 페이지 문서는 `pendingPages`에 두었다가 헤드가 오면 적용하고 그때 스냅샷에 넣는다. push 실패 시 스냅샷을 이전 값으로 되돌려 put과 톰스톤 모두 다음 저장에서 재시도된다. 한 세션의 push는 `pushQueue`로 직렬화되고(400개 묶음이 서로 끼어들지 않음), `generation` 카운터로 로그아웃/재로그인 이후 도착한 옛 세션의 비동기 결과(첫 다운로드·배치)는 무시한다. 첫 다운로드가 `unavailable`/오프라인으로 실패하면 `offline · download pending` 상태로 두고 `online` 이벤트에서 `start()`를 다시 부른다. 이후 컬렉션별 `onSnapshot`이 원격 변경을 LWW로 반영하고, 사용자가 타이핑 중(마지막 input 2.5초 이내)이면 화면 갱신을 미룬다. `NotesModule.refreshEditor()`는 현재 페이지 인덱스를 유지한 채 편집기를 다시 그린다.
 - **백업 import와의 관계**: import로 바뀐 내용도 diff를 통해 그대로 클라우드에 반영된다(없어진 id는 톰스톤). 즉 백업 복원은 모든 기기에 전파된다.
 - **검증**: `SyncCore`는 window에 노출돼 Node 시뮬레이션(scratch의 sync-core.test.js)으로 diff/merge/톰스톤/용량 케이스를 돌린다. 실제 Firebase 왕복은 콘솔 프로젝트가 있는 기기에서 수동 확인.
 
