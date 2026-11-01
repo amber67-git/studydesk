@@ -15,7 +15,7 @@ var FONT_CACHE = 'studydesk-fonts-v1';
 // Absolute URLs of the shell, so same-origin requests outside it are left alone
 // (the GitHub Pages origin is shared with the owner's other project sites).
 var SHELL = [
-  './', './index.html', './style.css', './app.js', './manifest.webmanifest',
+  './', './style.css', './app.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/apple-touch-icon.png',
   './fonts/patrick-hand-400-latin.woff2', './fonts/patrick-hand-400-latin-ext.woff2', './fonts/patrick-hand-400-vietnamese.woff2',
   './fonts/architects-daughter-400-latin.woff2', './fonts/architects-daughter-400-latin-ext.woff2',
@@ -44,45 +44,70 @@ self.addEventListener('activate', function (event) {
 function isShellAsset(url) {
   return SHELL_URLS.indexOf(url.href.split('#')[0]) !== -1;
 }
+function isRootDocument(url) {
+  var u = url.href.split('#')[0].split('?')[0];
+  return u === ROOT || u === ROOT + 'index.html';
+}
 function isShellDocument(url) {
   var p = url.pathname;
-  return p.endsWith('/') || p.endsWith('/index.html') || p.endsWith('/style.css') || p.endsWith('/app.js');
+  return p.endsWith('/style.css') || p.endsWith('/app.js');
 }
 
-function networkFirst(request) {
-  return fetch(request).then(function (response) {
-    if (response && response.ok) {
-      var copy = response.clone();
-      caches.open(CACHE).then(function (cache) { cache.put(request, copy); });
-    }
+// cache writes are kept alive with waitUntil: the browser may stop the worker
+// right after the response is returned, before the write finishes
+function putInCache(event, cacheName, key, response) {
+  var work = caches.open(cacheName).then(function (cache) { return cache.put(key, response); });
+  event.waitUntil(work);
+  return work;
+}
+
+// The app document: network first, cached copy offline. Every root alias
+// (./, ./index.html, ?query) maps to the single ROOT cache entry, so an update
+// fetched online is the same copy served offline later.
+function rootDocument(event) {
+  return fetch(event.request).then(function (response) {
+    if (response && response.ok) putInCache(event, CACHE, ROOT, response.clone());
     return response;
   }).catch(function () {
-    return caches.match(request).then(function (cached) {
-      if (cached) return cached;
-      if (request.mode === 'navigate') {
-        // offline navigation: serve the app from its root. A nested path must be
-        // redirected, not answered with index.html, or the page's relative
-        // style.css/app.js URLs would resolve under the nested path.
-        if (request.url.split('#')[0].split('?')[0] === ROOT) return caches.match('./index.html');
-        return Response.redirect(ROOT, 302);
-      }
-      return new Response('offline', { status: 503, statusText: 'offline' });
+    return caches.match(ROOT).then(function (cached) {
+      return cached || new Response('offline', { status: 503, statusText: 'offline' });
     });
   });
 }
 
-function staleWhileRevalidate(request, cacheName, allowOpaque) {
-  return caches.open(cacheName).then(function (cache) {
-    return cache.match(request).then(function (cached) {
-      var network = fetch(request).then(function (response) {
-        // the Google Fonts stylesheet can come back opaque (no-cors); accept that
-        // only for those hosts, everything else must be a readable 2xx
-        var cacheable = response && (response.ok || (allowOpaque && response.type === 'opaque'));
-        if (cacheable) cache.put(request, response.clone());
-        return response;
-      }).catch(function () { return cached; });
-      return cached || network;
+// Any other same-origin navigation is not part of the shell: never cached;
+// offline it lands on the app root (a redirect, so relative asset URLs resolve).
+function otherNavigation(event) {
+  return fetch(event.request).catch(function () { return Response.redirect(ROOT, 302); });
+}
+
+function networkFirst(event) {
+  var request = event.request;
+  return fetch(request).then(function (response) {
+    if (response && response.ok) putInCache(event, CACHE, request, response.clone());
+    return response;
+  }).catch(function () {
+    return caches.match(request).then(function (cached) {
+      return cached || new Response('offline', { status: 503, statusText: 'offline' });
     });
+  });
+}
+
+function staleWhileRevalidate(event, cacheName, allowOpaque) {
+  var request = event.request;
+  return caches.match(request).then(function (cached) {
+    var network = fetch(request).then(function (response) {
+      // the Google Fonts stylesheet can come back opaque (no-cors); accept that
+      // only for those hosts, everything else must be a readable 2xx
+      var cacheable = response && (response.ok || (allowOpaque && response.type === 'opaque'));
+      if (cacheable) putInCache(event, cacheName, request, response.clone());
+      return response;
+    }).catch(function () { return cached; });
+    if (cached) {
+      event.waitUntil(network.catch(function () { /* offline refresh: nothing to do */ }));
+      return cached;
+    }
+    return network;
   });
 }
 
@@ -93,15 +118,15 @@ self.addEventListener('fetch', function (event) {
 
   if (url.origin === self.location.origin) {
     if (request.mode === 'navigate') {
-      event.respondWith(networkFirst(request));
+      event.respondWith(isRootDocument(url) ? rootDocument(event) : otherNavigation(event));
     } else if (isShellAsset(url)) {
-      event.respondWith(isShellDocument(url) ? networkFirst(request) : staleWhileRevalidate(request, CACHE, false));
+      event.respondWith(isShellDocument(url) ? networkFirst(event) : staleWhileRevalidate(event, CACHE, false));
     }
     // other same-origin files are not ours to cache: browser default
     return;
   }
   if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
-    event.respondWith(staleWhileRevalidate(request, FONT_CACHE, true));
+    event.respondWith(staleWhileRevalidate(event, FONT_CACHE, true));
   }
   // any other origin: let the browser handle it normally
 });
