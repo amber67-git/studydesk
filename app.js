@@ -3715,6 +3715,7 @@
       for (var i = 0; i < ops.length; i += 400) chunks.push(ops.slice(i, i + 400));
       chunks.reduce(function (p, chunk) {
         return p.then(function () {
+          if (snap !== snapshot) return;   // signed out (or in again) between chunks: never write this session's ops under another uid
           var batch = db.batch();
           chunk.forEach(function (op) { batch.set(docRef(op.col, op.id), JSON.parse(op.json)); });
           return batch.commit();
