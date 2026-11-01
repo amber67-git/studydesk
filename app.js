@@ -3232,6 +3232,15 @@
       // nudge for a fresh backup if the last one is older than the chosen interval
       Settings.checkBackupReminder();
       Storage.updateUsageDisplay();
+
+      // PWA: the service worker caches the app shell so the installed app opens
+      // offline. Only on http(s): file:// has no service workers, and the app
+      // must keep working there too.
+      if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+        navigator.serviceWorker.register('sw.js').catch(function (e) {
+          console.warn('StudyDesk: service worker not registered (the app still works, just not offline):', e);
+        });
+      }
     }
   };
 

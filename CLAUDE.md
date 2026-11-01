@@ -66,13 +66,15 @@ Icons(인라인 SVG, CDN 금지 — 아이콘 폰트 차단으로 빈 네모 버
 6. 핵심 로직은 Node 시뮬레이션으로 케이스 검증 (예: seriesKey, nextCallNo, computeLevel, 날짜 계산)
 
 ## 배포 산출물 (현재 방식)
+- **GitHub Pages**: `main`에 push하면 `.github/workflows/pages.yml`이 저장소 루트를 그대로 배포한다 → https://amber67-git.github.io/studydesk/ . 빌드 단계 없음. 최초 1회 저장소 Settings → Pages → Source를 "GitHub Actions"로 바꿔야 한다(GITHUB_TOKEN으로는 Pages를 켤 수 없음). 이 origin(amber67-git.github.io)은 소유자의 다른 프로젝트 페이지와 공유되므로 서비스 워커는 자기 캐시(`studydesk-*`)와 SHELL 목록의 URL만 건드린다.
+- **PWA**: `manifest.webmanifest` + `sw.js` + `icons/`. 서비스 워커는 앱 셸만 캐시한다(루트 문서 `./`와 style.css/app.js는 network-first, 폰트·아이콘·manifest는 cache-first, Google Fonts는 stale-while-revalidate). 루트가 아닌 같은 origin의 다른 문서로 이동하는 요청은 캐시하지 않고 오프라인이면 루트로 리다이렉트한다. 외부 API(Google Books/MusicBrainz/Crossref/TMDB/표지 이미지)는 가로채지 않는다. localStorage는 건드리지 않는다. 등록은 app.js `App.init` 끝에서 http(s)일 때만 하므로 file://로 열어도 동작한다. 셸 파일을 추가하면 `sw.js`의 SHELL 목록에도 넣을 것(하나라도 404면 install 전체가 실패한다).
 - 3파일 분리본(index.html/style.css/app.js) + **단일 HTML 병합본**(link/script 태그를 inline style/script 블록으로 치환). 병합 스크립트는 단순 문자열 치환이라 두 태그가 정확히 1개씩이어야 함.
 - 라틴 웹폰트는 `fonts/`(woff2 8개, ~250KB)에 자체 호스팅하고 style.css 상단 `@font-face`에서 `src: url(fonts/...), url(https://fonts.gstatic.com/...)` 순으로 선언한다. 병합본을 fonts/ 없이 단독으로 열어도 두 번째 src(CDN)로 넘어가므로 같은 글꼴이 나온다. CJK 손글씨 3종(Nanum Pen Script/Yomogi/Zhi Mang Xing)은 Google Fonts가 각 ~100개 조각으로 쪼개 주기 때문에 번들하지 않고 CDN `<link>`를 유지한다.
 
 ## 미해결 과제 (우선순위순)
 1. **모바일 폰트 불일치 (1차 조치 완료, 사용자 확인 대기)** — PC와 폰에서 글씨체가 다르게 보이던 문제. 원인으로 확인된 것: 글꼴 스택의 마지막이 generic `cursive`였고, 웹폰트가 실패하면 Android는 Dancing Script, iOS는 Snell Roundhand를 골라 기기마다 다른 글씨가 됐다. 조치: 라틴 폰트 자체 호스팅(`fonts/`) + 스택 끝을 시스템 한글 고딕 → `sans-serif`로 교체(위 배포 산출물 참조). 남은 확인: 폰에서 실제로 같은 글꼴이 나오는지 사용자 확인. 여전히 다르면 "폰에서 어떻게 열었는지(파일 직접 / 서버) / 손글씨가 아예 안 나오는지 vs 다른 손글씨인지"를 받아 진단.
 2. **Google Books API 키 입력란 (선택)** — 429 "search limit reached" 재발 시 추가. TMDB 키 입력란(Settings → auto-fill)과 동일 패턴, 키 있으면 `&key=` 붙이기. 무료 1,000회/일.
-3. **GitHub Pages 배포** — 아직 안 올림. 정적 파일이라 그대로 올리면 됨. 폰 접속 가능해지지만 데이터는 여전히 기기별.
+3. **GitHub Pages 배포 + PWA 설치 (완료)** — https://amber67-git.github.io/studydesk/ , 홈 화면 설치·오프라인 동작. 데이터는 여전히 기기별(5번에서 해결). 설명서에 설치 방법 섹션 있음.
 4. **구글 캘린더 단방향 가져오기** — 설계 합의됨: 전용 "공부" 캘린더 구독 방식, OAuth 클라이언트 필요, localhost에서 동작. 가져온 일정→subject 매핑 규칙 필요.
 5. **기기 간 실시간 동기화** — 백엔드 필요(Firebase/Supabase 후보). Storage 모듈이 이 교체를 위해 격리돼 있음. 로그인 필수(개인 데이터). ※ 사용자는 ClassDesk라는 별개 앱에서 Firebase 전환 경험 있음 — 혼동 주의: ClassDesk(학생 관리)와 이 앱은 다른 프로젝트.
 
