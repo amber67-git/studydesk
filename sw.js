@@ -10,7 +10,7 @@
  * Data is NOT touched here: notes live in localStorage, which a service worker
  * never reads or writes.
  */
-var CACHE = 'studydesk-shell-v3';
+var CACHE = 'studydesk-shell-v4';
 var FONT_CACHE = 'studydesk-fonts-v1';
 // Absolute URLs of the shell, so same-origin requests outside it are left alone
 // (the GitHub Pages origin is shared with the owner's other project sites).
