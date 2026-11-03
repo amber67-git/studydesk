@@ -589,7 +589,9 @@ textarea#summary:focus-visible{box-shadow:inset 0 0 0 2px var(--bdr2)}
 }
 
 /* narrow phones (360-400px): self-test / show notes becomes icon-only so the
-   note footer stays one row; the button's title still names it */
+   note footer stays one row. The label is only hidden visually: it stays in
+   the accessibility tree, so screen readers still hear the current mode
+   ("self-test" or "show notes") rather than the static title. */
 @media(max-width:400px){
-  #review-mode-btn .btn-label{display:none}
+  #review-mode-btn .btn-label{position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
 }
