@@ -905,13 +905,37 @@
       Storage.scheduleSave();
     }
 
+    /* Whether MAIN NOTES fitted on the paper after the last change we saw.
+       A new page is opened only on the change that turns "fits" into
+       "overflows". A page that already overflowed (filled on a wide screen,
+       opened on a phone; a bigger font) is edited in place and scrolls, so
+       typing, a toolbar command or an image never jumps to a blank page and
+       leaves its content behind. Kept as state instead of sampling events
+       before each edit, because not every edit has such an event (execCommand
+       fires input without beforeinput in Chrome; inserted images change the
+       height only when they load). Refreshed after every edit, on render, on
+       focus, on resize and when images in the page finish loading. */
+    var editorFit = true;
+    var insertedImages = (typeof WeakSet !== 'undefined') ? new WeakSet() : null;
+
+    function editorFits() {
+      var editor = Utils.$('notes-body');
+      return !editor || editor.scrollHeight <= editor.clientHeight + 4;
+    }
+
+    function rememberFit() { editorFit = editorFits(); }
+
     /* Auto-add a page when MAIN NOTES content grows taller than the
        visible editor area - mirrors flipping to the next physical
        page once a sheet of paper is full. */
     function checkAutoNewPage() {
       var editor = Utils.$('notes-body');
       if (!editor) return;
-      if (editor.scrollHeight <= editor.clientHeight + 4) return; // still fits
+      var fittedBefore = editorFit;
+      var fitsNow = editorFits();
+      editorFit = fitsNow;
+      if (fitsNow) return;          // still fits
+      if (!fittedBefore) return;    // was already overflowing before this change
 
       var n = AppState.currentNote();
       if (!n) return;
@@ -952,6 +976,7 @@
       Utils.$('summary').value = page.summary || '';
       Utils.$('notes-body').innerHTML = page.body || '';
       renderPageIndicator();
+      rememberFit();   // images in the page re-check when they load (see setup)
     }
 
     /** Open a note and jump straight to its most recent page (the "go to note"
@@ -1078,6 +1103,9 @@
 
     function insertImageAtCursor(dataUrl) {
       var img = document.createElement('img');
+      // inserting changes no height until the image loads; the capture 'load'
+      // listener in setup then runs checkAutoNewPage for this image only
+      if (insertedImages) insertedImages.add(img);
       img.src = dataUrl;
       insertNodeAtCursor(img);
     }
@@ -1277,6 +1305,22 @@
         Storage.scheduleSave();
         checkAutoNewPage();
       });
+      // keep the "did it fit" state current outside of edits too
+      Utils.$('notes-body').addEventListener('focusin', rememberFit);
+      window.addEventListener('resize', rememberFit);
+      // 'load' does not bubble; capture it for images inside the editor.
+      // A freshly inserted image is a change (may open a new page); images
+      // that were already part of the page only update the state.
+      Utils.$('notes-body').addEventListener('load', function (e) {
+        var t = e.target;
+        if (!t || t.tagName !== 'IMG') return;
+        if (insertedImages && insertedImages.has(t)) {
+          insertedImages.delete(t);
+          checkAutoNewPage();
+        } else {
+          rememberFit();
+        }
+      }, true);
 
       // image attach via button + clipboard paste
       Utils.$('insert-image-btn').addEventListener('click', function () {
@@ -1328,6 +1372,10 @@
       // page-flip navigation arrows
       Utils.$('page-flip-prev').addEventListener('click', function () { flipToPage('prev'); });
       Utils.$('page-flip-next').addEventListener('click', function () { flipToPage('next'); });
+      // the same arrows inside the note footer (used where the floating ones are hidden)
+      document.querySelectorAll('.page-mini').forEach(function (b) {
+        b.addEventListener('click', function () { flipToPage(b.dataset.dir); });
+      });
 
       // ------ self-test (review) mode: hide MAIN NOTES, recall from cues ------
       Utils.$('review-mode-btn').addEventListener('click', function () {
@@ -1335,8 +1383,8 @@
         var cornell = document.querySelector('.cornell');
         var on = cornell.classList.toggle('review-mode');
         this.innerHTML = on
-          ? '<span class="icon" data-icon="eye" aria-hidden="true"></span> show notes'
-          : '<span class="icon" data-icon="eye-off" aria-hidden="true"></span> self-test';
+          ? '<span class="icon" data-icon="eye" aria-hidden="true"></span><span class="btn-label"> show notes</span>'
+          : '<span class="icon" data-icon="eye-off" aria-hidden="true"></span><span class="btn-label"> self-test</span>';
         Icons.hydrate(this);
       });
 
@@ -1350,7 +1398,7 @@
       if (cornell && cornell.classList.contains('review-mode')) {
         cornell.classList.remove('review-mode');
         var b = Utils.$('review-mode-btn');
-        b.innerHTML = '<span class="icon" data-icon="eye-off" aria-hidden="true"></span> self-test';
+        b.innerHTML = '<span class="icon" data-icon="eye-off" aria-hidden="true"></span><span class="btn-label"> self-test</span>';
         Icons.hydrate(b);
       }
     }
