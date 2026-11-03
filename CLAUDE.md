@@ -51,8 +51,8 @@
 - 검색은 본문(body) 포함 전 필드 관통.
 - 백업 리마인더 배너: 마지막 백업 후 N일(기본 7, 설정 가능, 0=끄기) 경과 시 표시. 노트 0개면 안 띄움.
 - Library 등록 모달: 검색바 최상단("검색 한 번, 나머지는 확인만"), 표지 박스 하나가 클릭업로드+드래그+Ctrl+V 3-in-1(버튼 없음), Status/Progress/Rating/CallNo는 편집 모드에서만 표시, Delete는 왼쪽 빨강으로 격리.
-- **Backup은 사이드바의 전용 페이지**(내부 키 `backup`, `page-backup`): download/load backup, 리마인더 주기, 저장 용량, 전체 삭제(별도 카드)가 여기 있다. Settings에는 글꼴·글자 크기·auto-fill 키·설명서만 남긴다.
-- **기기 간 동기화**는 Backup 페이지의 cloud sync 카드에서 Google 로그인으로 켠다. 사이드바 맨 아래(`sb-foot-status`)가 상태 표시: stored only in this browser / syncing / synced · 이름 / offline · will sync / sync error. 로그아웃해도 로컬 사본은 남는다. clear all data는 로그인 중이면 로컬 사본만 지우고 재다운로드한다.
+- **백업은 Settings 페이지 맨 위**(2026-11-03, 사용자 요청으로 별도 Backup 페이지에서 다시 합침): 순서는 cloud sync 카드 → backup & restore 카드(download/load backup, 리마인더 주기, 저장 용량) → 글꼴·글자 크기·일정·auto-fill 키·설명서 → 맨 아래 clear all data(실수 방지로 분리). 사이드바에 Backup 메뉴는 없다. 옛 내부 키 `showPage('backup')`은 settings로 연결된다. 요소 id(`export-data-btn`, `sync-signin-btn` 등)는 그대로다.
+- **기기 간 동기화**는 Settings 페이지의 cloud sync 카드에서 Google 로그인으로 켠다. 사이드바 맨 아래(`sb-foot-status`)가 상태 표시: stored only in this browser / syncing / synced · 이름 / offline · will sync / sync error. 로그아웃해도 로컬 사본은 남는다. clear all data는 로그인 중이면 로컬 사본만 지우고 재다운로드한다.
 - Settings에 한국어 사용 설명서(guide) 내장 — **기능 바꾸면 설명서도 같이 갱신** (FAQ는 실제 겪은 문제의 에러 문구 그대로).
 
 ## 현재 코드 구조 (app.js, IIFE 모듈)
@@ -62,7 +62,7 @@ Icons(인라인 SVG, CDN 금지 — 아이콘 폰트 차단으로 빈 네모 버
 ### 동기화 (SyncCore + Sync, app.js)
 - **구성**: Firebase Auth(Google) + Firestore. `FIREBASE_CONFIG`(app.js 상단)가 null이면 완전히 비활성. SDK는 `vendor/firebase/*-compat.js`(자체 호스팅, 10.14.1)를 필요할 때만 `<script>`로 로드하고 실패 시 gstatic CDN으로 폴백. 규칙은 `firestore.rules`(uid 트리만 읽기/쓰기).
 - **클라우드 구조**: `users/{uid}/` 아래 `subjects|notes|recurring|adhocTasks|cards|library/{id}`, `pages/{noteId}_{idx}`(노트 문서에는 pages 대신 `pageCount`), `completions/{date|taskKey}`({done:true}), `meta/settings`. 모든 문서에 `syncAt`(기기 시각 ms). 삭제는 `{deleted:true, syncAt}` 톰스톤.
-- **규칙**: 문서 단위 last-write-wins(`syncAt` 비교). 페이지는 인덱스 기반 문서라 페이지 삭제는 항상 끝에서만 잘리는 것으로 가정(앱의 페이지 삭제 동작과 일치). 900KB를 넘는 문서는 보내지 않고(스탬프도 찍지 않아 줄어들면 다시 시도) Backup 페이지에 빨간 글씨로 표시(이미지 과다 페이지).
+- **규칙**: 문서 단위 last-write-wins(`syncAt` 비교). 페이지는 인덱스 기반 문서라 페이지 삭제는 항상 끝에서만 잘리는 것으로 가정(앱의 페이지 삭제 동작과 일치). 900KB를 넘는 문서는 보내지 않고(스탬프도 찍지 않아 줄어들면 다시 시도) Settings 페이지 cloud sync 칸에 빨간 글씨로 표시(이미지 과다 페이지).
 - **흐름**: `Storage.save()`가 `Sync.collectChanges()`(스냅샷과 정규화 JSON 비교 → 바뀐 것에 syncAt 스탬프)를 먼저 부르고 localStorage에 쓴 뒤 `Sync.push()`(400개씩 batch). 로그인 직후 `initialMerge()`가 전체를 내려받아 LWW로 합친 다음에야 `ready`가 되어 push가 시작된다(앱 시작이 클라우드를 덮어쓰는 일 방지). 샘플 데이터만 있던 새 기기(`AppState.seededThisSession` + 시드 직후 `seedFingerprint`와 현재 내용이 같을 때만)는 클라우드에 데이터가 있으면 샘플을 버린다. 컬렉션별 리스너가 따로 오므로 노트 헤드보다 먼저 온 페이지 문서는 `pendingPages`에 두었다가 헤드가 오면 적용하고 그때 스냅샷에 넣는다. push 실패 시 스냅샷을 이전 값으로 되돌려 put과 톰스톤 모두 다음 저장에서 재시도된다. 편집기(`saveCurrentFields`)와 할 일 체크(`setTaskDone`)는 로그인 중이면 입력 즉시 `syncAt`을 찍는다(디바운스 저장 전에 도착한 더 오래된 원격 사본이 타이핑 중인 내용을 덮지 못하게). 원격 문서가 로컬보다 오래돼 거부되면 리스너가 바로 `push(collectChanges())`로 우리 사본을 다시 보내 클라우드가 즉시 최신으로 수렴한다(다른 기기의 오프라인 쓰기가 늦게 도착하는 경우). 한 세션의 push는 `pushQueue`로 직렬화되고(400개 묶음이 서로 끼어들지 않음), `generation` 카운터로 로그아웃/재로그인 이후 도착한 옛 세션의 비동기 결과(첫 다운로드·배치)는 무시한다. 첫 다운로드가 `unavailable`/오프라인으로 실패하면 `offline · download pending` 상태로 두고 `online` 이벤트에서 `start()`를 다시 부른다. 이후 컬렉션별 `onSnapshot`이 원격 변경을 LWW로 반영하고, 사용자가 타이핑 중(마지막 input 2.5초 이내)이면 화면 갱신을 미룬다. `NotesModule.refreshEditor()`는 현재 페이지 인덱스를 유지한 채 편집기를 다시 그린다.
 - **백업 import와의 관계**: import로 바뀐 내용도 diff를 통해 그대로 클라우드에 반영된다(없어진 id는 톰스톤). 즉 백업 복원은 모든 기기에 전파된다.
 - **검증**: `SyncCore`는 window에 노출돼 Node 시뮬레이션(scratch의 sync-core.test.js)으로 diff/merge/톰스톤/용량 케이스를 돌린다. 실제 Firebase 왕복은 콘솔 프로젝트가 있는 기기에서 수동 확인.
