@@ -53,6 +53,7 @@
 - Library 등록 모달: 검색바 최상단("검색 한 번, 나머지는 확인만"), 표지 박스 하나가 클릭업로드+드래그+Ctrl+V 3-in-1(버튼 없음), Status/Progress/Rating/CallNo는 편집 모드에서만 표시, Delete는 왼쪽 빨강으로 격리.
 - **백업은 Settings 페이지 맨 위**(2026-11-03, 사용자 요청으로 별도 Backup 페이지에서 다시 합침): 순서는 cloud sync 카드 → backup & restore 카드(download/load backup, 리마인더 주기, 저장 용량) → 글꼴·글자 크기·일정·auto-fill 키·설명서 → 맨 아래 clear all data(실수 방지로 분리). 사이드바에 Backup 메뉴는 없다. 옛 내부 키 `showPage('backup')`은 settings로 연결된다. 요소 id(`export-data-btn`, `sync-signin-btn` 등)는 그대로다.
 - **기기 간 동기화**는 Settings 페이지의 cloud sync 카드에서 Google 로그인으로 켠다. 사이드바 맨 아래(`sb-foot-status`)가 상태 표시: stored only in this browser / syncing / synced · 이름 / offline · will sync / sync error. 로그아웃해도 로컬 사본은 남는다. clear all data는 로그인 중이면 로컬 사본만 지우고 재다운로드한다.
+- **디자인(2026-11-03, 사용자가 시안 5개 중 "Ink sidebar" 선택)**: 사이드바는 잉크색(`--sb-bg #18181b`) 패널에 크림 로고, 선택된 메뉴는 왼쪽 노트 파랑 막대(`--sb-hi #7faed0`). 본문 바탕은 따뜻한 오프화이트 `--bg #f6f5f1`, 카드는 흰색, 선택된 노트·항목은 연한 파랑 `--accent-l #eaf2f8`. 통계 카드 상단 띠는 아이콘의 책 색(`--book1~4`: 검정·진파랑·노트 파랑·빨강). 기본 버튼은 잉크, 마우스를 올리면 진파랑. 노트 종이(크림·파란 줄·연한 빨강 세로선 `#d97a7a`)는 그대로다. 색은 모두 `:root` 변수에 있다.
 - Settings에 한국어 사용 설명서(guide) 내장 — **기능 바꾸면 설명서도 같이 갱신** (FAQ는 실제 겪은 문제의 에러 문구 그대로).
 
 ## 현재 코드 구조 (app.js, IIFE 모듈)
