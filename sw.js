@@ -10,13 +10,13 @@
  * Data is NOT touched here: notes live in localStorage, which a service worker
  * never reads or writes.
  */
-var CACHE = 'studydesk-shell-v2';
+var CACHE = 'studydesk-shell-v3';
 var FONT_CACHE = 'studydesk-fonts-v1';
 // Absolute URLs of the shell, so same-origin requests outside it are left alone
 // (the GitHub Pages origin is shared with the owner's other project sites).
 var SHELL = [
   './', './style.css', './app.js', './manifest.webmanifest',
-  './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/apple-touch-icon.png',
+  './icons/favicon-32.png', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/apple-touch-icon.png',
   './fonts/patrick-hand-400-latin.woff2', './fonts/patrick-hand-400-latin-ext.woff2', './fonts/patrick-hand-400-vietnamese.woff2',
   './fonts/architects-daughter-400-latin.woff2', './fonts/architects-daughter-400-latin-ext.woff2',
   './fonts/inter-var-latin.woff2', './fonts/inter-var-latin-ext.woff2', './fonts/jetbrains-mono-var-latin.woff2',

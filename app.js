@@ -530,7 +530,7 @@
       if (status) status.textContent = 'not saving — this browser is blocking storage';
       alert('This browser is blocking local storage, so your notes cannot be saved.\n\n' +
         'This usually happens in a private/incognito window or when site data is blocked. ' +
-        'Open the app in a normal window, or use Backup → download backup before you close the tab.');
+        'Open the app in a normal window, or use Settings → download backup before you close the tab.');
     }
 
     function load() {
@@ -554,7 +554,7 @@
         try { localStorage.setItem(KEY + '-corrupt-' + Date.now(), raw); } catch (e2) { /* ignore */ }
         alert('Your saved data could not be read (it appears corrupted). ' +
           'Starting fresh — a copy of the unreadable data was kept in browser storage. ' +
-          'If you have a backup file, use Backup → load backup to restore it.');
+          'If you have a backup file, use Settings → load backup to restore it.');
         return false;
       }
       if (!d || typeof d !== 'object') return false;
@@ -633,9 +633,9 @@
           warnedFull = true;
           alert('Saving failed: this browser\'s storage is full.\n\n' +
             'Your most recent edits are NOT saved. To fix this:\n' +
-            '1. Use Backup → download backup to save what you can.\n' +
+            '1. Use Settings → download backup to save what you can.\n' +
             '2. Delete some large images from your notes, then edit again.\n\n' +
-            'Images are the usual cause — check the Backup page for current usage.');
+            'Images are the usual cause — check Settings for current usage.');
         }
         updateUsageDisplay();
       }
@@ -695,11 +695,11 @@
       schedule: 'Calendar',
       manager: 'Schedule manager',
       cards: 'Flashcards',
-      backup: 'Backup',
       settings: 'Settings'
     };
 
     function showPage(page) {
+      if (page === 'backup') page = 'settings';   // Backup now lives at the top of Settings
       document.querySelectorAll('.ni').forEach(function (b) {
         b.classList.toggle('active', b.dataset.page === page);
       });
