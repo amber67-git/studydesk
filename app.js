@@ -1328,6 +1328,10 @@
       // page-flip navigation arrows
       Utils.$('page-flip-prev').addEventListener('click', function () { flipToPage('prev'); });
       Utils.$('page-flip-next').addEventListener('click', function () { flipToPage('next'); });
+      // the same arrows inside the note footer (used where the floating ones are hidden)
+      document.querySelectorAll('.page-mini').forEach(function (b) {
+        b.addEventListener('click', function () { flipToPage(b.dataset.dir); });
+      });
 
       // ------ self-test (review) mode: hide MAIN NOTES, recall from cues ------
       Utils.$('review-mode-btn').addEventListener('click', function () {
@@ -1335,8 +1339,8 @@
         var cornell = document.querySelector('.cornell');
         var on = cornell.classList.toggle('review-mode');
         this.innerHTML = on
-          ? '<span class="icon" data-icon="eye" aria-hidden="true"></span> show notes'
-          : '<span class="icon" data-icon="eye-off" aria-hidden="true"></span> self-test';
+          ? '<span class="icon" data-icon="eye" aria-hidden="true"></span><span class="btn-label"> show notes</span>'
+          : '<span class="icon" data-icon="eye-off" aria-hidden="true"></span><span class="btn-label"> self-test</span>';
         Icons.hydrate(this);
       });
 
@@ -1350,7 +1354,7 @@
       if (cornell && cornell.classList.contains('review-mode')) {
         cornell.classList.remove('review-mode');
         var b = Utils.$('review-mode-btn');
-        b.innerHTML = '<span class="icon" data-icon="eye-off" aria-hidden="true"></span> self-test';
+        b.innerHTML = '<span class="icon" data-icon="eye-off" aria-hidden="true"></span><span class="btn-label"> self-test</span>';
         Icons.hydrate(b);
       }
     }
