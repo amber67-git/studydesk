@@ -905,18 +905,37 @@
       Storage.scheduleSave();
     }
 
+    /* Whether MAIN NOTES fitted on the paper after the last change we saw.
+       A new page is opened only on the change that turns "fits" into
+       "overflows". A page that already overflowed (filled on a wide screen,
+       opened on a phone; a bigger font) is edited in place and scrolls, so
+       typing, a toolbar command or an image never jumps to a blank page and
+       leaves its content behind. Kept as state instead of sampling events
+       before each edit, because not every edit has such an event (execCommand
+       fires input without beforeinput in Chrome; inserted images change the
+       height only when they load). Refreshed after every edit, on render, on
+       focus, on resize and when images in the page finish loading. */
+    var editorFit = true;
+    var insertedImages = (typeof WeakSet !== 'undefined') ? new WeakSet() : null;
+
+    function editorFits() {
+      var editor = Utils.$('notes-body');
+      return !editor || editor.scrollHeight <= editor.clientHeight + 4;
+    }
+
+    function rememberFit() { editorFit = editorFits(); }
+
     /* Auto-add a page when MAIN NOTES content grows taller than the
        visible editor area - mirrors flipping to the next physical
        page once a sheet of paper is full. */
-    function checkAutoNewPage(overflowBeforeEdit) {
+    function checkAutoNewPage() {
       var editor = Utils.$('notes-body');
       if (!editor) return;
-      if (editor.scrollHeight <= editor.clientHeight + 4) return; // still fits
-      // The page was already overflowing before this keystroke (e.g. a page
-      // filled on a wide screen, opened on a phone): editing it must not jump
-      // to a new blank page and leave the typed text behind. Only the edit
-      // that turns "fits" into "overflows" opens a new page.
-      if (overflowBeforeEdit) return;
+      var fittedBefore = editorFit;
+      var fitsNow = editorFits();
+      editorFit = fitsNow;
+      if (fitsNow) return;          // still fits
+      if (!fittedBefore) return;    // was already overflowing before this change
 
       var n = AppState.currentNote();
       if (!n) return;
@@ -957,6 +976,7 @@
       Utils.$('summary').value = page.summary || '';
       Utils.$('notes-body').innerHTML = page.body || '';
       renderPageIndicator();
+      rememberFit();   // images in the page re-check when they load (see setup)
     }
 
     /** Open a note and jump straight to its most recent page (the "go to note"
@@ -1083,6 +1103,9 @@
 
     function insertImageAtCursor(dataUrl) {
       var img = document.createElement('img');
+      // inserting changes no height until the image loads; the capture 'load'
+      // listener in setup then runs checkAutoNewPage for this image only
+      if (insertedImages) insertedImages.add(img);
       img.src = dataUrl;
       insertNodeAtCursor(img);
     }
@@ -1276,20 +1299,28 @@
       });
 
       // notes body: markdown shortcuts + autosave
-      // beforeinput fires before the DOM changes, so it sees whether the page
-      // already overflowed. Browsers without beforeinput keep the old rule.
-      var overflowBeforeEdit = false;
-      Utils.$('notes-body').addEventListener('beforeinput', function () {
-        var el = Utils.$('notes-body');
-        overflowBeforeEdit = el.scrollHeight > el.clientHeight + 4;
-      });
       Utils.$('notes-body').addEventListener('input', function () {
         applyMarkdownShortcuts();
         saveCurrentFields();
         Storage.scheduleSave();
-        checkAutoNewPage(overflowBeforeEdit);
-        overflowBeforeEdit = false;
+        checkAutoNewPage();
       });
+      // keep the "did it fit" state current outside of edits too
+      Utils.$('notes-body').addEventListener('focusin', rememberFit);
+      window.addEventListener('resize', rememberFit);
+      // 'load' does not bubble; capture it for images inside the editor.
+      // A freshly inserted image is a change (may open a new page); images
+      // that were already part of the page only update the state.
+      Utils.$('notes-body').addEventListener('load', function (e) {
+        var t = e.target;
+        if (!t || t.tagName !== 'IMG') return;
+        if (insertedImages && insertedImages.has(t)) {
+          insertedImages.delete(t);
+          checkAutoNewPage();
+        } else {
+          rememberFit();
+        }
+      }, true);
 
       // image attach via button + clipboard paste
       Utils.$('insert-image-btn').addEventListener('click', function () {
