@@ -908,10 +908,15 @@
     /* Auto-add a page when MAIN NOTES content grows taller than the
        visible editor area - mirrors flipping to the next physical
        page once a sheet of paper is full. */
-    function checkAutoNewPage() {
+    function checkAutoNewPage(overflowBeforeEdit) {
       var editor = Utils.$('notes-body');
       if (!editor) return;
       if (editor.scrollHeight <= editor.clientHeight + 4) return; // still fits
+      // The page was already overflowing before this keystroke (e.g. a page
+      // filled on a wide screen, opened on a phone): editing it must not jump
+      // to a new blank page and leave the typed text behind. Only the edit
+      // that turns "fits" into "overflows" opens a new page.
+      if (overflowBeforeEdit) return;
 
       var n = AppState.currentNote();
       if (!n) return;
@@ -1271,11 +1276,19 @@
       });
 
       // notes body: markdown shortcuts + autosave
+      // beforeinput fires before the DOM changes, so it sees whether the page
+      // already overflowed. Browsers without beforeinput keep the old rule.
+      var overflowBeforeEdit = false;
+      Utils.$('notes-body').addEventListener('beforeinput', function () {
+        var el = Utils.$('notes-body');
+        overflowBeforeEdit = el.scrollHeight > el.clientHeight + 4;
+      });
       Utils.$('notes-body').addEventListener('input', function () {
         applyMarkdownShortcuts();
         saveCurrentFields();
         Storage.scheduleSave();
-        checkAutoNewPage();
+        checkAutoNewPage(overflowBeforeEdit);
+        overflowBeforeEdit = false;
       });
 
       // image attach via button + clipboard paste
