@@ -36,7 +36,8 @@
      one web app per origin, so StudyDesk and ClassDesk could not both be
      installed there (checked on the owner's phone with chrome://webapks, in
      both directions). The old address keeps working, shows a "moved" banner
-     and offers no install (index.html drops its manifest link there).
+     and gets no install prompt (index.html drops its manifest link there; a manual
+     "Add to home screen" is still possible, so the banner says not to install it).
      Browser storage is per origin: notes move by backup file (or cloud sync). */
   var APP_HOME = 'https://amber-studydesk.netlify.app/';
   var OLD_HOST = 'amber67-git.github.io';
@@ -3083,7 +3084,7 @@
       var onNewFirstVisit = host === new URL(APP_HOME).hostname && AppState.seededThisSession;
       if (!onOld && !onNewFirstVisit) return;
       Utils.$('move-banner-text').textContent = onOld
-        ? 'StudyDesk가 새 주소(amber-studydesk.netlify.app)로 옮겼어요. 노트는 자동으로 넘어가지 않아요: ① 여기서 백업 받기 → ② 새 주소 열기 → ③ 새 주소의 Settings에서 load backup.'
+        ? 'StudyDesk가 새 주소(amber-studydesk.netlify.app)로 옮겼어요. 노트는 자동으로 넘어가지 않아요: ① 여기서 백업 받기 → ② 새 주소 열기 → ③ 새 주소의 Settings에서 load backup. 이 주소로는 앱을 설치하지 마세요.'
         : '처음 여는 주소라 샘플 노트가 보여요. 옛 주소(amber67-git.github.io/studydesk)에서 쓰던 노트는 거기서 받은 백업 파일을 load backup으로 불러오세요.';
       Utils.$('move-banner-backup').style.display = onOld ? '' : 'none';
       Utils.$('move-banner-open').style.display = onOld ? '' : 'none';
@@ -3161,16 +3162,22 @@
       });
 
       // ------ address move banner (see APP_HOME) ------
-      Utils.$('move-banner-open').href = APP_HOME;
-      Utils.$('move-banner-backup').addEventListener('click', function () {
-        Settings.exportBackup();
-      });
-      Utils.$('move-banner-load').addEventListener('click', function () {
-        Utils.$('import-file-input').click();
-      });
-      Utils.$('move-banner-later').addEventListener('click', function () {
-        Utils.$('move-banner').style.display = 'none'; // this session only
-      });
+      // guarded: a cached older index.html (offline start) has no banner
+      if (Utils.$('move-banner')) {
+        Utils.$('move-banner-open').href = APP_HOME;
+        Utils.$('move-banner-backup').addEventListener('click', function () {
+          Settings.exportBackup();
+        });
+        Utils.$('move-banner-load').addEventListener('click', function () {
+          // open Settings first so the import result (or error) in
+          // #backup-status is on screen; the picker still opens from this click
+          Nav.showPage('settings');
+          Utils.$('import-file-input').click();
+        });
+        Utils.$('move-banner-later').addEventListener('click', function () {
+          Utils.$('move-banner').style.display = 'none'; // this session only
+        });
+      }
 
       // ------ backup reminder banner + interval setting ------
       Utils.$('backup-banner-now').addEventListener('click', function () {
@@ -3268,7 +3275,7 @@
             if (AppState.notes.length > 0) NotesModule.selectNote(AppState.notes[0].id);
             st.textContent = 'backup loaded: ' + summary;
             // the new-address hint ("load your backup") is done once a backup is in
-            if (location.hostname !== OLD_HOST) Utils.$('move-banner').style.display = 'none';
+            if (location.hostname !== OLD_HOST && Utils.$('move-banner')) Utils.$('move-banner').style.display = 'none';
             Utils.$('backup-reminder-select').value = String(AppState.settings.backupReminderDays);
           } catch (e) {
             // roll back to exactly what the user had before
