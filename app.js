@@ -32,8 +32,9 @@
 
   /* Where the app lives. Since 2026-11-04 StudyDesk has its own origin on
      Netlify. The old GitHub Pages address shares amber67-git.github.io with
-     ClassDesk and the owner's other apps, and Android Chrome installs only
-     one web app per origin, so StudyDesk and ClassDesk could not both be
+     ClassDesk and the owner's other apps, and current Android Chrome installs
+     only one web app per origin (a reported Chromium bug: issues.chromium.org/
+     issues/572287931), so StudyDesk and ClassDesk could not both be
      installed there (checked on the owner's phone with chrome://webapks, in
      both directions). The old address keeps working, shows a "moved" banner
      and gets no install prompt (index.html drops its manifest link there; a manual

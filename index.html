@@ -12,7 +12,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <script>
   /* The old GitHub Pages address shares its origin with ClassDesk, and Android
-     installs only one web app per origin. There StudyDesk should not be
+     installs only one web app per origin (current Android Chrome; a reported
+     Chromium bug). There StudyDesk should not be
      installed again: drop the manifest link so Chrome offers no install prompt
      (the app still runs). A manual "Add to home screen" stays possible, so the
      banner and the guide also say not to install it. See APP_HOME in app.js. */
@@ -515,7 +516,7 @@ Write the main idea in your own words."></textarea>
                 </ul>
 
                 <h3>주소 이사 (2026년 11월 4일)</h3>
-                <p>StudyDesk 주소가 <b>https://amber-studydesk.netlify.app/</b> 로 바뀌었습니다. 옛 주소 <b>amber67-git.github.io/studydesk</b> 는 ClassDesk 등 소유자의 다른 앱과 <b>같은 사이트 주소</b>를 썼는데, 안드로이드 Chrome은 <b>한 사이트 주소에 앱을 하나만</b> 설치합니다. 그래서 StudyDesk와 ClassDesk를 둘 다 앱으로 설치할 수 없었습니다(한쪽을 깔면 다른 쪽이 "already installed"). 같은 사이트 주소의 앱들은 브라우저 저장공간도 같이 써서, 한쪽에서 사이트 데이터를 지우면 다른 앱 데이터까지 지워지는 위험도 있었습니다.</p>
+                <p>StudyDesk 주소가 <b>https://amber-studydesk.netlify.app/</b> 로 바뀌었습니다. 옛 주소 <b>amber67-git.github.io/studydesk</b> 는 ClassDesk 등 소유자의 다른 앱과 <b>같은 사이트 주소</b>를 썼는데, 현재 안드로이드 Chrome은 <b>한 사이트 주소에 앱을 하나만</b> 설치합니다(Chrome 쪽 버그로 보고돼 있습니다). 그래서 StudyDesk와 ClassDesk를 둘 다 앱으로 설치할 수 없었습니다(한쪽을 깔면 다른 쪽이 "already installed"). 같은 사이트 주소의 앱들은 브라우저 저장공간도 같이 써서, 한쪽에서 사이트 데이터를 지우면 다른 앱 데이터까지 지워지는 위험도 있었습니다.</p>
                 <p>브라우저 저장소는 주소마다 따로라서 <b>노트는 자동으로 넘어가지 않습니다.</b> 기기마다 한 번씩:</p>
                 <ol>
                   <li><b>노트를 쓰던 곳에서</b> 백업을 받습니다. 브라우저 탭에서 썼다면 옛 주소(https://amber67-git.github.io/studydesk/)를, 옛 주소로 설치한 앱에서 썼다면 <b>그 앱</b>을 열고 위쪽 안내 띠의 <b>download backup</b>(또는 Settings → download backup)을 누릅니다. <b>iPhone·iPad</b>는 홈 화면 앱과 Safari가 저장소를 따로 쓰므로, 앱에서 썼다면 반드시 앱에서 받으세요(Safari에서 받으면 다른 노트가 담깁니다).</li>
@@ -565,7 +566,7 @@ Write the main idea in your own words."></textarea>
                 <p><b>설치</b></p>
                 <dl>
                   <dt>설치하려고 하면 "This app is already installed"가 뜨고, 누르면 "Could not open app"이 떠요.</dt>
-                  <dd><b>같은 사이트 주소에 다른 앱이 이미 설치돼 있을 때</b> 생깁니다. 안드로이드 Chrome은 한 사이트 주소(예: amber67-git.github.io)에 앱을 하나만 설치합니다. 2026년 11월 4일에 옛 주소에서 실제로 겪었고(ClassDesk가 깔려 있으면 StudyDesk가, StudyDesk가 깔려 있으면 ClassDesk가 막힘), 그래서 StudyDesk를 새 주소(amber-studydesk.netlify.app)로 옮겼습니다. 앱 id나 범위를 고치는 것으로는 풀리지 않았습니다. Chrome 주소창에 <code>chrome://webapks</code>를 입력하면 설치된 앱과 그 주소가 나옵니다. 새 주소에서 설치하면 ClassDesk와 함께 설치됩니다. 옛 주소로 깔린 StudyDesk 앱이 남아 있으면 "주소 이사" 순서대로 노트를 옮긴 뒤 지우세요. Chrome의 <b>데이터 삭제</b>나 사이트 데이터 삭제는 노트까지 지우므로 누르지 마세요.</dd>
+                  <dd><b>같은 사이트 주소에 다른 앱이 이미 설치돼 있을 때</b> 생깁니다. 현재 안드로이드 Chrome은 한 사이트 주소(예: amber67-git.github.io)에 앱을 하나만 설치합니다(Chrome 쪽 버그로 보고돼 있습니다). 2026년 11월 4일에 옛 주소에서 실제로 겪었고(ClassDesk가 깔려 있으면 StudyDesk가, StudyDesk가 깔려 있으면 ClassDesk가 막힘), 그래서 StudyDesk를 새 주소(amber-studydesk.netlify.app)로 옮겼습니다. 앱 id나 범위를 고치는 것으로는 풀리지 않았습니다. Chrome 주소창에 <code>chrome://webapks</code>를 입력하면 설치된 앱과 그 주소가 나옵니다. 새 주소에서 설치하면 ClassDesk와 함께 설치됩니다. 옛 주소로 깔린 StudyDesk 앱이 남아 있으면 "주소 이사" 순서대로 노트를 옮긴 뒤 지우세요. Chrome의 <b>데이터 삭제</b>나 사이트 데이터 삭제는 노트까지 지우므로 누르지 마세요.</dd>
                 </dl>
                 <p><b>데이터</b></p>
                 <dl>
