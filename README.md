@@ -4,7 +4,9 @@ A personal study notes app (formerly "My notebook") — Cornell-style notebooks,
 
 ## Running it
 
-**Hosted:** https://amber67-git.github.io/studydesk/ (GitHub Pages, deployed from `main` by `.github/workflows/pages.yml`; one-time setup: repository Settings → Pages → Source: "GitHub Actions"). On a phone, open that URL and use "Add to Home Screen" / "Install app": StudyDesk is a PWA, so the installed app opens full-screen and works offline (`manifest.webmanifest`, `sw.js`). Sign in with Google under Settings → cloud sync to sync across devices (see below).
+**Hosted:** https://amber-studydesk.netlify.app/ (Netlify, deployed from `main` with no build step; pull requests get deploy previews). On a phone, open that URL and use "Install app" / "Add to Home Screen": StudyDesk is a PWA, so the installed app opens full-screen and works offline (`manifest.webmanifest`, `sw.js`). Sign in with Google under Settings → cloud sync to sync across devices (see below).
+
+The old address https://amber67-git.github.io/studydesk/ (GitHub Pages, `.github/workflows/pages.yml`) stays up only to help people move: there it shows a "moved" banner with a backup button and is not installable. It shares its origin with the owner's other apps, and Android Chrome installs only one web app per origin, so StudyDesk and ClassDesk could not both be installed there.
 
 **Local:** just open `index.html` in a browser. No server, no install. (The service worker only registers over http(s), so offline caching is not active from `file://`.)
 

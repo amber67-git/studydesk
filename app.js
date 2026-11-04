@@ -30,6 +30,17 @@
      (window.STUDYDESK_FIREBASE_CONFIG lets a test page inject one.) */
   var FIREBASE_CONFIG = (typeof window !== 'undefined' && window.STUDYDESK_FIREBASE_CONFIG) || null;
 
+  /* Where the app lives. Since 2026-11-04 StudyDesk has its own origin on
+     Netlify. The old GitHub Pages address shares amber67-git.github.io with
+     ClassDesk and the owner's other apps, and Android Chrome installs only
+     one web app per origin, so StudyDesk and ClassDesk could not both be
+     installed there (checked on the owner's phone with chrome://webapks, in
+     both directions). The old address keeps working, shows a "moved" banner
+     and offers no install (index.html drops its manifest link there).
+     Browser storage is per origin: notes move by backup file (or cloud sync). */
+  var APP_HOME = 'https://amber-studydesk.netlify.app/';
+  var OLD_HOST = 'amber67-git.github.io';
+
   /* ===========================================================
    * Icons - inline SVG icon set. No external icon font is loaded,
    * so icons always render even with no network access or a
@@ -3061,6 +3072,25 @@
       }
     },
 
+    /** The address move (see APP_HOME). On the old address: tell the user
+        to take a backup here and load it at the new one. At the new address,
+        on a first visit (sample data only): point to "load backup". */
+    checkMoveBanner: function () {
+      var b = Utils.$('move-banner');
+      if (!b) return;
+      var host = location.hostname;
+      var onOld = host === OLD_HOST;
+      var onNewFirstVisit = host === new URL(APP_HOME).hostname && AppState.seededThisSession;
+      if (!onOld && !onNewFirstVisit) return;
+      Utils.$('move-banner-text').textContent = onOld
+        ? 'StudyDesk가 새 주소(amber-studydesk.netlify.app)로 옮겼어요. 노트는 자동으로 넘어가지 않아요: ① 여기서 백업 받기 → ② 새 주소 열기 → ③ 새 주소의 Settings에서 load backup.'
+        : '처음 여는 주소라 샘플 노트가 보여요. 옛 주소(amber67-git.github.io/studydesk)에서 쓰던 노트는 거기서 받은 백업 파일을 load backup으로 불러오세요.';
+      Utils.$('move-banner-backup').style.display = onOld ? '' : 'none';
+      Utils.$('move-banner-open').style.display = onOld ? '' : 'none';
+      Utils.$('move-banner-load').style.display = onOld ? 'none' : '';
+      b.style.display = 'flex';
+    },
+
     hideBackupBanner: function () {
       var b = Utils.$('backup-banner');
       if (b) b.style.display = 'none';
@@ -3128,6 +3158,18 @@
         if (!confirm(msg)) return;
         Storage.reset();
         location.reload();
+      });
+
+      // ------ address move banner (see APP_HOME) ------
+      Utils.$('move-banner-open').href = APP_HOME;
+      Utils.$('move-banner-backup').addEventListener('click', function () {
+        Settings.exportBackup();
+      });
+      Utils.$('move-banner-load').addEventListener('click', function () {
+        Utils.$('import-file-input').click();
+      });
+      Utils.$('move-banner-later').addEventListener('click', function () {
+        Utils.$('move-banner').style.display = 'none'; // this session only
       });
 
       // ------ backup reminder banner + interval setting ------
@@ -3225,6 +3267,8 @@
             App.renderAll();
             if (AppState.notes.length > 0) NotesModule.selectNote(AppState.notes[0].id);
             st.textContent = 'backup loaded: ' + summary;
+            // the new-address hint ("load your backup") is done once a backup is in
+            if (location.hostname !== OLD_HOST) Utils.$('move-banner').style.display = 'none';
             Utils.$('backup-reminder-select').value = String(AppState.settings.backupReminderDays);
           } catch (e) {
             // roll back to exactly what the user had before
@@ -4055,6 +4099,7 @@
 
       // nudge for a fresh backup if the last one is older than the chosen interval
       Settings.checkBackupReminder();
+      Settings.checkMoveBanner();
       Storage.updateUsageDisplay();
 
       // cloud sync (stage 3): local-only until FIREBASE_CONFIG is set

@@ -414,7 +414,9 @@ textarea#summary:focus-visible{box-shadow:inset 0 0 0 2px var(--bdr2)}
 /* backup reminder banner (under the topbar, all pages) */
 .backup-banner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 24px 0;padding:10px 14px;background:#fdf6e3;border:1px solid #e6d9b8;border-radius:var(--r);font-family:var(--sans);font-size:13px;color:var(--txt)}
 .backup-banner .icon{color:var(--txt2)}
-.backup-banner #backup-banner-text{flex:1;min-width:180px}
+.backup-banner #backup-banner-text,.backup-banner .banner-text{flex:1;min-width:180px}
+.move-banner{background:var(--accent-l);border-color:#bcd6ea}
+.backup-banner a.btn{text-decoration:none}
 .backup-banner .btn{padding:6px 12px;font-size:12px}
 
 /* ===================== GUIDE (user manual, scoped) =====================

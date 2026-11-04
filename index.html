@@ -10,6 +10,15 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="StudyDesk">
 <link rel="manifest" href="manifest.webmanifest">
+<script>
+  /* The old GitHub Pages address shares its origin with ClassDesk, and Android
+     installs only one web app per origin. There StudyDesk must not be
+     installable again: drop the manifest link (the app still runs). See APP_HOME in app.js. */
+  if (location.hostname === 'amber67-git.github.io') {
+    var sdManifest = document.querySelector('link[rel="manifest"]');
+    if (sdManifest) sdManifest.parentNode.removeChild(sdManifest);
+  }
+</script>
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -44,6 +53,14 @@
       <button class="mob-menu-btn" onclick="toggleMobileSidebar()" aria-label="menu"><span class="icon" data-icon="menu-2" aria-hidden="true"></span></button>
       <div class="tb-title" id="tb-title">Notebooks</div>
       <div class="tb-actions" id="tb-actions"></div>
+    </div>
+    <div class="backup-banner move-banner" id="move-banner" style="display:none;" role="status">
+      <span class="icon" data-icon="external-link" aria-hidden="true"></span>
+      <span class="banner-text" id="move-banner-text"></span>
+      <button class="btn btn-p" id="move-banner-backup">download backup</button>
+      <a class="btn" id="move-banner-open" href="https://amber-studydesk.netlify.app/" target="_blank" rel="noopener">open new address</a>
+      <button class="btn btn-p" id="move-banner-load">load backup</button>
+      <button class="btn" id="move-banner-later">later</button>
     </div>
     <div class="backup-banner" id="backup-banner" style="display:none;" role="status">
       <span class="icon" data-icon="download" aria-hidden="true"></span>
@@ -495,10 +512,21 @@ Write the main idea in your own words."></textarea>
                   <li>저장 공간은 브라우저당 수 MB로 제한됩니다. 큰 스크린샷을 수십 장 붙여넣으면 저장이 실패할 수 있습니다.</li>
                 </ul>
 
+                <h3>주소 이사 (2026년 11월 4일)</h3>
+                <p>StudyDesk 주소가 <b>https://amber-studydesk.netlify.app/</b> 로 바뀌었습니다. 옛 주소 <b>amber67-git.github.io/studydesk</b> 는 ClassDesk 등 소유자의 다른 앱과 <b>같은 사이트 주소</b>를 썼는데, 안드로이드 Chrome은 <b>한 사이트 주소에 앱을 하나만</b> 설치합니다. 그래서 StudyDesk와 ClassDesk를 둘 다 앱으로 설치할 수 없었습니다(한쪽을 깔면 다른 쪽이 "already installed"). 같은 사이트 주소의 앱들은 브라우저 저장공간도 같이 써서, 한쪽에서 사이트 데이터를 지우면 다른 앱 데이터까지 지워지는 위험도 있었습니다.</p>
+                <p>브라우저 저장소는 주소마다 따로라서 <b>노트는 자동으로 넘어가지 않습니다.</b> 기기마다 한 번씩:</p>
+                <ol>
+                  <li>옛 주소(https://amber67-git.github.io/studydesk/)를 열고 위쪽 안내 띠의 <b>download backup</b>(또는 Settings → download backup)으로 백업 파일을 받습니다.</li>
+                  <li>새 주소(https://amber-studydesk.netlify.app/)를 열고 <b>Settings → load backup</b>으로 그 파일을 불러옵니다. 처음 열면 샘플 노트가 보이는데, 불러오면 바뀝니다.</li>
+                  <li>새 주소에서 앱을 설치합니다(아래 "폰·태블릿에 앱으로 설치하기").</li>
+                  <li>옛 주소로 설치한 StudyDesk 앱이 있으면 폰 설정 → 애플리케이션에서 삭제합니다. 이때 <b>사이트 데이터·저장공간 삭제는 누르지 마세요.</b> 같은 사이트 주소의 ClassDesk 데이터까지 지워집니다.</li>
+                </ol>
+                <p>옛 주소도 당분간 그대로 열리지만 앱으로 설치되지는 않습니다(ClassDesk와 다시 부딪히지 않도록). cloud sync를 켠 뒤에는 새 주소에서 로그인만 하면 노트가 내려옵니다.</p>
+
                 <h3>폰·태블릿에 앱으로 설치하기</h3>
                 <p>StudyDesk는 설치형 웹앱(PWA)입니다. 앱스토어 없이 브라우저에서 바로 설치되며, 설치 후에는 홈 화면 아이콘으로 전체 화면으로 열리고 <b>인터넷이 없어도 열립니다.</b></p>
                 <ol>
-                  <li>폰 브라우저에서 <b>https://amber67-git.github.io/studydesk/</b> 를 엽니다.</li>
+                  <li>폰 브라우저에서 <b>https://amber-studydesk.netlify.app/</b> 를 엽니다. (2026년 11월 4일에 주소가 바뀌었습니다. 위 "주소 이사" 참고)</li>
                   <li><b>Android(Chrome)</b>: 오른쪽 위 메뉴(⋮) → <b>앱 설치</b> 또는 <b>홈 화면에 추가</b>.</li>
                   <li><b>iPhone/iPad(Safari)</b>: 아래 공유 버튼(□↑) → <b>홈 화면에 추가</b>. (iOS는 Safari에서만 설치됩니다.) <b>주의:</b> iPhone에서는 홈 화면 앱과 Safari가 저장 공간을 따로 씁니다. Safari에서 이미 쓰던 노트가 있다면 설치 전에 Safari에서 <b>Settings → download backup</b>으로 파일을 받아 두고, 설치한 앱을 연 뒤 <b>Settings → load backup</b>으로 불러오세요. 자동으로 넘어오지 않습니다.</li>
                   <li><b>PC(Chrome/Edge)</b>: 주소창 오른쪽의 설치 아이콘을 누르면 창 하나짜리 앱으로 열립니다.</li>
@@ -506,7 +534,7 @@ Write the main idea in your own words."></textarea>
                 <ul>
                   <li><b>설치 직후에는 인터넷이 연결된 상태에서 앱을 한 번 열어주세요.</b> 그때 오프라인용 파일이 저장되고, 그 다음부터 인터넷 없이도 열립니다. 설치만 하고 바로 비행기 모드로 열면 빈 화면이 나올 수 있습니다.</li>
                   <li>설치된 앱은 인터넷이 연결돼 있으면 열 때마다 최신 버전을 받아옵니다. 예전 화면이 보이면 앱을 완전히 닫았다가 다시 여세요.</li>
-                  <li><b>앱 식별 id가 생기기 전(2026년 11월 4일 업데이트 이전, 이날 설치분 포함)에 설치한 앱</b>은 새 버전과 별개의 옛 앱으로 남습니다. 홈 화면에 옛 StudyDesk 앱이 남아 있다면: 먼저 <b>Settings → download backup</b>으로 백업을 받고, 옛 앱을 삭제한 뒤(데이터도 지우겠냐고 물으면 <b>지우지 않음</b>), 브라우저에서 위 순서대로 다시 설치하세요. <b>Android(Chrome)</b>는 노트가 브라우저 저장소에 있어서 새 앱에서도 그대로 보입니다. <b>iPhone·iPad</b>는 홈 화면 앱이 Safari와 따로 저장하기 때문에 옛 앱을 지우면 그 안의 노트도 같이 지워집니다. 다시 설치한 뒤 <b>Settings → load backup</b>으로 받아 둔 백업 파일을 불러오세요(cloud sync를 켜 두었다면 같은 Google 계정으로 로그인만 하면 됩니다).</li>
+                  <li>옛 주소(amber67-git.github.io/studydesk)로 설치한 StudyDesk 앱이 있으면 위 "주소 이사" 순서대로 노트를 옮긴 뒤 지우세요.</li>
                   <li>Library 자동 채우기(책·영화 검색)는 인터넷이 있을 때만 동작합니다. 필기·일정·카드는 오프라인에서도 모두 됩니다.</li>
                   <li>폰과 PC에서 같은 노트를 보려면 <b>Settings → cloud sync</b>에서 같은 Google 계정으로 로그인하세요(아래 "기기 간 동기화" 참고). 로그인하지 않은 기기는 자기 브라우저에만 저장합니다.</li>
                 </ul>
@@ -535,7 +563,7 @@ Write the main idea in your own words."></textarea>
                 <p><b>설치</b></p>
                 <dl>
                   <dt>설치하려고 하면 "This app is already installed"가 뜨고, 누르면 "Could not open app"이 떠요.</dt>
-                  <dd>같은 주소(amber67-git.github.io)에 있는 <b>다른 앱이 사이트 전체를 자기 것으로 잡고 있을 때</b> 생깁니다. 2026년 11월 4일에 실제로 겪은 원인은 ClassDesk 앱이었습니다(ClassDesk v116에서 수정). Chrome 주소창에 <code>chrome://webapks</code>를 입력하면 Chrome이 설치됐다고 보는 앱 목록이 나옵니다. 그중 <b>Manifest Id</b>나 <b>Scope</b>가 <code>https://amber67-git.github.io/</code>처럼 폴더 없이 사이트 주소로 끝나는 앱(즉 <code>/studydesk/</code>를 포함하는 앱)이 원인입니다. ClassDesk 때는 Scope는 <code>/classdesk/</code>였고 Manifest Id만 사이트 주소였는데도 막혔으니 두 칸을 다 보세요. 폰 설정 → 애플리케이션에서 그 앱을 삭제하고 StudyDesk를 설치한 뒤, 그 앱은 고친 버전으로 다시 설치하세요. 안드로이드에서는 데이터가 Chrome 쪽에 있어서 앱을 지워도 노트는 남습니다. Chrome의 <b>데이터 삭제</b>나 사이트 데이터 삭제는 노트까지 지우므로 누르지 마세요.</dd>
+                  <dd><b>같은 사이트 주소에 다른 앱이 이미 설치돼 있을 때</b> 생깁니다. 안드로이드 Chrome은 한 사이트 주소(예: amber67-git.github.io)에 앱을 하나만 설치합니다. 2026년 11월 4일에 옛 주소에서 실제로 겪었고(ClassDesk가 깔려 있으면 StudyDesk가, StudyDesk가 깔려 있으면 ClassDesk가 막힘), 그래서 StudyDesk를 새 주소(amber-studydesk.netlify.app)로 옮겼습니다. 앱 id나 범위를 고치는 것으로는 풀리지 않았습니다. Chrome 주소창에 <code>chrome://webapks</code>를 입력하면 설치된 앱과 그 주소가 나옵니다. 새 주소에서 설치하면 ClassDesk와 함께 설치됩니다. 옛 주소로 깔린 StudyDesk 앱이 남아 있으면 "주소 이사" 순서대로 노트를 옮긴 뒤 지우세요. Chrome의 <b>데이터 삭제</b>나 사이트 데이터 삭제는 노트까지 지우므로 누르지 마세요.</dd>
                 </dl>
                 <p><b>데이터</b></p>
                 <dl>
