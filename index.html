@@ -535,7 +535,7 @@ Write the main idea in your own words."></textarea>
                 <p><b>설치</b></p>
                 <dl>
                   <dt>설치하려고 하면 "This app is already installed"가 뜨고, 누르면 "Could not open app"이 떠요.</dt>
-                  <dd>앱을 지운 뒤에도 Chrome에 옛 "설치됨" 기록이 남아서 생기던 문제입니다. 현재 버전은 앱 식별 정보를 새로 정해서 이 기록과 상관없이 설치됩니다. 브라우저에서 앱 주소를 열고 <b>두 번 새로고침</b>한 뒤 ⋮ → <b>앱 설치</b>를 누르세요. 그래도 같으면 폰 설정 → 애플리케이션 → Chrome → <b>강제 중지</b> 후 다시 시도하세요. Chrome의 <b>데이터 삭제</b>나 사이트 데이터 삭제는 노트까지 지우므로 누르지 마세요.</dd>
+                  <dd>같은 주소(amber67-git.github.io)에 있는 <b>다른 앱이 사이트 전체를 자기 것으로 잡고 있을 때</b> 생깁니다. 2026년 11월 4일에 실제로 겪은 원인은 ClassDesk 앱이었습니다(ClassDesk v116에서 수정). Chrome 주소창에 <code>chrome://webapks</code>를 입력하면 Chrome이 설치됐다고 보는 앱 목록이 나옵니다. 그중 <b>Manifest Id</b>나 <b>Scope</b>가 <code>https://amber67-git.github.io/</code>처럼 폴더 없이 사이트 주소로 끝나는 앱(즉 <code>/studydesk/</code>를 포함하는 앱)이 원인입니다. ClassDesk 때는 Scope는 <code>/classdesk/</code>였고 Manifest Id만 사이트 주소였는데도 막혔으니 두 칸을 다 보세요. 폰 설정 → 애플리케이션에서 그 앱을 삭제하고 StudyDesk를 설치한 뒤, 그 앱은 고친 버전으로 다시 설치하세요. 안드로이드에서는 데이터가 Chrome 쪽에 있어서 앱을 지워도 노트는 남습니다. Chrome의 <b>데이터 삭제</b>나 사이트 데이터 삭제는 노트까지 지우므로 누르지 마세요.</dd>
                 </dl>
                 <p><b>데이터</b></p>
                 <dl>
