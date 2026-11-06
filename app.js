@@ -3104,6 +3104,9 @@
       var days = AppState.settings.backupReminderDays;
       if (!days || days <= 0) return;              // reminders turned off
       if (AppState.notes.length === 0) return;      // nothing worth backing up yet
+      // untouched sample data on a first visit is not the user's: no nag (on a new
+      // address the move banner already offers "load backup" in the same spot)
+      if (AppState.seededThisSession) return;
 
       var last = AppState.settings.lastBackupAt;
       var text;
