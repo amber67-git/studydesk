@@ -88,6 +88,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--txt);font-family:v
 .stab:focus-visible{outline:2px solid var(--sb-hi);outline-offset:-2px}
 .spanel[hidden]{display:none}
 .card-danger{margin-top:28px;border-color:var(--red)}
+@media(max-width:760px){.stab{padding:10px 8px}}
 
 .page{display:none}
 .page.active{display:block}
