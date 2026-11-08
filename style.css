@@ -362,6 +362,7 @@ textarea#summary:focus-visible{box-shadow:inset 0 0 0 2px var(--bdr2)}
 .task-meta{display:grid;grid-template-columns:110px 56px auto;align-items:center;column-gap:10px}
 .task-meta .badge{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;box-sizing:border-box;text-align:center}
 .task-kind{font-family:var(--sans);font-size:10px;color:var(--txt3);text-align:right;white-space:nowrap}
+.task-meta .btn-go-to-note{justify-self:start}
 @container (max-width:520px){
   .task-row{grid-template-columns:16px minmax(0,1fr) 20px;row-gap:6px}
   .task-row .task-check,.task-row .task-label,.task-row .del-task,.task-row .del-ph{grid-row:1}
