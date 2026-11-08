@@ -1731,14 +1731,18 @@
       var doneClass = isTaskDone(key) ? 'done' : '';
       var delBtn = adhocId
         ? '<button class="del-task del-adhoc" data-id="' + adhocId + '"><span class="icon" data-icon="x" aria-hidden="true"></span></button>'
-        : '<span style="width:20px;display:inline-block;"></span>';
+        : '<span class="del-ph"></span>';
       var colorClass = AppState.subjectColorClass(subjectId);
+      // subject / kind / button sit in fixed-width columns (.task-meta), so the
+      // row never shifts with the length of "recurring" vs "one-off" or a name
       return '<div class="task-row">' +
         '<input type="checkbox" class="task-check" data-key="' + key + '" ' + checked + '>' +
         '<span class="task-label ' + doneClass + '">' + Utils.escapeHtml(title) + '</span>' +
-        '<span class="badge ' + colorClass + '">' + Utils.escapeHtml(subjectName(subjectId)) + '</span>' +
-        '<span style="font-family:var(--sans);font-size:10px;color:var(--txt3);">' + freqLabel + '</span>' +
-        '<button class="btn-go-to-note" data-subject="' + (subjectId || '') + '" data-type="' + type + '" data-title="' + Utils.escapeHtml(title) + '">go to note</button>' +
+        '<span class="task-meta">' +
+          '<span class="badge ' + colorClass + '" title="' + Utils.escapeHtml(subjectName(subjectId)) + '">' + Utils.escapeHtml(subjectName(subjectId)) + '</span>' +
+          '<span class="task-kind">' + freqLabel + '</span>' +
+          '<button class="btn-go-to-note" data-subject="' + (subjectId || '') + '" data-type="' + type + '" data-title="' + Utils.escapeHtml(title) + '">go to note</button>' +
+        '</span>' +
         delBtn + '</div>';
     }
 
@@ -1756,7 +1760,7 @@
 
       if (rows.length === 0) {
         Utils.$('today-task-list').innerHTML =
-          '<p class="empty-note">Nothing scheduled today. Add a recurring task in Schedule manager, or a one-off task below.</p>';
+          '<p class="empty-note">Nothing scheduled today.</p>';
       } else {
         Utils.$('today-task-list').innerHTML = rows.join('');
       }
@@ -1872,11 +1876,13 @@
       } else {
         Utils.$('day-events-list').innerHTML = items.map(function (it) {
           var colorClass = AppState.subjectColorClass(it.subjectId);
-          return '<div class="task-row">' +
+          return '<div class="task-row task-row-plain">' +
             '<span class="task-label">' + Utils.escapeHtml(it.title) + '</span>' +
-            '<span class="badge ' + colorClass + '">' + Utils.escapeHtml(subjectName(it.subjectId)) + '</span>' +
-            '<span style="font-family:var(--sans);font-size:10px;color:var(--txt3);">' + it.kind + '</span>' +
-            '<button class="btn-go-to-note" data-subject="' + (it.subjectId || '') + '" data-type="' + it.type + '" data-title="' + Utils.escapeHtml(it.title) + '">go to note</button>' +
+            '<span class="task-meta">' +
+              '<span class="badge ' + colorClass + '" title="' + Utils.escapeHtml(subjectName(it.subjectId)) + '">' + Utils.escapeHtml(subjectName(it.subjectId)) + '</span>' +
+              '<span class="task-kind">' + it.kind + '</span>' +
+              '<button class="btn-go-to-note" data-subject="' + (it.subjectId || '') + '" data-type="' + it.type + '" data-title="' + Utils.escapeHtml(it.title) + '">go to note</button>' +
+            '</span>' +
             '</div>';
         }).join('');
         document.querySelectorAll('#day-events-list .btn-go-to-note').forEach(function (b) {
@@ -3119,8 +3125,8 @@
       var onNewFirstVisit = host === new URL(APP_HOME).hostname && AppState.seededThisSession;
       if (!onOld && !onNewFirstVisit) return;
       Utils.$('move-banner-text').textContent = onOld
-        ? 'StudyDesk가 새 주소(amber-studydesk.netlify.app)로 옮겼어요. 노트는 자동으로 넘어가지 않아요: ① 여기서 백업 받기 → ② 새 주소 열기 → ③ 새 주소의 Settings → Backup에서 load backup. 이 주소로는 앱을 설치하지 마세요.'
-        : '처음 여는 주소라 샘플 노트가 보여요. 옛 주소(amber67-git.github.io/studydesk)에서 쓰던 노트는 거기서 받은 백업 파일을 load backup으로 불러오세요.';
+        ? '새 주소로 옮겼어요. ① 여기서 백업 받기 → ② 새 주소에서 load backup. 이 주소로는 앱을 설치하지 마세요.'
+        : '샘플 노트예요. 옛 주소에서 받은 백업 파일이 있으면 load backup으로 불러오세요.';
       Utils.$('move-banner-backup').style.display = onOld ? '' : 'none';
       Utils.$('move-banner-open').style.display = onOld ? '' : 'none';
       Utils.$('move-banner-load').style.display = onOld ? 'none' : '';

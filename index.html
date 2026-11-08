@@ -296,7 +296,6 @@ Write the main idea in your own words."></textarea>
           <div class="card">
             <div class="ch"><div class="ct"><span class="icon" data-icon="checklist" aria-hidden="true"></span>one-off tasks</div></div>
             <div class="cb p">
-              <p style="font-family:var(--sans); font-size:13px; color:var(--txt2); margin-top:0;">Add a task for a specific date. It will show up on the calendar and, if it's today, on the Notebooks page study list. Tag it with a subject so "go to note" knows which notebook to open.</p>
               <div class="fr c2" style="margin-bottom:10px;">
                 <input type="text" id="manager-task-input" placeholder="task title" />
                 <input type="date" id="manager-task-date" />
@@ -350,7 +349,7 @@ Write the main idea in your own words."></textarea>
         <div class="card">
           <div class="ch"><div class="ct"><span class="icon" data-icon="database" aria-hidden="true"></span>backup &amp; restore</div></div>
           <div class="cb p">
-            <p style="font-family:var(--sans); font-size:13px; color:var(--txt2); margin-top:0;">Without cloud sync, everything is stored only in this browser (localStorage), including any images you add to notes. A backup file is still the way to recover your notes if browser data gets cleared, and to move them to a device that is not signed in. Loading a backup replaces what is in this browser with the file's contents (and, when signed in, that is what your other devices receive).</p>
+            <p class="card-note">Notes live in this browser. A backup file is the copy you can keep or move to another device.</p>
             <div class="backup-row">
               <button class="btn btn-p" id="export-data-btn"><span class="icon" data-icon="download" aria-hidden="true"></span> download backup</button>
               <button class="btn" id="import-data-btn"><span class="icon" data-icon="upload" aria-hidden="true"></span> load backup</button>
@@ -374,7 +373,7 @@ Write the main idea in your own words."></textarea>
         <div class="card card-danger">
           <div class="ch"><div class="ct"><span class="icon" data-icon="trash" aria-hidden="true"></span>clear all data</div></div>
           <div class="cb p">
-            <p style="font-family:var(--sans); font-size:13px; color:var(--txt2); margin-top:0;">Clearing removes all notes, tasks, cards, and images from this browser. Browser storage has a limit of a few megabytes total, so avoid pasting dozens of large images.</p>
+            <p class="card-note">Deletes every note, task, card and image in this browser.</p>
             <button class="btn btn-d" id="reset-data-btn"><span class="icon" data-icon="trash" aria-hidden="true"></span> clear all data</button>
           </div>
         </div>
@@ -383,7 +382,7 @@ Write the main idea in your own words."></textarea>
         <div class="card">
           <div class="ch"><div class="ct"><span class="icon" data-icon="repeat" aria-hidden="true"></span>cloud sync</div></div>
           <div class="cb p">
-            <p style="font-family:var(--sans); font-size:13px; color:var(--txt2); margin-top:0;">Sign in with the same Google account on every device to keep your notes identical everywhere. A change on one device shows up on the others within seconds; edits made offline are sent when you are back online. If the same thing is changed in two places, the most recent edit wins.</p>
+            <p class="card-note">Sign in with the same Google account on each device to keep notes in sync.</p>
             <div class="backup-row">
               <button class="btn btn-p" id="sync-signin-btn"><span class="icon" data-icon="external-link" aria-hidden="true"></span> sign in with Google</button>
               <button class="btn" id="sync-signout-btn" style="display:none;"><span class="icon" data-icon="x" aria-hidden="true"></span> sign out</button>
@@ -397,7 +396,6 @@ Write the main idea in your own words."></textarea>
         <div class="card">
           <div class="ch"><div class="ct"><span class="icon" data-icon="typography" aria-hidden="true"></span>font style</div></div>
           <div class="cb p">
-            <p style="font-family:var(--sans); font-size:13px; color:var(--txt2); margin-top:0;">This sets one fixed font for the whole page — it does not change while you type, even if you switch languages inside the same note. All fonts are free for commercial use (Google Fonts, SIL Open Font License).</p>
             <div style="display:flex; gap:10px; flex-wrap:wrap;">
               <label style="display:flex; align-items:center; gap:6px; font-size:14px; cursor:pointer;">
                 <input type="radio" name="font-mode" id="font-mode-hand" value="hand" checked style="width:auto;height:auto;"> handwritten
@@ -412,7 +410,6 @@ Write the main idea in your own words."></textarea>
         <div class="card">
           <div class="ch"><div class="ct"><span class="icon" data-icon="text-size" aria-hidden="true"></span>note text size</div></div>
           <div class="cb p">
-            <p style="font-family:var(--sans); font-size:13px; color:var(--txt2); margin-top:0;">Applies to every note, flashcard, and task across the page.</p>
             <div style="display:flex; align-items:center; gap:12px;">
               <input type="range" id="font-size-slider" min="13" max="22" step="1" value="16" style="flex:1; height:auto;" />
               <span id="font-size-value" style="font-family:var(--sans); font-size:13px; color:var(--txt2); min-width:36px;">16px</span>
@@ -420,24 +417,12 @@ Write the main idea in your own words."></textarea>
           </div>
         </div>
 
-        <div class="card">
-          <div class="ch"><div class="ct"><span class="icon" data-icon="language" aria-hidden="true"></span>multilingual support</div></div>
-          <div class="cb p">
-            <p style="font-family:var(--sans); font-size:13px; color:var(--txt2); margin-top:0;">The handwritten font covers Latin script directly. Korean, Japanese, and Chinese characters automatically render in a matching handwriting style as a fallback, so the look stays consistent within one note even when you mix languages.</p>
-            <table style="width:100%; font-size:13px; border-collapse:collapse;">
-              <tr class="font-preview-row"><td style="width:140px;">English / French</td><td style="font-family:var(--hand); font-size:16px; color:var(--txt);">the quick brown fox / le renard brun</td></tr>
-              <tr class="font-preview-row"><td>Korean</td><td style="font-family:var(--hand); font-size:18px; color:var(--txt);">안녕하세요 공부 노트</td></tr>
-              <tr class="font-preview-row"><td>Japanese</td><td style="font-family:var(--hand); font-size:17px; color:var(--txt);">こんにちは 勉強ノート</td></tr>
-              <tr class="font-preview-row"><td>Chinese</td><td style="font-family:var(--hand); font-size:18px; color:var(--txt);">你好 学习笔记</td></tr>
-            </table>
-          </div>
-        </div>
         </div>
         <div class="spanel" id="spanel-integrations" role="tabpanel" aria-labelledby="stab-integrations" hidden>
         <div class="card">
           <div class="ch"><div class="ct"><span class="icon" data-icon="external-link" aria-hidden="true"></span>auto-fill (optional)</div></div>
           <div class="cb p">
-            <p style="font-family:var(--sans); font-size:13px; color:var(--txt2); margin-top:0;">Library auto-fill for books, music, and papers works out of the box. Film &amp; TV lookup additionally needs a free TMDB API key — the app works fine without one; only the movie search stays off. Get a key at themoviedb.org (sign up → Settings → API), then paste it here.</p>
+            <p class="card-note">TMDB key: turns on film &amp; TV search in Library. Free at themoviedb.org (sign up → Settings → API).</p>
             <div class="backup-reminder-row">
               <label for="tmdb-key-input" style="font-family:var(--sans);font-size:13px;color:var(--txt2);">TMDB API key</label>
               <input type="text" id="tmdb-key-input" placeholder="paste your key (optional)" style="flex:1;min-width:200px;" autocomplete="off" />
@@ -445,12 +430,6 @@ Write the main idea in your own words."></textarea>
           </div>
         </div>
 
-        <div class="card">
-          <div class="ch"><div class="ct"><span class="icon" data-icon="calendar" aria-hidden="true"></span>schedule</div></div>
-          <div class="cb p">
-            <p style="font-family:var(--sans); font-size:13px; color:var(--txt2); margin:0;">This page manages your study plan directly — recurring tasks and one-off tasks are stored here, not synced with any external calendar. That keeps your study schedule private to this browser.</p>
-          </div>
-        </div>
         </div>
         <div class="spanel" id="spanel-guide" role="tabpanel" aria-labelledby="stab-guide" hidden>
         <div class="card">
@@ -479,7 +458,7 @@ Write the main idea in your own words."></textarea>
                   <dt>Flashcards</dt>
                   <dd>과목별 암기 카드를 만들고 <b>review mode</b>로 복습합니다. 카드를 클릭하면 앞/뒤가 뒤집히고, <b>Esc</b> 키나 <b>close</b>로 닫습니다.</dd>
                   <dt>Settings</dt>
-                  <dd>탭 다섯 개로 나뉘어 있습니다. <b>Backup</b>(백업 파일 내려받기 <b>download backup</b>·불러오기 <b>load backup</b>, 백업 알림 주기, 저장 공간 사용량. 맨 아래 빨간 테두리 안에 전체 데이터 삭제 <b>clear all data</b>) · <b>Account</b>(<b>cloud sync</b>, 기기 간 동기화) · <b>Display</b>(글꼴 스타일 <b>handwritten</b> / <b>clean sans-serif</b>, 노트 글자 크기, 다국어 미리보기) · <b>Integrations</b>(자동 채우기 키, 일정 안내) · <b>Guide</b>(이 설명서). 마지막에 본 탭을 기억합니다. (아래 "데이터 보관" 참고)</dd>
+                  <dd>탭 다섯 개로 나뉘어 있습니다. <b>Backup</b>(백업 파일 내려받기 <b>download backup</b>·불러오기 <b>load backup</b>, 백업 알림 주기, 저장 공간 사용량. 맨 아래 빨간 테두리 안에 전체 데이터 삭제 <b>clear all data</b>) · <b>Account</b>(<b>cloud sync</b>, 기기 간 동기화) · <b>Display</b>(글꼴 스타일 <b>handwritten</b> / <b>clean sans-serif</b>, 노트 글자 크기) · <b>Integrations</b>(자동 채우기 키) · <b>Guide</b>(이 설명서). 마지막에 본 탭을 기억합니다. (아래 "데이터 보관" 참고)</dd>
                 </dl>
 
                 <h3>코넬 노트 작성 자세히</h3>
@@ -614,6 +593,7 @@ Write the main idea in your own words."></textarea>
                 <h3>변경 이력</h3>
                 <p>사용자가 체감하는 주요 변경만 적습니다. 최신이 위입니다.</p>
                 <ul>
+                  <li><b>2026-11-08</b> — 오늘 목록(today's study list)의 과목·종류·go to note 칸을 고정 너비로 맞춰, 글자 길이에 따라 줄마다 위치가 달라지지 않습니다. Settings와 일정 관리의 긴 설명 문구를 한 줄로 줄이거나 없앴습니다.</li>
                   <li><b>2026-11-08</b> — Settings 페이지를 탭 다섯 개(<b>Backup · Account · Display · Integrations · Guide</b>)로 나눴습니다. 마지막에 본 탭을 기기별로 기억하고, 설명서는 Guide 탭에서 접기 없이 바로 보입니다. clear all data는 Backup 탭 맨 아래에 있습니다.</li>
                   <li><b>2026-11-08</b> — 설명서에 이 변경 이력과 기준일을 추가했습니다. 화면 오른쪽 아래를 가리던 "Powered by Netlify" 배지는 사이트 설정에서 껐습니다.</li>
                   <li><b>2026-11-07</b> — 처음 열어 샘플 노트만 있을 때는 백업 알림이 뜨지 않습니다(새 주소 첫 방문 때 안내 띠 두 개가 겹치던 문제).</li>
