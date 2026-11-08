@@ -339,19 +339,14 @@ Write the main idea in your own words."></textarea>
     <!-- ============ SETTINGS PAGE ============ -->
     <div class="page" id="page-settings">
       <div class="pc">
-        <div class="card">
-          <div class="ch"><div class="ct"><span class="icon" data-icon="repeat" aria-hidden="true"></span>cloud sync</div></div>
-          <div class="cb p">
-            <p style="font-family:var(--sans); font-size:13px; color:var(--txt2); margin-top:0;">Sign in with the same Google account on every device to keep your notes identical everywhere. A change on one device shows up on the others within seconds; edits made offline are sent when you are back online. If the same thing is changed in two places, the most recent edit wins.</p>
-            <div class="backup-row">
-              <button class="btn btn-p" id="sync-signin-btn"><span class="icon" data-icon="external-link" aria-hidden="true"></span> sign in with Google</button>
-              <button class="btn" id="sync-signout-btn" style="display:none;"><span class="icon" data-icon="x" aria-hidden="true"></span> sign out</button>
-            </div>
-            <p class="backup-status" id="sync-status" aria-live="polite"></p>
-            <p class="backup-status" id="sync-oversized" style="color:var(--red);"></p>
-          </div>
+        <div class="stabs" role="tablist" aria-label="settings sections">
+          <button type="button" class="stab active" role="tab" id="stab-backup" data-stab="backup" aria-selected="true" aria-controls="spanel-backup">Backup</button>
+          <button type="button" class="stab" role="tab" id="stab-account" data-stab="account" aria-selected="false" aria-controls="spanel-account">Account</button>
+          <button type="button" class="stab" role="tab" id="stab-display" data-stab="display" aria-selected="false" aria-controls="spanel-display">Display</button>
+          <button type="button" class="stab" role="tab" id="stab-integrations" data-stab="integrations" aria-selected="false" aria-controls="spanel-integrations">Integrations</button>
+          <button type="button" class="stab" role="tab" id="stab-guide" data-stab="guide" aria-selected="false" aria-controls="spanel-guide">Guide</button>
         </div>
-
+        <div class="spanel" id="spanel-backup" role="tabpanel" aria-labelledby="stab-backup">
         <div class="card">
           <div class="ch"><div class="ct"><span class="icon" data-icon="database" aria-hidden="true"></span>backup &amp; restore</div></div>
           <div class="cb p">
@@ -376,6 +371,29 @@ Write the main idea in your own words."></textarea>
           </div>
         </div>
 
+        <div class="card card-danger">
+          <div class="ch"><div class="ct"><span class="icon" data-icon="trash" aria-hidden="true"></span>clear all data</div></div>
+          <div class="cb p">
+            <p style="font-family:var(--sans); font-size:13px; color:var(--txt2); margin-top:0;">Clearing removes all notes, tasks, cards, and images from this browser. Browser storage has a limit of a few megabytes total, so avoid pasting dozens of large images.</p>
+            <button class="btn btn-d" id="reset-data-btn"><span class="icon" data-icon="trash" aria-hidden="true"></span> clear all data</button>
+          </div>
+        </div>
+        </div>
+        <div class="spanel" id="spanel-account" role="tabpanel" aria-labelledby="stab-account" hidden>
+        <div class="card">
+          <div class="ch"><div class="ct"><span class="icon" data-icon="repeat" aria-hidden="true"></span>cloud sync</div></div>
+          <div class="cb p">
+            <p style="font-family:var(--sans); font-size:13px; color:var(--txt2); margin-top:0;">Sign in with the same Google account on every device to keep your notes identical everywhere. A change on one device shows up on the others within seconds; edits made offline are sent when you are back online. If the same thing is changed in two places, the most recent edit wins.</p>
+            <div class="backup-row">
+              <button class="btn btn-p" id="sync-signin-btn"><span class="icon" data-icon="external-link" aria-hidden="true"></span> sign in with Google</button>
+              <button class="btn" id="sync-signout-btn" style="display:none;"><span class="icon" data-icon="x" aria-hidden="true"></span> sign out</button>
+            </div>
+            <p class="backup-status" id="sync-status" aria-live="polite"></p>
+            <p class="backup-status" id="sync-oversized" style="color:var(--red);"></p>
+          </div>
+        </div>
+        </div>
+        <div class="spanel" id="spanel-display" role="tabpanel" aria-labelledby="stab-display" hidden>
         <div class="card">
           <div class="ch"><div class="ct"><span class="icon" data-icon="typography" aria-hidden="true"></span>font style</div></div>
           <div class="cb p">
@@ -414,14 +432,8 @@ Write the main idea in your own words."></textarea>
             </table>
           </div>
         </div>
-
-        <div class="card">
-          <div class="ch"><div class="ct"><span class="icon" data-icon="calendar" aria-hidden="true"></span>schedule</div></div>
-          <div class="cb p">
-            <p style="font-family:var(--sans); font-size:13px; color:var(--txt2); margin:0;">This page manages your study plan directly — recurring tasks and one-off tasks are stored here, not synced with any external calendar. That keeps your study schedule private to this browser.</p>
-          </div>
         </div>
-
+        <div class="spanel" id="spanel-integrations" role="tabpanel" aria-labelledby="stab-integrations" hidden>
         <div class="card">
           <div class="ch"><div class="ct"><span class="icon" data-icon="external-link" aria-hidden="true"></span>auto-fill (optional)</div></div>
           <div class="cb p">
@@ -434,10 +446,16 @@ Write the main idea in your own words."></textarea>
         </div>
 
         <div class="card">
+          <div class="ch"><div class="ct"><span class="icon" data-icon="calendar" aria-hidden="true"></span>schedule</div></div>
+          <div class="cb p">
+            <p style="font-family:var(--sans); font-size:13px; color:var(--txt2); margin:0;">This page manages your study plan directly — recurring tasks and one-off tasks are stored here, not synced with any external calendar. That keeps your study schedule private to this browser.</p>
+          </div>
+        </div>
+        </div>
+        <div class="spanel" id="spanel-guide" role="tabpanel" aria-labelledby="stab-guide" hidden>
+        <div class="card">
           <div class="ch"><div class="ct"><span class="icon" data-icon="help" aria-hidden="true"></span>StudyDesk 사용 설명서</div></div>
           <div class="cb p">
-            <details class="guide-details">
-              <summary>설명서 펼치기 / 접기</summary>
               <div class="guide-body" lang="ko">
 
                 <h3>StudyDesk란?</h3>
@@ -461,7 +479,7 @@ Write the main idea in your own words."></textarea>
                   <dt>Flashcards</dt>
                   <dd>과목별 암기 카드를 만들고 <b>review mode</b>로 복습합니다. 카드를 클릭하면 앞/뒤가 뒤집히고, <b>Esc</b> 키나 <b>close</b>로 닫습니다.</dd>
                   <dt>Settings</dt>
-                  <dd>맨 위에 <b>cloud sync</b>(기기 간 동기화)와 <b>backup &amp; restore</b>(백업 파일 내려받기 <b>download backup</b>·불러오기 <b>load backup</b>, 백업 알림 주기, 저장 공간 사용량)가 있고, 그 아래에 글꼴 스타일(<b>handwritten</b> / <b>clean sans-serif</b>), 노트 글자 크기, 자동 채우기 키, 이 설명서가 있습니다. 전체 데이터 삭제(<b>clear all data</b>)는 실수로 누르지 않도록 맨 아래에 따로 있습니다. (아래 "데이터 보관" 참고)</dd>
+                  <dd>탭 다섯 개로 나뉘어 있습니다. <b>Backup</b>(백업 파일 내려받기 <b>download backup</b>·불러오기 <b>load backup</b>, 백업 알림 주기, 저장 공간 사용량. 맨 아래 빨간 테두리 안에 전체 데이터 삭제 <b>clear all data</b>) · <b>Account</b>(<b>cloud sync</b>, 기기 간 동기화) · <b>Display</b>(글꼴 스타일 <b>handwritten</b> / <b>clean sans-serif</b>, 노트 글자 크기, 다국어 미리보기) · <b>Integrations</b>(자동 채우기 키, 일정 안내) · <b>Guide</b>(이 설명서). 마지막에 본 탭을 기억합니다. (아래 "데이터 보관" 참고)</dd>
                 </dl>
 
                 <h3>코넬 노트 작성 자세히</h3>
@@ -495,7 +513,7 @@ Write the main idea in your own words."></textarea>
                 <h3>Library 사용하기</h3>
                 <p>공부에 쓰는 모든 자료를 한 곳에서 관리합니다. 노트북과는 별개의 목록이므로, 노트를 쓰지 않은 자료도 자유롭게 등록할 수 있습니다. 등록 흐름은 "검색 한 번, 나머지는 확인만" 입니다 — 맨 위 검색창에 제목을 넣고 결과를 클릭하면 아래 필드가 자동으로 채워집니다.</p>
                 <ul>
-                  <li><b>자동 채우기</b> — 유형을 고르고 제목을 검색하면 저자·출판사·표지 등이 채워집니다. 책(Google Books)·음악(MusicBrainz)·논문(Crossref)은 바로 되고, 영화/TV는 무료 TMDB 키를 <b>Settings → auto-fill</b>에 넣으면 켜집니다(선택사항). 직접 입력한 칸은 자동 채우기가 <b>절대 덮어쓰지 않습니다.</b></li>
+                  <li><b>자동 채우기</b> — 유형을 고르고 제목을 검색하면 저자·출판사·표지 등이 채워집니다. 책(Google Books)·음악(MusicBrainz)·논문(Crossref)은 바로 되고, 영화/TV는 무료 TMDB 키를 <b>Settings → Integrations → auto-fill</b>에 넣으면 켜집니다(선택사항). 직접 입력한 칸은 자동 채우기가 <b>절대 덮어쓰지 않습니다.</b></li>
                   <li><b>표지</b> — 표지 박스 하나가 전부입니다: 클릭하면 파일 선택, 이미지를 끌어다 놓거나, 복사한 이미지를 모달 안에서 Ctrl+V 하면 바로 들어갑니다(자동 압축). 박스 아래 <b>↻ 90°</b>로 회전, <b>search google images</b>로 표지를 찾을 수 있습니다.</li>
                   <li><b>Category와 Genre</b> — Category는 자료의 <b>형태</b>(Novel, Documentary, Online Course...), Genre는 <b>주제</b>(Economics, History...)입니다. 같은 저자·시리즈("Write Right 2 - Beginner"와 "Write Right 3"도 같은 시리즈로 인식)의 자료를 추가하면 이전 분류·출판사를 빈 칸에 자동으로 이어받습니다.</li>
                   <li><b>상태와 진행률</b> — 등록할 때는 핵심 정보만 입력하고, 상태(want / in progress / done)·진행률·별점·청구기호는 <b>편집(연필 버튼)</b>에서 관리합니다. 진행 중인 자료는 카드에 진행률 막대가 표시됩니다.</li>
@@ -510,8 +528,8 @@ Write the main idea in your own words."></textarea>
                   <li>브라우저의 인터넷 사용 기록(쿠키·사이트 데이터) 삭제 시 <b>모든 노트가 삭제되며 복구할 수 없습니다.</b></li>
                   <li>로그인하지 않은 상태에서는 다른 브라우저(예: Chrome ↔ Edge)나 다른 컴퓨터·폰에서 열면 빈 상태로 시작합니다. 여러 기기에서 같은 노트를 보려면 아래 "기기 간 동기화"를 켜세요. 일회성으로 옮길 때는 백업 파일도 됩니다.</li>
                   <li>시크릿/비공개 창에서는 창을 닫는 순간 데이터가 사라집니다.</li>
-                  <li><b>Settings → download backup</b>으로 백업 파일(JSON)을 주기적으로 내려받아 두세요. 데이터가 사라졌을 때 <b>load backup</b>으로 복원할 수 있는 유일한 수단이며, 다른 브라우저나 컴퓨터로 노트를 옮길 때도 이 파일을 사용합니다.</li>
-                  <li>마지막 백업 후 일정 기간이 지나면 화면 상단에 백업 알림 배너가 나타납니다. 배너의 <b>backup now</b>를 누르면 바로 내려받아지고, 알림 주기는 <b>Settings → remind me to back up</b>에서 3·7·14·30일 또는 끄기(never)로 바꿀 수 있습니다. 처음 열어서 샘플 노트만 있을 때는 알림이 뜨지 않습니다(내 노트가 아니라서).</li>
+                  <li><b>Settings → Backup → download backup</b>으로 백업 파일(JSON)을 주기적으로 내려받아 두세요. 데이터가 사라졌을 때 <b>load backup</b>으로 복원할 수 있는 유일한 수단이며, 다른 브라우저나 컴퓨터로 노트를 옮길 때도 이 파일을 사용합니다.</li>
+                  <li>마지막 백업 후 일정 기간이 지나면 화면 상단에 백업 알림 배너가 나타납니다. 배너의 <b>backup now</b>를 누르면 바로 내려받아지고, 알림 주기는 <b>Settings → Backup → remind me to back up</b>에서 3·7·14·30일 또는 끄기(never)로 바꿀 수 있습니다. 처음 열어서 샘플 노트만 있을 때는 알림이 뜨지 않습니다(내 노트가 아니라서).</li>
                   <li>저장 공간은 브라우저당 수 MB로 제한됩니다. 큰 스크린샷을 수십 장 붙여넣으면 저장이 실패할 수 있습니다.</li>
                 </ul>
 
@@ -519,8 +537,8 @@ Write the main idea in your own words."></textarea>
                 <p>StudyDesk 주소가 <b>https://amber-studydesk.netlify.app/</b> 로 바뀌었습니다. 옛 주소 <b>amber67-git.github.io/studydesk</b> 는 ClassDesk 등 소유자의 다른 앱과 <b>같은 사이트 주소</b>를 썼는데, 현재 안드로이드 Chrome은 <b>한 사이트 주소에 앱을 하나만</b> 설치합니다(Chrome 쪽 버그로 보고돼 있습니다). 그래서 StudyDesk와 ClassDesk를 둘 다 앱으로 설치할 수 없었습니다(한쪽을 깔면 다른 쪽이 "already installed"). 같은 사이트 주소의 앱들은 브라우저 저장공간도 같이 써서, 한쪽에서 사이트 데이터를 지우면 다른 앱 데이터까지 지워지는 위험도 있었습니다.</p>
                 <p>브라우저 저장소는 주소마다 따로라서 <b>노트는 자동으로 넘어가지 않습니다.</b> 기기마다 한 번씩:</p>
                 <ol>
-                  <li><b>노트를 쓰던 곳에서</b> 백업을 받습니다. 브라우저 탭에서 썼다면 옛 주소(https://amber67-git.github.io/studydesk/)를, 옛 주소로 설치한 앱에서 썼다면 <b>그 앱</b>을 열고 위쪽 안내 띠의 <b>download backup</b>(또는 Settings → download backup)을 누릅니다. <b>iPhone·iPad</b>는 홈 화면 앱과 Safari가 저장소를 따로 쓰므로, 앱에서 썼다면 반드시 앱에서 받으세요(Safari에서 받으면 다른 노트가 담깁니다).</li>
-                  <li>새 주소(https://amber-studydesk.netlify.app/)를 열고 <b>Settings → load backup</b>으로 그 파일을 불러옵니다. 처음 열면 샘플 노트가 보이는데, 불러오면 바뀝니다.</li>
+                  <li><b>노트를 쓰던 곳에서</b> 백업을 받습니다. 브라우저 탭에서 썼다면 옛 주소(https://amber67-git.github.io/studydesk/)를, 옛 주소로 설치한 앱에서 썼다면 <b>그 앱</b>을 열고 위쪽 안내 띠의 <b>download backup</b>(또는 Settings → Backup → download backup)을 누릅니다. <b>iPhone·iPad</b>는 홈 화면 앱과 Safari가 저장소를 따로 쓰므로, 앱에서 썼다면 반드시 앱에서 받으세요(Safari에서 받으면 다른 노트가 담깁니다).</li>
+                  <li>새 주소(https://amber-studydesk.netlify.app/)를 열고 <b>Settings → Backup → load backup</b>으로 그 파일을 불러옵니다. 처음 열면 샘플 노트가 보이는데, 불러오면 바뀝니다.</li>
                   <li>새 주소에서 앱을 설치하고(아래 "폰·태블릿에 앱으로 설치하기"), 새 앱에 노트가 다 있는지 확인합니다. iPhone·iPad는 새 홈 화면 앱도 저장소가 따로라서, 설치한 앱 안에서 한 번 더 load backup을 해야 할 수 있습니다.</li>
                   <li><b>확인한 다음에만</b> 옛 주소로 설치한 StudyDesk 앱을 삭제합니다(폰 설정 → 애플리케이션, iPhone은 홈 화면 아이콘 길게 눌러 삭제). Android에서는 <b>사이트 데이터·저장공간 삭제는 누르지 마세요.</b> 같은 사이트 주소의 ClassDesk 데이터까지 지워집니다.</li>
                 </ol>
@@ -531,7 +549,7 @@ Write the main idea in your own words."></textarea>
                 <ol>
                   <li>폰 브라우저에서 <b>https://amber-studydesk.netlify.app/</b> 를 엽니다. (2026년 11월 4일에 주소가 바뀌었습니다. 위 "주소 이사" 참고)</li>
                   <li><b>Android(Chrome)</b>: 오른쪽 위 메뉴(⋮) → <b>앱 설치</b> 또는 <b>홈 화면에 추가</b>.</li>
-                  <li><b>iPhone/iPad(Safari)</b>: 아래 공유 버튼(□↑) → <b>홈 화면에 추가</b>. (iOS는 Safari에서만 설치됩니다.) <b>주의:</b> iPhone에서는 홈 화면 앱과 Safari가 저장 공간을 따로 씁니다. Safari에서 이미 쓰던 노트가 있다면 설치 전에 Safari에서 <b>Settings → download backup</b>으로 파일을 받아 두고, 설치한 앱을 연 뒤 <b>Settings → load backup</b>으로 불러오세요. 자동으로 넘어오지 않습니다.</li>
+                  <li><b>iPhone/iPad(Safari)</b>: 아래 공유 버튼(□↑) → <b>홈 화면에 추가</b>. (iOS는 Safari에서만 설치됩니다.) <b>주의:</b> iPhone에서는 홈 화면 앱과 Safari가 저장 공간을 따로 씁니다. Safari에서 이미 쓰던 노트가 있다면 설치 전에 Safari에서 <b>Settings → Backup → download backup</b>으로 파일을 받아 두고, 설치한 앱을 연 뒤 <b>Settings → Backup → load backup</b>으로 불러오세요. 자동으로 넘어오지 않습니다.</li>
                   <li><b>PC(Chrome/Edge)</b>: 주소창 오른쪽의 설치 아이콘을 누르면 창 하나짜리 앱으로 열립니다.</li>
                 </ol>
                 <ul>
@@ -539,11 +557,11 @@ Write the main idea in your own words."></textarea>
                   <li>설치된 앱은 인터넷이 연결돼 있으면 열 때마다 최신 버전을 받아옵니다. 예전 화면이 보이면 앱을 완전히 닫았다가 다시 여세요.</li>
                   <li>옛 주소(amber67-git.github.io/studydesk)로 설치한 StudyDesk 앱이 있으면 위 "주소 이사" 순서대로 노트를 옮긴 뒤 지우세요.</li>
                   <li>Library 자동 채우기(책·영화 검색)는 인터넷이 있을 때만 동작합니다. 필기·일정·카드는 오프라인에서도 모두 됩니다.</li>
-                  <li>폰과 PC에서 같은 노트를 보려면 <b>Settings → cloud sync</b>에서 같은 Google 계정으로 로그인하세요(아래 "기기 간 동기화" 참고). 로그인하지 않은 기기는 자기 브라우저에만 저장합니다.</li>
+                  <li>폰과 PC에서 같은 노트를 보려면 <b>Settings → Account → cloud sync</b>에서 같은 Google 계정으로 로그인하세요(아래 "기기 간 동기화" 참고). 로그인하지 않은 기기는 자기 브라우저에만 저장합니다.</li>
                 </ul>
 
                 <h3>기기 간 동기화 (cloud sync)</h3>
-                <p>폰·태블릿·PC에서 같은 노트를 보려면 각 기기에서 <b>Settings → cloud sync → sign in with Google</b>을 누르고 <b>같은 Google 계정</b>으로 로그인하세요. 그 뒤로는 한 기기에서 고친 내용이 몇 초 안에 다른 기기에 나타납니다.</p>
+                <p>폰·태블릿·PC에서 같은 노트를 보려면 각 기기에서 <b>Settings → Account → cloud sync → sign in with Google</b>을 누르고 <b>같은 Google 계정</b>으로 로그인하세요. 그 뒤로는 한 기기에서 고친 내용이 몇 초 안에 다른 기기에 나타납니다.</p>
                 <ul>
                   <li><b>충돌 규칙</b>: 같은 것을 두 기기에서 동시에 고치면 <b>마지막 수정이 이깁니다.</b> 서로 다른 노트북·페이지를 고친 경우에는 둘 다 반영됩니다.</li>
                   <li><b>오프라인</b>: 인터넷이 없어도 평소처럼 쓸 수 있고, 변경은 기기에 쌓였다가 연결되면 자동으로 올라갑니다. 사이드바 맨 아래 상태 표시가 <b>synced</b>면 최신, <b>offline · will sync</b>면 대기 중입니다.</li>
@@ -561,7 +579,7 @@ Write the main idea in your own words."></textarea>
                   <dt>아이콘이 있어야 할 자리가 빈 네모로 보여요.</dt>
                   <dd>구버전에서 외부 아이콘 글꼴이 차단될 때 생기던 문제입니다. 현재 버전은 아이콘이 앱 안에 내장되어 있어 인터넷이 끊겨도 항상 표시됩니다. 이 증상이 보인다면 예전 파일을 열고 계신 것이니 최신 파일로 교체하세요.</dd>
                                   <dt>폰에서 고친 내용이 PC에 안 보여요.</dt>
-                  <dd>두 기기 모두 <b>Settings → cloud sync</b>에서 <b>같은 Google 계정</b>으로 로그인돼 있는지, 사이드바 맨 아래가 <b>synced</b>인지 확인하세요. <b>offline · will sync</b>이면 인터넷 연결 뒤 자동으로 올라갑니다. 로그인하지 않은 기기는 자기 브라우저에만 저장합니다. Settings 페이지의 cloud sync 칸에 빨간 글씨로 "over the 900 KB per-page limit"가 보이면 그 페이지는 이미지가 많아 동기화에서 빠진 것입니다.</dd>
+                  <dd>두 기기 모두 <b>Settings → Account → cloud sync</b>에서 <b>같은 Google 계정</b>으로 로그인돼 있는지, 사이드바 맨 아래가 <b>synced</b>인지 확인하세요. <b>offline · will sync</b>이면 인터넷 연결 뒤 자동으로 올라갑니다. 로그인하지 않은 기기는 자기 브라우저에만 저장합니다. Settings 페이지의 cloud sync 칸에 빨간 글씨로 "over the 900 KB per-page limit"가 보이면 그 페이지는 이미지가 많아 동기화에서 빠진 것입니다.</dd>
 </dl>
                 <p><b>설치</b></p>
                 <dl>
@@ -571,15 +589,15 @@ Write the main idea in your own words."></textarea>
                 <p><b>데이터</b></p>
                 <dl>
                   <dt>어제 쓴 노트가 전부 사라졌어요.</dt>
-                  <dd>먼저 (1) 같은 브라우저가 맞는지, (2) 시크릿 창이 아닌지, (3) 최근 브라우저 데이터 정리를 했는지 확인하세요. 다른 브라우저에서 열면 데이터가 없는 것이 정상입니다. 백업 파일이 있다면 <b>Settings → load backup</b>으로 복원할 수 있습니다. 백업이 없는 상태에서 브라우저 데이터를 삭제한 경우에는 복구할 수 없습니다.</dd>
+                  <dd>먼저 (1) 같은 브라우저가 맞는지, (2) 시크릿 창이 아닌지, (3) 최근 브라우저 데이터 정리를 했는지 확인하세요. 다른 브라우저에서 열면 데이터가 없는 것이 정상입니다. 백업 파일이 있다면 <b>Settings → Backup → load backup</b>으로 복원할 수 있습니다. 백업이 없는 상태에서 브라우저 데이터를 삭제한 경우에는 복구할 수 없습니다.</dd>
                   <dt>이미지를 붙여넣은 뒤 저장이 느리거나 실패해요.</dt>
-                  <dd>브라우저 저장 공간(수 MB) 한도에 가까워졌을 가능성이 큽니다. 저장에 실패하면 <b>"save failed — storage full"</b> 문구와 함께 안내창이 뜹니다. 현재 사용량은 <b>Settings</b> 페이지에서 확인할 수 있으며, 큰 이미지를 지우고 다시 편집하면 저장됩니다. (큰 이미지는 자동 축소되지만, 수십 장이 쌓이면 한도에 도달할 수 있습니다.)</dd>
+                  <dd>브라우저 저장 공간(수 MB) 한도에 가까워졌을 가능성이 큽니다. 저장에 실패하면 <b>"save failed — storage full"</b> 문구와 함께 안내창이 뜹니다. 현재 사용량은 <b>Settings → Backup</b> 탭에서 확인할 수 있으며, 큰 이미지를 지우고 다시 편집하면 저장됩니다. (큰 이미지는 자동 축소되지만, 수십 장이 쌓이면 한도에 도달할 수 있습니다.)</dd>
                   <dt>"not saving — this browser is blocking storage" 라고 떠요.</dt>
-                  <dd>시크릿(비공개) 창이거나 브라우저가 사이트 데이터를 차단한 상태입니다. 이 상태에서는 필기가 저장되지 않습니다. 일반 창에서 열어주세요. 이미 작업한 내용이 있다면 창을 닫기 전에 <b>Settings → download backup</b>으로 파일을 먼저 받아두세요.</dd>
+                  <dd>시크릿(비공개) 창이거나 브라우저가 사이트 데이터를 차단한 상태입니다. 이 상태에서는 필기가 저장되지 않습니다. 일반 창에서 열어주세요. 이미 작업한 내용이 있다면 창을 닫기 전에 <b>Settings → Backup → download backup</b>으로 파일을 먼저 받아두세요.</dd>
                   <dt>백업 파일을 불러왔는데 "that backup could not be loaded" 라고 떠요.</dt>
                   <dd>파일이 손상되었거나 이 앱의 백업 형식이 아닙니다. 이 경우 <b>기존 노트는 그대로 유지되며 덮어써지지 않습니다.</b> 다른 백업 파일로 다시 시도해 보세요.</dd>
                   <dt>Library에서 영화를 검색하면 키가 필요하다고 해요.</dt>
-                  <dd>영화/TV 자동 채우기만 무료 TMDB 키가 필요합니다(책·음악·논문은 키 없이 동작). themoviedb.org에서 가입 후 설정의 API 메뉴에서 키를 발급받아 <b>Settings → auto-fill</b>에 붙여넣으면 됩니다. "the API key was rejected" 메시지가 나오면 키를 잘못 붙여넣었는지 확인하세요. 키 없이도 모든 정보를 직접 입력할 수 있습니다.</dd>
+                  <dd>영화/TV 자동 채우기만 무료 TMDB 키가 필요합니다(책·음악·논문은 키 없이 동작). themoviedb.org에서 가입 후 설정의 API 메뉴에서 키를 발급받아 <b>Settings → Integrations → auto-fill</b>에 붙여넣으면 됩니다. "the API key was rejected" 메시지가 나오면 키를 잘못 붙여넣었는지 확인하세요. 키 없이도 모든 정보를 직접 입력할 수 있습니다.</dd>
                   <dt>Library 검색이 계속 실패해요.</dt>
                   <dd>인터넷 연결을 먼저 확인하세요. 오프라인이거나 응답이 15초를 넘으면 검색이 중단되고 안내가 표시됩니다. 짧은 시간에 여러 번 검색하면 "search limit reached" 가 뜰 수 있으며 몇 분 뒤 다시 시도하면 됩니다. 검색이 안 되어도 모든 항목은 직접 입력으로 등록할 수 있습니다.</dd>
                 </dl>
@@ -596,28 +614,21 @@ Write the main idea in your own words."></textarea>
                 <h3>변경 이력</h3>
                 <p>사용자가 체감하는 주요 변경만 적습니다. 최신이 위입니다.</p>
                 <ul>
+                  <li><b>2026-11-08</b> — Settings 페이지를 탭 다섯 개(<b>Backup · Account · Display · Integrations · Guide</b>)로 나눴습니다. 마지막에 본 탭을 기기별로 기억하고, 설명서는 Guide 탭에서 접기 없이 바로 보입니다. clear all data는 Backup 탭 맨 아래에 있습니다.</li>
                   <li><b>2026-11-08</b> — 설명서에 이 변경 이력과 기준일을 추가했습니다. 화면 오른쪽 아래를 가리던 "Powered by Netlify" 배지는 사이트 설정에서 껐습니다.</li>
                   <li><b>2026-11-07</b> — 처음 열어 샘플 노트만 있을 때는 백업 알림이 뜨지 않습니다(새 주소 첫 방문 때 안내 띠 두 개가 겹치던 문제).</li>
                   <li><b>2026-11-04</b> — <b>주소 이사</b>: <b>https://amber-studydesk.netlify.app/</b> 로 옮겼습니다. 옛 주소(amber67-git.github.io/studydesk)는 백업 받기 안내만 하고 앱 설치를 권하지 않습니다. 이유와 옮기는 순서는 위 "주소 이사" 참고.</li>
                   <li><b>2026-11-04</b> — 화면 크기 전면 점검: PC 전체·분할, 태블릿 가로·세로, 폰 세로·가로에서 노트 편집기 배치(◀▶ 위치, 두 줄 서식 도구줄, 넘치는 본문은 스크롤)와 카드·오늘 목록을 손봤습니다. 자동 새 페이지는 이미 넘친 페이지에서는 더 생기지 않습니다. 앱 식별 id를 고정했습니다.</li>
                   <li><b>2026-11-04</b> — 디자인: 잉크색 사이드바(새 아이콘과 같은 색), 오프화이트 바탕, 통계 카드의 색 띠.</li>
                   <li><b>2026-11-03</b> — 새 앱 아이콘(줄 노트 위의 책 4권). 백업 메뉴를 Settings 페이지 맨 위로 다시 합쳤습니다.</li>
-                  <li><b>2026-11-02</b> — 기기 간 동기화(Google 로그인 + 클라우드) 기능을 넣었습니다. Firebase 설정 전이라 아직 꺼져 있고, 켜지면 Settings → cloud sync에 로그인 버튼이 보입니다.</li>
+                  <li><b>2026-11-02</b> — 기기 간 동기화(Google 로그인 + 클라우드) 기능을 넣었습니다. Firebase 설정 전이라 아직 꺼져 있고, 켜지면 Settings → Account → cloud sync에 로그인 버튼이 보입니다.</li>
                   <li><b>2026-11-01</b> — 설치형 앱(PWA): 홈 화면 설치와 오프라인 실행. 화면 크기 대응 1차 수정, 접근성 보완, 라틴 글꼴 자체 호스팅(폰과 PC의 글씨체 불일치 해결). StudyDesk v1 공개.</li>
                 </ul>
                 <p class="guide-foot">설명서 기준일: <b>2026-11-08</b>. 다음 갱신 때는 이 날짜 이후의 변경만 살펴 변경 이력과 FAQ에 더하면 됩니다.</p>
 
               </div>
-            </details>
           </div>
         </div>
-
-        <div class="card">
-          <div class="ch"><div class="ct"><span class="icon" data-icon="trash" aria-hidden="true"></span>clear all data</div></div>
-          <div class="cb p">
-            <p style="font-family:var(--sans); font-size:13px; color:var(--txt2); margin-top:0;">Clearing removes all notes, tasks, cards, and images from this browser. Browser storage has a limit of a few megabytes total, so avoid pasting dozens of large images.</p>
-            <button class="btn btn-d" id="reset-data-btn"><span class="icon" data-icon="trash" aria-hidden="true"></span> clear all data</button>
-          </div>
         </div>
       </div>
     </div>

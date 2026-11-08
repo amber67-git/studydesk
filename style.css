@@ -81,6 +81,13 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--txt);font-family:v
 .tb-actions{display:flex;gap:8px;align-items:center}
 .pc{padding:22px 24px}
 #page-settings .pc{max-width:1000px}
+.stabs{display:flex;flex-wrap:wrap;gap:2px 4px;border-bottom:1px solid var(--bdr);margin-bottom:16px}
+.stab{appearance:none;background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;padding:10px 12px;border-radius:0;font-family:var(--sans);font-size:13px;font-weight:600;color:var(--txt2);cursor:pointer;white-space:nowrap}
+.stab:hover{color:var(--txt)}
+.stab.active{color:var(--txt);border-bottom-color:var(--sb-hi)}
+.stab:focus-visible{outline:2px solid var(--sb-hi);outline-offset:-2px}
+.spanel[hidden]{display:none}
+.card-danger{margin-top:28px;border-color:var(--red)}
 
 .page{display:none}
 .page.active{display:block}
