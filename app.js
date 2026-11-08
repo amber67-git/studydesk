@@ -3092,6 +3092,7 @@
         var on = b.dataset.stab === name;
         b.classList.toggle('active', on);
         b.setAttribute('aria-selected', on ? 'true' : 'false');
+        b.tabIndex = on ? 0 : -1;   // roving tabindex: Tab enters the tab list once, arrows move inside it
       });
       document.querySelectorAll('.spanel').forEach(function (p) {
         p.hidden = (p.id !== 'spanel-' + name);
@@ -3109,6 +3110,22 @@
       document.querySelectorAll('.stab').forEach(function (b) {
         b.addEventListener('click', function () { self.showTab(b.dataset.stab); });
       });
+      // WAI-ARIA tabs: Left/Right move between tabs (wrapping), Home/End jump
+      var bar = document.querySelector('.stabs');
+      if (bar) {
+        bar.addEventListener('keydown', function (e) {
+          var keys = { ArrowLeft: -1, ArrowRight: 1, Home: 0, End: 0 };
+          if (!(e.key in keys)) return;
+          var i = self.TABS.indexOf(document.activeElement && document.activeElement.dataset.stab);
+          if (i === -1) return;
+          var n = self.TABS.length;
+          var next = e.key === 'Home' ? 0 : e.key === 'End' ? n - 1 : (i + keys[e.key] + n) % n;
+          e.preventDefault();
+          self.showTab(self.TABS[next]);
+          var el = document.querySelector('.stab[data-stab="' + self.TABS[next] + '"]');
+          if (el) el.focus();
+        });
+      }
       var last = null;
       try { last = localStorage.getItem(this.TAB_KEY); } catch (e) { last = null; }
       this.showTab(last || this.TABS[0]);
