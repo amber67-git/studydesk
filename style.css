@@ -590,7 +590,7 @@ textarea#summary:focus-visible{box-shadow:inset 0 0 0 2px var(--bdr2)}
   .notes-page-grid .notes-card{order:1;display:flex;flex-direction:column}
   .notes-card .fbar{order:2;border-bottom:none;border-top:1px solid var(--bdr)}
   .notes-card .notes-pc{order:1}
-  .notes-layout .note-list{order:2;max-height:220px}
+  .notes-layout .note-list{order:2;max-height:220px;scroll-margin-top:64px}   /* the "notebooks" jump lands below the sticky 54px top bar */
   .notes-layout .editor-col{order:1}
   .tb-nb-btn{display:inline-flex}
   .tb-nb-btn[hidden]{display:none}
