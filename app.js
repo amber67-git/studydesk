@@ -14,7 +14,8 @@
  *   Library        - study-material catalog + API auto-fill (books, films, courses...)
  *   Schedule       - calendar + today's list + recurring/one-off tasks
  *   Flashcards     - card grid + study mode
- *   Settings       - font style + text size + data reset
+ *   Settings       - tabs: backup, account, display, integrations, guide
+ *   Lists          - Settings → Lists: subjects + library category/genre values
  *   SyncCore/Sync  - cross-device sync: pure merge rules + Firebase (Google sign-in, Firestore)
  *   Stats          - dashboard counters at the top of the Notebooks page
  *   App            - init() and renderAll(), the main entry point
@@ -250,6 +251,13 @@
         if (v) seen[v] = true;
       });
       return Object.keys(seen).sort();
+    },
+
+    /** User-added category / genre values (Settings → Lists), see applySettingDefaults. */
+    customValues: function (field) {
+      var key = field === 'category' ? 'customCategories' : field === 'genre' ? 'customGenres' : null;
+      var list = key && this.settings && this.settings[key];
+      return Array.isArray(list) ? list.slice() : [];
     },
 
     /* A derived "level" badge per item type. Reading-level systems (AR,
@@ -596,6 +604,16 @@
       var days = parseInt(s.backupReminderDays, 10);
       s.backupReminderDays = isNaN(days) ? 7 : days;
       if (typeof s.tmdbKey !== 'string') s.tmdbKey = '';
+      // Settings → Lists: library category / genre values the user added
+      // themselves, kept so they stay in the dropdowns before any item uses them.
+      ['customCategories', 'customGenres'].forEach(function (k) {
+        var seen = {};
+        s[k] = (Array.isArray(s[k]) ? s[k] : []).filter(function (v) {
+          if (typeof v !== 'string' || !v.trim() || seen[v.trim()]) return false;
+          seen[v.trim()] = true;
+          return true;
+        }).map(function (v) { return v.trim(); });
+      });
     }
 
     function updateUsageDisplay() {
@@ -2105,7 +2123,7 @@
       var used = AppState.usedValues(field);
       var seen = {};
       var opts = ['<option value=""></option>'];
-      presets.concat(used).forEach(function (v) {
+      presets.concat(AppState.customValues(field)).concat(used).forEach(function (v) {
         if (!v || seen[v]) return;
         seen[v] = true;
         opts.push('<option value="' + Utils.escapeHtml(v) + '">' + Utils.escapeHtml(v) + '</option>');
@@ -2732,7 +2750,7 @@
         return arr.filter(function (v, i) { return v && arr.indexOf(v) === i; });
       };
       var catOpts = ['<option value="__keep__">(keep — no change)</option>'];
-      uniq(AppState.usedValues('category').concat(
+      uniq(AppState.usedValues('category').concat(AppState.customValues('category'),
         AppState.CATEGORY_PRESETS.book, AppState.CATEGORY_PRESETS.movie,
         AppState.CATEGORY_PRESETS.lecture)).forEach(function (v) {
           catOpts.push('<option value="' + Utils.escapeHtml(v) + '">' + Utils.escapeHtml(v) + '</option>');
@@ -2740,7 +2758,7 @@
       Utils.$('bulk-category').innerHTML = catOpts.join('');
 
       var genOpts = ['<option value="__keep__">(keep — no change)</option>'];
-      uniq(AppState.GENRE_PRESETS.concat(AppState.usedValues('genre'))).forEach(function (v) {
+      uniq(AppState.GENRE_PRESETS.concat(AppState.customValues('genre'), AppState.usedValues('genre'))).forEach(function (v) {
         genOpts.push('<option value="' + Utils.escapeHtml(v) + '">' + Utils.escapeHtml(v) + '</option>');
       });
       Utils.$('bulk-genre').innerHTML = genOpts.join('');
@@ -3081,11 +3099,11 @@
       }
     },
 
-    /** Settings is split into tabs (Backup · Account · Display · Integrations ·
-        Guide). The last tab is remembered per device, not in the synced data:
-        it is a screen preference, like the sidebar state. */
+    /** Settings is split into tabs (Backup · Account · Display · Lists ·
+        Integrations · Guide). The last tab is remembered per device, not in
+        the synced data: it is a screen preference, like the sidebar state. */
     TAB_KEY: 'study-notes-app-chalkboard-v2:settings-tab',
-    TABS: ['backup', 'account', 'display', 'integrations', 'guide'],
+    TABS: ['backup', 'account', 'display', 'lists', 'integrations', 'guide'],
 
     showTab: function (name) {
       if (this.TABS.indexOf(name) === -1) name = this.TABS[0];
@@ -3371,6 +3389,280 @@
       this.applyFontSize();
     }
   };
+
+
+  /* ===========================================================
+   * Lists - Settings → Lists tab: manage the subjects and the library
+   *         category / genre values. Subjects: add, rename, delete (a
+   *         subject still in use is deleted by moving its notebooks, tasks
+   *         and cards to another one, so nothing is orphaned). Category and
+   *         genre: user-added values live in settings.customCategories /
+   *         customGenres (so they appear in the dropdown before any item
+   *         uses them), a rename is applied to every library item using
+   *         the old value (also how two spellings are merged).
+   * =========================================================== */
+  var Lists = (function () {
+    var editing = null;   // { kind: 'subject'|'category'|'genre', id?: subjectId, value?: oldValue }
+    var deletingSubjectId = null;
+
+    var FIELD = { category: { key: 'customCategories', label: 'Category' }, genre: { key: 'customGenres', label: 'Genre' } };
+
+    function esc(v) { return Utils.escapeHtml(v); }
+
+    /** settings.customCategories / customGenres, created on demand (older settings objects lack them). */
+    function customList(key) {
+      if (!Array.isArray(AppState.settings[key])) AppState.settings[key] = [];
+      return AppState.settings[key];
+    }
+
+    function subjectUsage(id) {
+      return {
+        notes: AppState.notes.filter(function (n) { return n.subjectId === id; }).length,
+        tasks: AppState.recurring.filter(function (t) { return t.subjectId === id; }).length +
+          AppState.adhocTasks.filter(function (t) { return t.subjectId === id; }).length,
+        cards: AppState.cards.filter(function (c) { return c.subjectId === id; }).length
+      };
+    }
+
+    function plural(n, word) { return n + ' ' + word + (n === 1 ? '' : 's'); }
+
+    function renderSubjects() {
+      var el = Utils.$('lists-subjects');
+      if (!el) return;
+      el.innerHTML = AppState.subjects.map(function (s) {
+        var u = subjectUsage(s.id);
+        return '<div class="lrow" data-id="' + esc(s.id) + '">' +
+          '<span class="lrow-name" title="' + esc(s.name) + '">' + esc(s.name) + '</span>' +
+          '<span class="lrow-meta"><span>' + plural(u.notes, 'notebook') + '</span><span>' + plural(u.tasks, 'task') + '</span><span>' + plural(u.cards, 'card') + '</span></span>' +
+          '<span class="lrow-actions">' +
+            '<button class="bic" data-act="rename-subject" title="rename" aria-label="rename ' + esc(s.name) + '"><span class="icon" data-icon="pencil" aria-hidden="true"></span></button>' +
+            '<button class="bic danger" data-act="delete-subject" title="delete" aria-label="delete ' + esc(s.name) + '"><span class="icon" data-icon="trash" aria-hidden="true"></span></button>' +
+          '</span></div>';
+      }).join('');
+    }
+
+    /* Rows = values the user added (custom) plus values some item already
+       uses. Built-in presets are not listed: they are always in the dropdown
+       and there would be ~50 of them. */
+    function valueRows(field) {
+      var custom = AppState.customValues(field);
+      var counts = {};
+      AppState.library.forEach(function (it) {
+        var v = (it[field] || '').trim();
+        if (v) counts[v] = (counts[v] || 0) + 1;
+      });
+      var all = {};
+      custom.forEach(function (v) { all[v] = true; });
+      Object.keys(counts).forEach(function (v) { all[v] = true; });
+      return Object.keys(all).sort(function (a, b) { return a.localeCompare(b); }).map(function (v) {
+        return { value: v, count: counts[v] || 0, custom: custom.indexOf(v) !== -1 };
+      });
+    }
+
+    function renderValues(field, elId) {
+      var el = Utils.$(elId);
+      if (!el) return;
+      var rows = valueRows(field);
+      if (rows.length === 0) {
+        el.innerHTML = '<p class="lrows-empty">Nothing yet. Values you pick in Library show up here.</p>';
+        return;
+      }
+      el.innerHTML = rows.map(function (r) {
+        return '<div class="lrow" data-value="' + esc(r.value) + '">' +
+          '<span class="lrow-name" title="' + esc(r.value) + '">' + esc(r.value) +
+            (r.custom ? '<span class="lrow-tag">custom</span>' : '') + '</span>' +
+          '<span class="lrow-meta one"><span>' + plural(r.count, 'item') + '</span></span>' +
+          '<span class="lrow-actions">' +
+            '<button class="bic" data-act="rename-' + field + '" title="rename" aria-label="rename ' + esc(r.value) + '"><span class="icon" data-icon="pencil" aria-hidden="true"></span></button>' +
+            (r.count === 0
+              ? '<button class="bic danger" data-act="delete-' + field + '" title="remove" aria-label="remove ' + esc(r.value) + '"><span class="icon" data-icon="trash" aria-hidden="true"></span></button>'
+              : '<span class="bic-ph" aria-hidden="true"></span>') +
+          '</span></div>';
+      }).join('');
+    }
+
+    function render() {
+      renderSubjects();
+      renderValues('category', 'lists-categories');
+      renderValues('genre', 'lists-genres');
+    }
+
+    // ---------- add / rename modal ----------
+
+    function openEdit(kind, opts) {
+      editing = { kind: kind, id: opts.id || null, value: opts.value || '' };
+      var isSubject = kind === 'subject';
+      var noun = isSubject ? 'subject' : kind;
+      Utils.$('list-edit-title').textContent = (opts.id || opts.value ? 'Rename ' : 'Add ') + noun;
+      Utils.$('list-edit-label').textContent = isSubject ? 'Subject name' : FIELD[kind].label;
+      Utils.$('list-edit-save').textContent = (opts.id || opts.value) ? 'Save' : 'Add';
+      var input = Utils.$('list-edit-input');
+      input.value = opts.id ? (AppState.subjectById(opts.id) || {}).name || '' : (opts.value || '');
+      input.placeholder = isSubject ? 'e.g. economics' : (kind === 'category' ? 'e.g. Field Guide' : 'e.g. Urban Planning');
+      var note = Utils.$('list-edit-note');
+      if (!isSubject && opts.value) {
+        var n = AppState.library.filter(function (it) { return (it[kind] || '').trim() === opts.value; }).length;
+        note.textContent = n ? 'Applies to ' + plural(n, 'library item') + ' using this value.' : '';
+        note.hidden = !n;
+      } else {
+        note.hidden = true;
+      }
+      Modal.open('mo-list-edit');
+      input.focus();
+      input.select();
+    }
+
+    function sameName(a, b) { return a.trim().toLowerCase() === b.trim().toLowerCase(); }
+
+    function saveEdit() {
+      if (!editing) return;
+      var name = Utils.$('list-edit-input').value.trim();
+      if (!name) return;
+      var kind = editing.kind;
+
+      if (kind === 'subject') {
+        var dup = AppState.subjects.find(function (s) { return s.id !== editing.id && sameName(s.name, name); });
+        if (dup) { alert('There is already a subject called "' + dup.name + '".'); return; }
+        if (editing.id) {
+          var subj = AppState.subjectById(editing.id);
+          if (!subj) { Modal.close('mo-list-edit'); return; }
+          subj.name = name;
+        } else {
+          AppState.subjects.push({ id: Utils.uid(), name: name });
+        }
+      } else {
+        var field = kind, key = FIELD[kind].key;
+        var old = editing.value;
+        var presetList = field === 'genre' ? AppState.GENRE_PRESETS
+          : [].concat.apply([], Object.keys(AppState.CATEGORY_PRESETS).map(function (t) { return AppState.CATEGORY_PRESETS[t]; }));
+        var listed = valueRows(field).map(function (r) { return r.value; });
+        // A value that already exists in another spelling ("science fiction"
+        // vs "Science Fiction"): a rename merges INTO the existing spelling,
+        // an add is refused. Case-insensitive, so no near-duplicates appear.
+        var match = listed.concat(presetList).find(function (v) { return v !== old && sameName(v, name); });
+        if (!old && match) { alert('"' + match + '" is already in the list.'); return; }
+        if (old && match) name = match;
+        if (old && old === name) { Modal.close('mo-list-edit'); return; }
+        var exists = listed.indexOf(name) !== -1;
+        var isPreset = presetList.indexOf(name) !== -1;
+        var list = customList(key);
+        if (old) {
+          // rename: every library item using the old value gets the new one.
+          // (updatedAt is left alone - relabelling is not an edit of the item.)
+          AppState.library.forEach(function (it) {
+            if ((it[field] || '').trim() === old) it[field] = name;
+          });
+          // an active Library filter on the old value would otherwise show
+          // "all" in the dropdown while still filtering on the stale name
+          var filterKey = field === 'category' ? 'libraryCategoryFilter' : 'libraryGenreFilter';
+          if (AppState[filterKey] === old) AppState[filterKey] = name;
+          var i = list.indexOf(old);
+          if (i !== -1) list.splice(i, 1);
+          if (list.indexOf(name) === -1 && !exists && !isPreset) list.push(name);
+        } else {
+          list.push(name);
+        }
+      }
+      Modal.close('mo-list-edit');
+      editing = null;
+      App.renderAll();
+      Storage.scheduleSave();
+    }
+
+    // ---------- delete ----------
+
+    function deleteSubject(id) {
+      var subj = AppState.subjectById(id);
+      if (!subj) return;
+      if (AppState.subjects.length === 1) {
+        alert('Keep at least one subject. Add another one first.');
+        return;
+      }
+      var u = subjectUsage(id);
+      var total = u.notes + u.tasks + u.cards;
+      if (total === 0) {
+        if (!confirm('Delete the subject "' + subj.name + '"?')) return;
+        removeSubject(id, null);
+        return;
+      }
+      deletingSubjectId = id;
+      var parts = [];
+      if (u.notes) parts.push(plural(u.notes, 'notebook'));
+      if (u.tasks) parts.push(plural(u.tasks, 'task'));
+      if (u.cards) parts.push(plural(u.cards, 'card'));
+      Utils.$('subject-delete-text').textContent = '"' + subj.name + '" is used by ' + parts.join(', ') + '.';
+      Utils.$('subject-delete-target').innerHTML = AppState.subjects.filter(function (s) { return s.id !== id; })
+        .map(function (s) { return '<option value="' + esc(s.id) + '">' + esc(s.name) + '</option>'; }).join('');
+      Modal.open('mo-subject-delete');
+    }
+
+    function removeSubject(id, targetId) {
+      if (targetId) {
+        [AppState.notes, AppState.recurring, AppState.adhocTasks, AppState.cards].forEach(function (arr) {
+          arr.forEach(function (x) { if (x.subjectId === id) x.subjectId = targetId; });
+        });
+      }
+      AppState.subjects = AppState.subjects.filter(function (s) { return s.id !== id; });
+      if (AppState.notebookSubjectFilter === id) AppState.notebookSubjectFilter = 'all';
+      App.renderAll();
+      if (NotesModule.refreshEditor) NotesModule.refreshEditor();
+      Storage.scheduleSave();
+    }
+
+    function deleteValue(field, value) {
+      var key = FIELD[field].key;
+      var inUse = AppState.library.some(function (it) { return (it[field] || '').trim() === value; });
+      if (inUse) { alert('"' + value + '" is still used by library items. Rename it to merge it into another value.'); return; }
+      var list = customList(key);
+      var i = list.indexOf(value);
+      if (i === -1) return;
+      list.splice(i, 1);
+      render();
+      Storage.scheduleSave();
+    }
+
+    // ---------- wiring ----------
+
+    function setup() {
+      if (!Utils.$('lists-subjects')) return;
+      Utils.$('lists-add-subject').addEventListener('click', function () { openEdit('subject', {}); });
+      Utils.$('lists-add-category').addEventListener('click', function () { openEdit('category', {}); });
+      Utils.$('lists-add-genre').addEventListener('click', function () { openEdit('genre', {}); });
+
+      Utils.$('spanel-lists').addEventListener('click', function (e) {
+        var btn = e.target.closest('button[data-act]');
+        if (!btn) return;
+        var row = btn.closest('.lrow');
+        var act = btn.dataset.act;
+        if (act === 'rename-subject') openEdit('subject', { id: row.dataset.id });
+        else if (act === 'delete-subject') deleteSubject(row.dataset.id);
+        else if (act === 'rename-category') openEdit('category', { value: row.dataset.value });
+        else if (act === 'rename-genre') openEdit('genre', { value: row.dataset.value });
+        else if (act === 'delete-category') deleteValue('category', row.dataset.value);
+        else if (act === 'delete-genre') deleteValue('genre', row.dataset.value);
+      });
+
+      Utils.$('list-edit-save').addEventListener('click', saveEdit);
+      Utils.$('list-edit-input').addEventListener('keydown', function (e) { if (e.key === 'Enter') saveEdit(); });
+      ['list-edit-close', 'list-edit-cancel'].forEach(function (id) {
+        Utils.$(id).addEventListener('click', function () { Modal.close('mo-list-edit'); editing = null; });
+      });
+
+      Utils.$('subject-delete-confirm').addEventListener('click', function () {
+        var target = Utils.$('subject-delete-target').value;
+        if (!deletingSubjectId || !target || !AppState.subjectById(target)) return;
+        var id = deletingSubjectId;
+        deletingSubjectId = null;
+        Modal.close('mo-subject-delete');
+        removeSubject(id, target);
+      });
+      ['subject-delete-close', 'subject-delete-cancel'].forEach(function (id) {
+        Utils.$(id).addEventListener('click', function () { Modal.close('mo-subject-delete'); deletingSubjectId = null; });
+      });
+    }
+
+    return { render: render, setup: setup };
+  })();
 
   /* ===========================================================
    * Stats - dashboard counters at the top of the Notes page
@@ -4126,6 +4418,7 @@
       Schedule.renderManagerTaskList();
       Flashcards.renderGrid();
       Stats.render();
+      Lists.render();
     },
 
     init: function () {
@@ -4141,6 +4434,7 @@
       if (!hadData || AppState.subjects.length === 0) {
         AppState.seedSampleData();
         AppState.seededThisSession = true;
+        Storage.applySettingDefaults();   // the seed has the bare settings; fill in the rest (custom lists etc.)
       }
       AppState.migrateNotesToPages();
       if (AppState.seededThisSession) AppState.seedFingerprint = SyncCore.fingerprint(AppState);
@@ -4159,6 +4453,7 @@
       Flashcards.setupCards();
       Flashcards.setupStudyMode();
       Settings.setup();
+      Lists.setup();
 
       // first render
       this.renderAll();
