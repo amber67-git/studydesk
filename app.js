@@ -3533,11 +3533,18 @@
       } else {
         var field = kind, key = FIELD[kind].key;
         var old = editing.value;
+        var presetList = field === 'genre' ? AppState.GENRE_PRESETS
+          : [].concat.apply([], Object.keys(AppState.CATEGORY_PRESETS).map(function (t) { return AppState.CATEGORY_PRESETS[t]; }));
+        var listed = valueRows(field).map(function (r) { return r.value; });
+        // A value that already exists in another spelling ("science fiction"
+        // vs "Science Fiction"): a rename merges INTO the existing spelling,
+        // an add is refused. Case-insensitive, so no near-duplicates appear.
+        var match = listed.concat(presetList).find(function (v) { return v !== old && sameName(v, name); });
+        if (!old && match) { alert('"' + match + '" is already in the list.'); return; }
+        if (old && match) name = match;
         if (old && old === name) { Modal.close('mo-list-edit'); return; }
-        var exists = valueRows(field).some(function (r) { return r.value !== old && sameName(r.value, name); });
-        var isPreset = (field === 'genre' ? AppState.GENRE_PRESETS : [].concat.apply([], Object.keys(AppState.CATEGORY_PRESETS).map(function (t) { return AppState.CATEGORY_PRESETS[t]; })))
-          .some(function (v) { return sameName(v, name); });
-        if (!old && (exists || isPreset)) { alert('"' + name + '" is already in the list.'); return; }
+        var exists = listed.indexOf(name) !== -1;
+        var isPreset = presetList.indexOf(name) !== -1;
         var list = customList(key);
         if (old) {
           // rename: every library item using the old value gets the new one.
@@ -3545,6 +3552,10 @@
           AppState.library.forEach(function (it) {
             if ((it[field] || '').trim() === old) it[field] = name;
           });
+          // an active Library filter on the old value would otherwise show
+          // "all" in the dropdown while still filtering on the stale name
+          var filterKey = field === 'category' ? 'libraryCategoryFilter' : 'libraryGenreFilter';
+          if (AppState[filterKey] === old) AppState[filterKey] = name;
           var i = list.indexOf(old);
           if (i !== -1) list.splice(i, 1);
           if (list.indexOf(name) === -1 && !exists && !isPreset) list.push(name);
