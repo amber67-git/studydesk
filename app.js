@@ -138,10 +138,11 @@
       return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
     },
 
+    // Safe for text nodes AND double/single-quoted attribute values (title="...").
     escapeHtml: function (s) {
       var d = document.createElement('div');
       d.textContent = s || '';
-      return d.innerHTML;
+      return d.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     },
 
     todayStr: function () {
