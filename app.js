@@ -138,10 +138,11 @@
       return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
     },
 
+    // Safe for text nodes AND double/single-quoted attribute values (title="...").
     escapeHtml: function (s) {
       var d = document.createElement('div');
       d.textContent = s || '';
-      return d.innerHTML;
+      return d.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     },
 
     todayStr: function () {
@@ -543,7 +544,7 @@
       if (status) status.textContent = 'not saving — this browser is blocking storage';
       alert('This browser is blocking local storage, so your notes cannot be saved.\n\n' +
         'This usually happens in a private/incognito window or when site data is blocked. ' +
-        'Open the app in a normal window, or use Settings → download backup before you close the tab.');
+        'Open the app in a normal window, or use Settings → Backup → download backup before you close the tab.');
     }
 
     function load() {
@@ -567,7 +568,7 @@
         try { localStorage.setItem(KEY + '-corrupt-' + Date.now(), raw); } catch (e2) { /* ignore */ }
         alert('Your saved data could not be read (it appears corrupted). ' +
           'Starting fresh — a copy of the unreadable data was kept in browser storage. ' +
-          'If you have a backup file, use Settings → load backup to restore it.');
+          'If you have a backup file, use Settings → Backup → load backup to restore it.');
         return false;
       }
       if (!d || typeof d !== 'object') return false;
@@ -646,7 +647,7 @@
           warnedFull = true;
           alert('Saving failed: this browser\'s storage is full.\n\n' +
             'Your most recent edits are NOT saved. To fix this:\n' +
-            '1. Use Settings → download backup to save what you can.\n' +
+            '1. Use Settings → Backup → download backup to save what you can.\n' +
             '2. Delete some large images from your notes, then edit again.\n\n' +
             'Images are the usual cause — check Settings for current usage.');
         }
@@ -712,7 +713,7 @@
     };
 
     function showPage(page) {
-      if (page === 'backup') page = 'settings';   // Backup now lives at the top of Settings
+      if (page === 'backup') page = 'settings';   // Backup is the first tab of Settings
       document.querySelectorAll('.ni').forEach(function (b) {
         b.classList.toggle('active', b.dataset.page === page);
       });
@@ -1731,14 +1732,18 @@
       var doneClass = isTaskDone(key) ? 'done' : '';
       var delBtn = adhocId
         ? '<button class="del-task del-adhoc" data-id="' + adhocId + '"><span class="icon" data-icon="x" aria-hidden="true"></span></button>'
-        : '<span style="width:20px;display:inline-block;"></span>';
+        : '<span class="del-ph"></span>';
       var colorClass = AppState.subjectColorClass(subjectId);
+      // subject / kind / button sit in fixed-width columns (.task-meta), so the
+      // row never shifts with the length of "recurring" vs "one-off" or a name
       return '<div class="task-row">' +
         '<input type="checkbox" class="task-check" data-key="' + key + '" ' + checked + '>' +
         '<span class="task-label ' + doneClass + '">' + Utils.escapeHtml(title) + '</span>' +
-        '<span class="badge ' + colorClass + '">' + Utils.escapeHtml(subjectName(subjectId)) + '</span>' +
-        '<span style="font-family:var(--sans);font-size:10px;color:var(--txt3);">' + freqLabel + '</span>' +
-        '<button class="btn-go-to-note" data-subject="' + (subjectId || '') + '" data-type="' + type + '" data-title="' + Utils.escapeHtml(title) + '">go to note</button>' +
+        '<span class="task-meta">' +
+          '<span class="badge ' + colorClass + '" title="' + Utils.escapeHtml(subjectName(subjectId)) + '">' + Utils.escapeHtml(subjectName(subjectId)) + '</span>' +
+          '<span class="task-kind">' + freqLabel + '</span>' +
+          '<button class="btn-go-to-note" data-subject="' + (subjectId || '') + '" data-type="' + type + '" data-title="' + Utils.escapeHtml(title) + '">go to note</button>' +
+        '</span>' +
         delBtn + '</div>';
     }
 
@@ -1756,7 +1761,7 @@
 
       if (rows.length === 0) {
         Utils.$('today-task-list').innerHTML =
-          '<p class="empty-note">Nothing scheduled today. Add a recurring task in Schedule manager, or a one-off task below.</p>';
+          '<p class="empty-note">Nothing scheduled today.</p>';
       } else {
         Utils.$('today-task-list').innerHTML = rows.join('');
       }
@@ -1872,11 +1877,13 @@
       } else {
         Utils.$('day-events-list').innerHTML = items.map(function (it) {
           var colorClass = AppState.subjectColorClass(it.subjectId);
-          return '<div class="task-row">' +
+          return '<div class="task-row task-row-plain">' +
             '<span class="task-label">' + Utils.escapeHtml(it.title) + '</span>' +
-            '<span class="badge ' + colorClass + '">' + Utils.escapeHtml(subjectName(it.subjectId)) + '</span>' +
-            '<span style="font-family:var(--sans);font-size:10px;color:var(--txt3);">' + it.kind + '</span>' +
-            '<button class="btn-go-to-note" data-subject="' + (it.subjectId || '') + '" data-type="' + it.type + '" data-title="' + Utils.escapeHtml(it.title) + '">go to note</button>' +
+            '<span class="task-meta">' +
+              '<span class="badge ' + colorClass + '" title="' + Utils.escapeHtml(subjectName(it.subjectId)) + '">' + Utils.escapeHtml(subjectName(it.subjectId)) + '</span>' +
+              '<span class="task-kind">' + it.kind + '</span>' +
+              '<button class="btn-go-to-note" data-subject="' + (it.subjectId || '') + '" data-type="' + it.type + '" data-title="' + Utils.escapeHtml(it.title) + '">go to note</button>' +
+            '</span>' +
             '</div>';
         }).join('');
         document.querySelectorAll('#day-events-list .btn-go-to-note').forEach(function (b) {
@@ -3074,6 +3081,57 @@
       }
     },
 
+    /** Settings is split into tabs (Backup · Account · Display · Integrations ·
+        Guide). The last tab is remembered per device, not in the synced data:
+        it is a screen preference, like the sidebar state. */
+    TAB_KEY: 'study-notes-app-chalkboard-v2:settings-tab',
+    TABS: ['backup', 'account', 'display', 'integrations', 'guide'],
+
+    showTab: function (name) {
+      if (this.TABS.indexOf(name) === -1) name = this.TABS[0];
+      document.querySelectorAll('.stab').forEach(function (b) {
+        var on = b.dataset.stab === name;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
+        b.tabIndex = on ? 0 : -1;   // roving tabindex: Tab enters the tab list once, arrows move inside it
+      });
+      document.querySelectorAll('.spanel').forEach(function (p) {
+        p.hidden = (p.id !== 'spanel-' + name);
+      });
+      try {
+        localStorage.setItem(this.TAB_KEY, name);
+      } catch (e) {
+        // a per-device screen preference, not user data: if storage is
+        // blocked the tab still switches, it is just not remembered
+      }
+    },
+
+    setupTabs: function () {
+      var self = this;
+      document.querySelectorAll('.stab').forEach(function (b) {
+        b.addEventListener('click', function () { self.showTab(b.dataset.stab); });
+      });
+      // WAI-ARIA tabs: Left/Right move between tabs (wrapping), Home/End jump
+      var bar = document.querySelector('.stabs');
+      if (bar) {
+        bar.addEventListener('keydown', function (e) {
+          var keys = { ArrowLeft: -1, ArrowRight: 1, Home: 0, End: 0 };
+          if (!(e.key in keys)) return;
+          var i = self.TABS.indexOf(document.activeElement && document.activeElement.dataset.stab);
+          if (i === -1) return;
+          var n = self.TABS.length;
+          var next = e.key === 'Home' ? 0 : e.key === 'End' ? n - 1 : (i + keys[e.key] + n) % n;
+          e.preventDefault();
+          self.showTab(self.TABS[next]);
+          var el = document.querySelector('.stab[data-stab="' + self.TABS[next] + '"]');
+          if (el) el.focus();
+        });
+      }
+      var last = null;
+      try { last = localStorage.getItem(this.TAB_KEY); } catch (e) { last = null; }
+      this.showTab(last || this.TABS[0]);
+    },
+
     /** The address move (see APP_HOME). On the old address: tell the user
         to take a backup here and load it at the new one. At the new address,
         on a first visit (sample data only): point to "load backup". */
@@ -3085,8 +3143,8 @@
       var onNewFirstVisit = host === new URL(APP_HOME).hostname && AppState.seededThisSession;
       if (!onOld && !onNewFirstVisit) return;
       Utils.$('move-banner-text').textContent = onOld
-        ? 'StudyDesk가 새 주소(amber-studydesk.netlify.app)로 옮겼어요. 노트는 자동으로 넘어가지 않아요: ① 여기서 백업 받기 → ② 새 주소 열기 → ③ 새 주소의 Settings에서 load backup. 이 주소로는 앱을 설치하지 마세요.'
-        : '처음 여는 주소라 샘플 노트가 보여요. 옛 주소(amber67-git.github.io/studydesk)에서 쓰던 노트는 거기서 받은 백업 파일을 load backup으로 불러오세요.';
+        ? '새 주소로 옮겼어요. ① 여기서 백업 받기 → ② 새 주소에서 load backup. 이 주소로는 앱을 설치하지 마세요.'
+        : '샘플 노트예요. 옛 주소에서 받은 백업 파일이 있으면 load backup으로 불러오세요.';
       Utils.$('move-banner-backup').style.display = onOld ? '' : 'none';
       Utils.$('move-banner-open').style.display = onOld ? '' : 'none';
       Utils.$('move-banner-load').style.display = onOld ? 'none' : '';
@@ -3134,6 +3192,7 @@
 
     setup: function () {
       var self = this;
+      this.setupTabs();
       Utils.$('font-mode-hand').addEventListener('change', function () {
         if (this.checked) {
           AppState.settings.fontMode = 'hand';
@@ -3176,6 +3235,7 @@
           // open Settings first so the import result (or error) in
           // #backup-status is on screen; the picker still opens from this click
           Nav.showPage('settings');
+          Settings.showTab('backup');
           Utils.$('import-file-input').click();
         });
         Utils.$('move-banner-later').addEventListener('click', function () {
