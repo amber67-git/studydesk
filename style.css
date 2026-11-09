@@ -73,6 +73,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--txt);font-family:v
 .ni.active .icon{color:var(--sb-hi)}
 .sb .ni:focus-visible{outline-color:var(--sb-hi)}
 .sb-foot{padding:12px;border-top:1px solid var(--sb-line);font-family:var(--sans);font-size:11px;color:var(--sb-dim)}
+.sb-foot-ver{margin-top:4px;color:var(--sb-hi);font-variant-numeric:tabular-nums;letter-spacing:.02em}
 
 /* MAIN */
 .main{margin-left:200px;flex:1;min-width:0;padding-bottom:var(--dock-h,0px)}

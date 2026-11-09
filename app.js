@@ -42,6 +42,10 @@
      "Add to home screen" is still possible, so the banner says not to install it).
      Browser storage is per origin: notes move by backup file (or cloud sync). */
   var APP_HOME = 'https://amber-studydesk.netlify.app/';
+  // Shown bottom-left in the sidebar. Bump both in the same PR that adds a
+  // line to the guide's 변경 이력 (version = number of entries there).
+  var APP_VERSION = 'v12';
+  var APP_UPDATED = '2026-11-09';
   var OLD_HOST = 'amber67-git.github.io';
 
   /* ===========================================================
@@ -4534,6 +4538,8 @@
 
       // first render
       this.renderAll();
+
+      if (Utils.$('sb-foot-ver')) Utils.$('sb-foot-ver').textContent = APP_VERSION + ' \u00b7 ' + APP_UPDATED;
 
       // reopen the notebook/page from last time; first run: the first notebook
       if (!NotesModule.restoreLastPosition() && !AppState.activeNoteId && AppState.notes.length > 0) {
