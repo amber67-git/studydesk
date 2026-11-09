@@ -443,6 +443,7 @@ textarea#summary:focus-visible{box-shadow:inset 0 0 0 2px var(--bdr2)}
    as one-line bars, so the paper is never pushed down and nothing is hidden
    behind them: .main gets padding-bottom = --dock-h (set by Settings.updateBannerDock). */
 .banner-dock{position:fixed;left:200px;right:0;bottom:0;z-index:35;display:flex;flex-direction:column}
+@media(max-width:900px){.banner-dock{left:0}}   /* the sidebar is off-screen below 900px, like .main's margin */
 .backup-banner{display:flex;align-items:center;gap:10px;padding:8px 16px;background:#fdf6e3;border-top:1px solid #e6d9b8;font-family:var(--sans);font-size:13px;color:var(--txt);box-shadow:0 -2px 8px rgba(0,0,0,.06)}
 .backup-banner .icon{color:var(--txt2);flex:none}
 .backup-banner #backup-banner-text,.backup-banner .banner-text{flex:1;min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
@@ -567,9 +568,10 @@ textarea#summary:focus-visible{box-shadow:inset 0 0 0 2px var(--bdr2)}
   .pc{padding:10px}
   .topbar{padding:10px 12px}
   .tb-title{font-size:20px}
-  .banner-dock{left:0}
   .backup-banner{padding:8px 10px;gap:8px;flex-wrap:wrap}
-  .backup-banner #backup-banner-text,.backup-banner .banner-text{flex-basis:100%}
+  .backup-banner #backup-banner-text{flex-basis:100%}
+  /* the address-move instructions must never be cut: full text on its own row */
+  .backup-banner .banner-text{flex-basis:100%;display:block;overflow:visible;-webkit-line-clamp:unset}
 
   /* stats: 2x2 with tighter cells */
   .stats{gap:8px}

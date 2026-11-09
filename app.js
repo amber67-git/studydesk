@@ -821,8 +821,8 @@
       // phone: the list sits below the paper, this jumps to it
       if (Utils.$('tb-notebooks-btn')) {
         Utils.$('tb-notebooks-btn').addEventListener('click', function () {
-          var bar = document.querySelector('.notes-card .fbar');
-          if (bar) bar.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          var list = Utils.$('note-list');   // on phones the list comes first, its search bar after it
+          if (list) list.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
       }
 
@@ -4545,6 +4545,10 @@
       Settings.checkMoveBanner();
       Settings.updateBannerDock();
       window.addEventListener('resize', Settings.updateBannerDock);
+      // the dock grows when a web font arrives or text wraps differently: keep --dock-h in step
+      if (window.ResizeObserver && Utils.$('banner-dock')) {
+        new ResizeObserver(function () { Settings.updateBannerDock(); }).observe(Utils.$('banner-dock'));
+      }
       Storage.updateUsageDisplay();
 
       // keyboard devices: caret in MAIN NOTES, ready to type
