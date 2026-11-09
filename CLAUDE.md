@@ -6,6 +6,8 @@
 현재 상태: **순수 HTML+CSS+JS 단일 페이지 앱, 빌드 도구 없음. 동작하는 베이스라인이며 알려진 한계는 아래 '미해결 과제' 참조.**
 이 문서는 claude.ai 대화에서 수개월간 쌓인 설계 결정의 인수인계본이다.
 
+**앱의 목적(북극성, 2026-11-09 소유자 확정): "열자마자, 공부한 내용을 바로 적는다."** 기능·디자인 변경은 "첫 글자를 쓰기까지의 탭 수가 줄어드는가"로 판단하고, 그렇지 않은 것(장식·테마·토큰 정리)은 뒤로 미룬다. 같은 문장이 Settings → Guide 맨 앞 "이 앱의 목적"에 사용자용으로 적혀 있다(소유자가 나중에 판매도 고려하므로 설명서는 제품 소개를 겸한다 — 목적·원칙이 바뀌면 거기도 고친다).
+
 ## 중요: 재작성/스택 변경 시에도 반드시 살아남아야 하는 것
 
 개발 언어·프레임워크를 바꾸더라도 아래는 **데이터와 UX 계약**이므로 유지할 것.
@@ -45,6 +47,7 @@
 
 ### 3. UX 계약 (사용자가 익숙해진 동작)
 - 입력 즉시 자동 저장(디바운스 400ms). save 버튼은 확인용.
+- **열면 바로 종이(2026-11-09)**: 마지막에 쓰던 노트북·페이지를 기기별 localStorage 키 `study-notes-app-chalkboard-v2:last-note`(`{noteId, page}`, 동기화 데이터 아님, `renderActivePage`가 기록, clear all data가 지움)에 두고 시작 시 `NotesModule.restoreLastPosition()`으로 복원한다(없거나 노트북이 사라졌으면 첫 노트북). 키보드 기기(`(min-width:761px) and (hover:hover)`, 모달 없을 때)는 `focusBodyIfDesktop()`이 MAIN NOTES 끝에 커서를 둔다 — 터치 기기에서는 키보드가 튀어나오므로 하지 않는다. **폰(≤760px)에서는 종이가 맨 위**: `#page-notes>.pc`를 flex column으로 두고 `order`로 notes-card(편집기 → 그 아래 fbar·노트북 목록) → 오늘 목록 → 통계 순. 상단바 `#tb-notebooks-btn`(notes 페이지·폰에서만)이 목록의 `.fbar`로 스크롤. **배너는 하단 도크**: `#banner-dock`(fixed bottom, 사이드바 폭만큼 left)에 이사 안내·백업 알림이 들어가고 `Settings.updateBannerDock()`이 `--dock-h`를 재서 `.main`의 padding-bottom으로 가려짐을 막는다(표시/숨김/resize마다 호출).
 - 마지막 페이지에서 ▶ = 새 페이지(날짜 자동 오늘). 본문이 넘치면 자동 페이지 생성.
 - self-test 모드: MAIN NOTES 블러 처리, CUE만 보고 회상 (코넬 복습 단계).
 - 페이지 번호(N / M) 클릭 = 페이지 점프 목록(챕터·미리보기·날짜).

@@ -679,7 +679,7 @@
     }
 
     function reset() {
-      try { localStorage.removeItem(KEY); localStorage.removeItem(KEY + ':sync-uid'); localStorage.removeItem(KEY + ':sync-known'); } catch (e) { /* ignore */ }
+      try { localStorage.removeItem(KEY); localStorage.removeItem(KEY + ':sync-uid'); localStorage.removeItem(KEY + ':sync-known'); localStorage.removeItem(KEY + ':last-note'); } catch (e) { /* ignore */ }
     }
 
     return {
@@ -741,6 +741,7 @@
       var target = Utils.$('page-' + page);
       if (target) target.classList.add('active');
       Utils.$('tb-title').textContent = PAGE_TITLES[page] || page;
+      if (Utils.$('tb-notebooks-btn')) Utils.$('tb-notebooks-btn').hidden = (page !== 'notes');
       closeMobile();
     }
 
@@ -816,6 +817,14 @@
       Utils.$('subject-name-input').addEventListener('keydown', function (e) {
         if (e.key === 'Enter') Utils.$('subject-modal-save').click();
       });
+
+      // phone: the list sits below the paper, this jumps to it
+      if (Utils.$('tb-notebooks-btn')) {
+        Utils.$('tb-notebooks-btn').addEventListener('click', function () {
+          var bar = document.querySelector('.notes-card .fbar');
+          if (bar) bar.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      }
 
       Utils.$('notebook-subject-filter').addEventListener('change', function () {
         AppState.notebookSubjectFilter = this.value;
@@ -1008,18 +1017,68 @@
       Utils.$('summary').value = page.summary || '';
       Utils.$('notes-body').innerHTML = page.body || '';
       renderPageIndicator();
+      rememberPosition();
       rememberFit();   // images in the page re-check when they load (see setup)
     }
 
     /** Open a note and jump straight to its most recent page (the "go to note"
         behavior used both from the sidebar list and from schedule items). */
-    function selectNote(id) {
+    /* "Open the app, start writing": the notebook + page you had open is
+       remembered per device (a screen position, not synced data) and
+       restored on the next start instead of always landing on the first
+       notebook's last page. */
+    var LAST_KEY = Storage.KEY + ':last-note';
+
+    function rememberPosition() {
+      if (!AppState.activeNoteId) return;
+      try {
+        localStorage.setItem(LAST_KEY, JSON.stringify({ noteId: AppState.activeNoteId, page: AppState.activePageIndex }));
+      } catch (e) {
+        // a per-device convenience: when storage is blocked the app simply
+        // opens on the first notebook next time
+      }
+    }
+
+    /** Reopen the remembered notebook/page. Returns false when there is none
+        (first run, cleared storage, or that notebook no longer exists). */
+    function restoreLastPosition() {
+      var saved = null;
+      try { saved = JSON.parse(localStorage.getItem(LAST_KEY) || 'null'); } catch (e) { saved = null; }
+      if (!saved || !saved.noteId) return false;
+      if (!AppState.notes.some(function (x) { return x.id === saved.noteId; })) return false;
+      selectNote(saved.noteId, saved.page);
+      return true;
+    }
+
+    /** On a keyboard device put the caret at the end of MAIN NOTES so typing
+        can start at once. Not on touch screens (it would pop the keyboard
+        and scroll), and not while a modal is open. */
+    function focusBodyIfDesktop() {
+      if (!window.matchMedia || !window.matchMedia('(min-width: 761px) and (hover: hover)').matches) return;
+      if (document.querySelector('.mo.show')) return;
+      var body = Utils.$('notes-body');
+      if (!body || !AppState.activeNoteId) return;
+      body.focus({ preventScroll: true });
+      try {
+        var range = document.createRange();
+        range.selectNodeContents(body);
+        range.collapse(false);
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      } catch (e) {
+        // caret placement is a nicety; focus alone is enough to start typing
+      }
+    }
+
+    function selectNote(id, pageIndex) {
       AppState.activeNoteId = id;
       var n = AppState.notes.find(function (x) { return x.id === id; });
       if (!n) return;
       exitReviewMode(); // don't carry a hidden-notes state into another notebook
       AppState.ensurePages(n);
-      AppState.activePageIndex = n.pages.length - 1;
+      AppState.activePageIndex = (typeof pageIndex === 'number' && pageIndex >= 0 && pageIndex < n.pages.length)
+        ? pageIndex : n.pages.length - 1;
       Utils.$('note-title').value = n.title || '';
       Utils.$('note-subject-select').value = n.subjectId || '';
       Utils.$('note-type-select').value = n.type || 'other';
@@ -1578,6 +1637,8 @@
       renderList: renderList,
       selectNote: selectNote,
       refreshEditor: refreshEditor,
+      restoreLastPosition: restoreLastPosition,
+      focusBodyIfDesktop: focusBodyIfDesktop,
       setupEditor: setupEditor,
       setupFormatModals: setupFormatModals,
       setupNewNotebookModal: setupNewNotebookModal
@@ -3167,11 +3228,25 @@
       Utils.$('move-banner-open').style.display = onOld ? '' : 'none';
       Utils.$('move-banner-load').style.display = onOld ? 'none' : '';
       b.style.display = 'flex';
+      Settings.updateBannerDock();
     },
 
     hideBackupBanner: function () {
       var b = Utils.$('backup-banner');
       if (b) b.style.display = 'none';
+      Settings.updateBannerDock();
+    },
+
+    /** Banners are a fixed bar at the bottom; reserve that height under the
+        page so the paper's footer is never hidden behind them. */
+    updateBannerDock: function () {
+      var dock = Utils.$('banner-dock');
+      var h = 0;
+      if (dock) {
+        var visible = Array.prototype.some.call(dock.children, function (c) { return c.style.display !== 'none'; });
+        h = visible ? dock.offsetHeight : 0;
+      }
+      document.documentElement.style.setProperty('--dock-h', h + 'px');
     },
 
     /** Show the reminder banner if the last backup is older than the chosen
@@ -3195,6 +3270,7 @@
       }
       Utils.$('backup-banner-text').textContent = text;
       Utils.$('backup-banner').style.display = 'flex';
+      Settings.updateBannerDock();
     },
 
     applyFontSize: function () {
@@ -3258,6 +3334,7 @@
         });
         Utils.$('move-banner-later').addEventListener('click', function () {
           Utils.$('move-banner').style.display = 'none'; // this session only
+          Settings.updateBannerDock();
         });
       }
 
@@ -4458,15 +4535,20 @@
       // first render
       this.renderAll();
 
-      // auto-select the first note so the editor isn't empty on first load
-      if (!AppState.activeNoteId && AppState.notes.length > 0) {
+      // reopen the notebook/page from last time; first run: the first notebook
+      if (!NotesModule.restoreLastPosition() && !AppState.activeNoteId && AppState.notes.length > 0) {
         NotesModule.selectNote(AppState.notes[0].id);
       }
 
       // nudge for a fresh backup if the last one is older than the chosen interval
       Settings.checkBackupReminder();
       Settings.checkMoveBanner();
+      Settings.updateBannerDock();
+      window.addEventListener('resize', Settings.updateBannerDock);
       Storage.updateUsageDisplay();
+
+      // keyboard devices: caret in MAIN NOTES, ready to type
+      NotesModule.focusBodyIfDesktop();
 
       // cloud sync (stage 3): local-only until FIREBASE_CONFIG is set
       Sync.setup();

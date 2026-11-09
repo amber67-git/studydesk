@@ -55,8 +55,12 @@
     <div class="topbar">
       <button class="mob-menu-btn" onclick="toggleMobileSidebar()" aria-label="menu"><span class="icon" data-icon="menu-2" aria-hidden="true"></span></button>
       <div class="tb-title" id="tb-title">Notebooks</div>
-      <div class="tb-actions" id="tb-actions"></div>
+      <div class="tb-actions" id="tb-actions">
+        <button type="button" class="btn btn-sm tb-nb-btn" id="tb-notebooks-btn" title="go to the notebook list"><span class="icon" data-icon="notes" aria-hidden="true"></span> notebooks</button>
+      </div>
     </div>
+    <!-- banners dock at the bottom of the screen so they never push the paper down -->
+    <div class="banner-dock" id="banner-dock">
     <div class="backup-banner move-banner" id="move-banner" style="display:none;" role="status">
       <span class="icon" data-icon="external-link" aria-hidden="true"></span>
       <span class="banner-text" id="move-banner-text"></span>
@@ -70,6 +74,7 @@
       <span id="backup-banner-text"></span>
       <button class="btn btn-p" id="backup-banner-now">backup now</button>
       <button class="btn" id="backup-banner-later">later</button>
+    </div>
     </div>
     <div class="mob-overlay" id="mob-overlay" onclick="toggleMobileSidebar()"></div>
 
@@ -103,7 +108,7 @@
             </div>
           </div>
 
-          <div class="card" style="overflow:hidden">
+          <div class="card notes-card">
             <div class="fbar">
               <div class="search-wrap">
                 <span class="icon" data-icon="search" aria-hidden="true"></span>
@@ -463,6 +468,15 @@ Write the main idea in your own words."></textarea>
           <div class="cb p">
               <div class="guide-body" lang="ko">
 
+                <h3>이 앱의 목적</h3>
+                <p><b>열자마자, 공부한 내용을 바로 적는다.</b> StudyDesk의 모든 화면과 기능은 이 한 문장을 기준으로 만들고 판단합니다. 새 기능이나 디자인 변경은 "첫 글자를 쓰기까지의 탭 수가 줄어드는가"로 가치를 재며, 그렇지 않은 변경(장식, 색상 테마 등)은 뒤로 미룹니다.</p>
+                <ul>
+                  <li><b>첫 화면은 종이</b> — 앱을 열면 마지막에 쓰던 노트북의 그 페이지가 다시 열립니다(기기별로 기억). PC에서는 커서가 이미 MAIN NOTES에 있어 바로 타이핑하면 되고, 폰에서는 종이가 맨 위에 오고 노트북 목록·오늘 목록·통계는 그 아래에 있습니다(상단 <b>notebooks</b> 버튼으로 목록까지 내려갑니다). 백업·주소 안내 띠는 화면 아래에 붙어 종이를 밀어내지 않습니다.</li>
+                  <li><b>손이 덜 가게</b> — 입력 즉시 자동 저장, 새 페이지의 날짜 자동 입력, 글이 넘치면 자동으로 다음 페이지, 일정에서 <b>go to note</b> 한 번으로 해당 노트북.</li>
+                  <li><b>코넬 노트 그대로</b> — CUE(핵심 질문) | MAIN NOTES(본문) | SUMMARY(요약) 구조와 self-test(본문 가리고 회상) 복습 단계를 종이와 같은 형태로 둡니다.</li>
+                  <li><b>내 데이터는 내 것</b> — 기본은 이 브라우저에만 저장, 백업 파일은 열린 JSON, 기기 간 동기화는 선택이며 본인 계정 공간에만 저장됩니다.</li>
+                </ul>
+
                 <h3>StudyDesk란?</h3>
                 <p>StudyDesk는 코넬(Cornell) 노트 필기법을 기반으로 한 개인 공부 노트 앱입니다. 강의, 독서, 자습 등 여러 활동을 과목별 노트북으로 나누어 기록하고, 학습 일정과 노트를 연결해 "오늘 공부할 것"에서 클릭 한 번으로 필기를 이어갈 수 있도록 설계되었습니다.</p>
                 <ul>
@@ -474,7 +488,7 @@ Write the main idea in your own words."></textarea>
                 <h3>페이지별 기능</h3>
                 <dl>
                   <dt>Notebooks</dt>
-                  <dd>메인 화면입니다. 노트북 목록·검색·필터, 코넬 노트 편집기, 오늘의 공부 목록이 모여 있습니다. (아래 상세 참고)</dd>
+                  <dd>메인 화면입니다. 코넬 노트 편집기, 노트북 목록·검색·필터, 오늘의 공부 목록이 모여 있습니다. 열면 마지막에 쓰던 노트북의 그 페이지가 열립니다. (아래 상세 참고)</dd>
                   <dt>Library</dt>
                   <dd>공부한 자료(책·영화·인강·논문·음악 등)의 카탈로그입니다. 제목 검색으로 정보를 자동으로 채우고, 상태(want / in progress / done)와 진행률·별점을 관리하며, <b>go to note</b>로 해당 자료의 노트북과 연결할 수 있습니다. (아래 상세 참고)</dd>
                   <dt>Calendar</dt>
@@ -627,6 +641,7 @@ Write the main idea in your own words."></textarea>
                 <h3>변경 이력</h3>
                 <p>사용자가 체감하는 주요 변경만 적습니다. 최신이 위입니다.</p>
                 <ul>
+                  <li><b>2026-11-09</b> — <b>열면 바로 종이</b>: 마지막에 쓰던 노트북·페이지를 기억해 그 자리로 열리고, PC에서는 커서가 MAIN NOTES에 놓입니다. 폰에서는 종이가 맨 위로 오고 노트북 목록·오늘 목록·통계가 아래로 내려갔으며(상단 notebooks 버튼), 백업·주소 안내 띠는 화면 아래 한 줄로 붙습니다. 설명서 맨 앞에 "이 앱의 목적"을 적었습니다.</li>
                   <li><b>2026-11-09</b> — Settings에 <b>Lists</b> 탭을 추가했습니다. 과목을 이름 변경·삭제할 수 있고(사용 중이면 다른 과목으로 옮긴 뒤 삭제), Library 카테고리·장르는 미리 추가하거나 이름을 바꿔 모든 자료에 한 번에 적용할 수 있습니다.</li>
                   <li><b>2026-11-08</b> — 오늘 목록(today's study list)의 과목·종류·go to note 칸을 고정 너비로 맞춰, 글자 길이에 따라 줄마다 위치가 달라지지 않습니다. Settings와 일정 관리의 긴 설명 문구를 한 줄로 줄이거나 없앴습니다.</li>
                   <li><b>2026-11-08</b> — Settings 페이지를 탭 다섯 개(<b>Backup · Account · Display · Integrations · Guide</b>)로 나눴습니다. 마지막에 본 탭을 기기별로 기억하고, 설명서는 Guide 탭에서 접기 없이 바로 보입니다. clear all data는 Backup 탭 맨 아래에 있습니다.</li>
