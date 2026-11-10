@@ -275,16 +275,27 @@ textarea#cues:focus-visible{box-shadow:inset 0 0 0 2px var(--bdr2)}
 .fmt-btn:hover{background:#ebe8df;color:var(--txt)}
 .fmt-btn:active{background:#d6d2c4}
 .fmt-sep{width:1px;height:18px;background:var(--bdr2);margin:0 5px;flex-shrink:0}
+.fmt-more{display:none}   /* phone only: opens the second toolbar row (see the cbody container query) */
 /* The toolbar needs ~370px. Below that it used to scroll sideways with a
    hidden scrollbar, so link/image were simply invisible. Now it becomes
    exactly two rows, and the CUE spacer grows to the same 84px so the ruled
    lines of CUE and MAIN NOTES stay level. */
 @container cbody (max-width:580px){
-  .notes-body-toolbar{flex-wrap:wrap;height:84px;align-content:center;row-gap:4px}
-  .cues-spacer{height:84px}
-  /* the paper grows by the extra toolbar row, so the writing area keeps
-     the same number of lines as on a wide screen */
-  .notes-body-wrap,.cues-col{height:602px}
+  /* narrow paper: one toolbar row with the frequent buttons (bold, highlight,
+     indent, outdent, image) and a "more" button; .tb-expanded on .cornell-body
+     shows the second row (italic, colours, label, link) */
+  .notes-body-toolbar{flex-wrap:wrap;height:42px;align-content:center;row-gap:4px;overflow:hidden}
+  .notes-body-toolbar .fmt-secondary{display:none}
+  .notes-body-toolbar .fmt-more{display:inline-flex;margin-left:auto}
+  .tb-expanded .notes-body-toolbar{height:84px}
+  .tb-expanded .notes-body-toolbar .fmt-secondary{display:inline-flex}
+  .tb-expanded .notes-body-toolbar .fmt-sep.fmt-secondary{display:block}
+  .tb-expanded .fmt-more{background:#ebe8df}
+  .cues-spacer{height:42px}
+  .tb-expanded .cues-spacer{height:84px}
+  /* with the second row open the paper grows by that row, so the writing
+     area keeps the same number of lines as on a wide screen */
+  .tb-expanded .notes-body-wrap,.tb-expanded .cues-col{height:602px}
 }
 .fmt-color-wrap{display:inline-flex;align-items:center}
 .fmt-color-wrap input[type=color]{width:26px;height:26px;padding:0;border:1px solid var(--bdr2);border-radius:6px;cursor:pointer}
@@ -674,9 +685,18 @@ textarea#summary:focus-visible{box-shadow:inset 0 0 0 2px var(--bdr2)}
   #review-mode-btn .btn-label{position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
 }
 
-/* phone + two-row toolbar: same writing area as the one-row phone layout */
+/* phone + second toolbar row open: same writing area as with one row */
 @media(max-width:760px){
   @container cbody (max-width:580px){
-    .notes-body-wrap{height:462px}
+    .tb-expanded .notes-body-wrap{height:462px}
+    /* CUE sits above MAIN NOTES here: it keeps its own phone height instead
+       of the side-by-side 602px meant for the two-column paper */
+    .tb-expanded .cues-col{height:170px}
   }
+  /* the bar under the paper sticks to the bottom of the screen (above the
+     banner dock), so ◀ ▶ and save are reachable while the keyboard is up.
+     overflow:clip keeps the rounded corners without making .cornell a
+     scroll container (overflow:hidden would, and sticky would not work). */
+  .cornell,.notes-card{overflow:clip}   /* both clipped ancestors: hidden would trap the sticky bar */
+  .cornell-footer{position:sticky;bottom:var(--dock-h,0px);z-index:5}
 }

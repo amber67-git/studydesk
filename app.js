@@ -44,7 +44,7 @@
   var APP_HOME = 'https://amber-studydesk.netlify.app/';
   // Shown bottom-left in the sidebar. Bump both in the same PR that adds a
   // line to the guide's 변경 이력 (version = number of entries there).
-  var APP_VERSION = 'v13';
+  var APP_VERSION = 'v14';
   var APP_UPDATED = '2026-11-10';
 
   /* ===========================================================
@@ -101,6 +101,7 @@
       'fmt.bold': 'bold', 'fmt.italic': 'italic', 'fmt.highlight': 'highlight', 'fmt.textColor': 'text color',
       'fmt.black': 'black', 'fmt.red': 'red', 'fmt.blue': 'blue', 'fmt.indent': 'indent', 'fmt.outdent': 'outdent',
       'fmt.label': 'label', 'fmt.link': 'link', 'fmt.insertLink': 'insert link', 'fmt.insertImage': 'insert image',
+      'fmt.more': 'more formatting',
       'fmt.selectFirstHighlight': 'Select some text first, then click highlight.',
       'fmt.selectFirstColor': 'Select some text first, then pick a color.',
       'img.notImage': "That file is not an image, so it can't be inserted into a note.",
@@ -282,6 +283,7 @@
       'fmt.bold': '굵게', 'fmt.italic': '기울임', 'fmt.highlight': '형광펜', 'fmt.textColor': '글자색',
       'fmt.black': '검정', 'fmt.red': '빨강', 'fmt.blue': '파랑', 'fmt.indent': '들여쓰기', 'fmt.outdent': '내어쓰기',
       'fmt.label': '라벨', 'fmt.link': '링크', 'fmt.insertLink': '링크 넣기', 'fmt.insertImage': '이미지 넣기',
+      'fmt.more': '서식 더 보기',
       'fmt.selectFirstHighlight': '먼저 글자를 선택한 뒤 형광펜을 누르세요.',
       'fmt.selectFirstColor': '먼저 글자를 선택한 뒤 색을 고르세요.',
       'img.notImage': '이미지 파일이 아니라 노트에 넣을 수 없습니다.',
@@ -865,9 +867,15 @@
       }
     },
 
-    /** Create a fresh page for a note: date auto-fills to today, everything else starts blank. */
-    newBlankPage: function () {
-      return { chapter: '', tags: '', date: Utils.todayStr(), cues: '', body: '', summary: '' };
+    /** Create a fresh page for a note: date auto-fills to today. When it
+        continues a previous page (▶ on the last page, or the body overflowing),
+        chapter and tags carry over so a study session that runs onto a second
+        page is not retyped - the user can still clear or change them. */
+    newBlankPage: function (prev) {
+      return {
+        chapter: prev ? (prev.chapter || '') : '', tags: prev ? (prev.tags || '') : '',
+        date: Utils.todayStr(), cues: '', body: '', summary: ''
+      };
     },
 
     /* Runs on every load. Two jobs:
@@ -1443,8 +1451,8 @@
       var total = n.pages.length;
 
       if (direction === 'next' && AppState.activePageIndex >= total - 1) {
-        // at the last page already: create a new blank page rather than wrapping
-        n.pages.push(AppState.newBlankPage());
+        // at the last page already: create a new page (same chapter/tags) rather than wrapping
+        n.pages.push(AppState.newBlankPage(n.pages[n.pages.length - 1]));
         total = n.pages.length;
       }
       if (total <= 1) return;
@@ -1502,8 +1510,8 @@
       if (AppState.activePageIndex !== n.pages.length - 1) return;
 
       // keep all content on the current page (nothing is ever deleted)
-      // and immediately open a fresh page for what comes next.
-      n.pages.push(AppState.newBlankPage());
+      // and immediately open a fresh page (same chapter/tags) for what comes next.
+      n.pages.push(AppState.newBlankPage(n.pages[n.pages.length - 1]));
       AppState.activePageIndex = n.pages.length - 1;
       renderActivePage();
       Storage.scheduleSave();
@@ -1988,6 +1996,27 @@
       // page-flip navigation arrows
       Utils.$('page-flip-prev').addEventListener('click', function () { flipToPage('prev'); });
       Utils.$('page-flip-next').addEventListener('click', function () { flipToPage('next'); });
+
+      // phone: the toolbar shows one row (bold, highlight, indent, image);
+      // "more" opens the second row. Remembered per device.
+      var moreBtn = Utils.$('fmt-more-btn');
+      if (moreBtn) {
+        var FMT_KEY = Storage.KEY + ':fmt-expanded';
+        var body = document.querySelector('.cornell-body');
+        var setExpanded = function (on) {
+          body.classList.toggle('tb-expanded', on);
+          moreBtn.setAttribute('aria-expanded', on ? 'true' : 'false');
+          rememberFit();
+        };
+        var saved = null;
+        try { saved = localStorage.getItem(FMT_KEY); } catch (e) { saved = null; }
+        setExpanded(saved === '1');
+        moreBtn.addEventListener('click', function () {
+          var on = !body.classList.contains('tb-expanded');
+          setExpanded(on);
+          try { localStorage.setItem(FMT_KEY, on ? '1' : '0'); } catch (e) { /* per-device preference only */ }
+        });
+      }
       // the same arrows inside the note footer (used where the floating ones are hidden)
       document.querySelectorAll('.page-mini').forEach(function (b) {
         b.addEventListener('click', function () { flipToPage(b.dataset.dir); });

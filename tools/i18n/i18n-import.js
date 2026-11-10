@@ -53,6 +53,10 @@ const sidebar = p => p.evaluate(() => document.querySelector('.ni[data-page=note
   await importWith(p, s => { s.lang = 'en'; }, TMP + '/bk-en.json');
   ok((await sidebar(p)) === 'Notebooks', 'backup with lang=en switches to English in place');
   ok((await p.inputValue('#lang-select')) === 'en', 'selector moved to en');
+  // a backup without lang falls back to the browser language, not to the current selection
+  await importWith(p, s => { delete s.lang; }, TMP + '/bk-nolang-after-en.json');
+  ok((await sidebar(p)) === '노트북', 'backup without lang after English returns to the browser language: ' + (await sidebar(p)));
+  ok((await p.inputValue('#lang-select')) === 'ko', 'selector returns to ko');
   // 4) the self-test button label matches the Korean guide wording
   await importWith(p, s => { s.lang = 'ko'; }, TMP + '/bk-ko2.json');
   await p.evaluate(() => showPage('notes'));
