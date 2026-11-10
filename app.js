@@ -2375,13 +2375,21 @@
         };
         AppState.notes.push(note);
       }
+      AppState.ensurePages(note);
       var today = Utils.todayStr();
       var last = note.pages[note.pages.length - 1];
-      if (NotesModule.isBlankPage(last)) {
-        if (last.date !== today) { last.date = today; NotesModule.touchPage(note, note.pages.length - 1); }
-      } else if (last.date !== today) {
-        note.pages.push(AppState.newBlankPage(last));
-        NotesModule.touchPage(note, note.pages.length - 1);
+      // cloud sync: pages still downloading are blank stand-ins (placeholder:true).
+      // Re-dating or stamping one would make it look newer than the real page
+      // on its way, which would then be rejected - so leave the notebook as it
+      // is and just open it until every page has arrived.
+      var pending = note.pages.some(function (pg) { return pg && pg.placeholder; });
+      if (!pending) {
+        if (NotesModule.isBlankPage(last)) {
+          if (last.date !== today) { last.date = today; NotesModule.touchPage(note, note.pages.length - 1); }
+        } else if (last.date !== today) {
+          note.pages.push(AppState.newBlankPage(last));
+          NotesModule.touchPage(note, note.pages.length - 1);
+        }
       }
       Storage.scheduleSave();
       Nav.showPage('notes');
