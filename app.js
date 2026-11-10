@@ -267,7 +267,7 @@
       'notes.untitled': '제목 없음', 'notes.pageCount': '{n}쪽',
       'notes.confirmDelete': '"{title}" 노트북과 그 안의 {pages}을 모두 삭제할까요?\n\n되돌릴 수 없습니다.', 'notes.thisNotebook': '이 노트북',
       'notes.addSubjectFirst': '먼저 과목을 추가하세요.', 'notes.openNotebookFirst': '먼저 노트북을 여세요.',
-      'notes.deleteNotebook': '노트북 삭제', 'notes.selfTest': '션프 테스트', 'notes.showNotes': '노트 보기',
+      'notes.deleteNotebook': '노트북 삭제', 'notes.selfTest': '셀프 테스트', 'notes.showNotes': '노트 보기',
       'notes.selfTestTitle': 'MAIN NOTES를 가리고 CUE만 보고 떠올리기', 'notes.save': '저장',
       'page.prev': '이전 페이지', 'page.next': '다음 페이지', 'page.nextAdds': '다음 페이지(마지막이면 새 페이지)',
       'page.jump': '페이지로 바로 이동', 'pages.title': '이 노트북의 페이지', 'pages.noChapter': '(챕터 없음)',
@@ -577,9 +577,12 @@
     };
     var ATTRS = ['placeholder', 'data-placeholder', 'title', 'aria-label'];   // data-placeholder: the contenteditable editor's hint
 
+    var appliedLang = null;   // language the static markup was last translated into
+
     function lang() {
       var l = (typeof AppState !== 'undefined' && AppState.settings) ? AppState.settings.lang : null;
-      return (l === 'ko' || l === 'en') ? l : 'en';
+      // settings from an older backup/device have no lang: follow the browser, not a fixed English
+      return (l === 'ko' || l === 'en') ? l : detect();
     }
     /** First run: the browser language decides (Korean browsers → Korean). */
     function detect() {
@@ -663,7 +666,18 @@
         });
       });
       document.documentElement.lang = lang();
+      appliedLang = lang();
       applyGuide();
+    }
+
+    /** Settings can change under the page (backup import, cloud sync): re-translate
+        the static markup only when the language actually differs. */
+    function syncLanguage() {
+      var sel = document.getElementById('lang-select');
+      if (sel) sel.value = lang();
+      if (appliedLang === lang()) return false;
+      apply();
+      return true;
     }
 
     /** Only the guide of the current language is shown. */
@@ -674,7 +688,7 @@
       });
     }
 
-    return { t: t, tn: tn, lang: lang, detect: detect, locale: locale, apply: apply, applyGuide: applyGuide };
+    return { t: t, tn: tn, lang: lang, detect: detect, locale: locale, apply: apply, applyGuide: applyGuide, syncLanguage: syncLanguage };
   })();
   var tx = I18n.t;   // short alias; `t` is taken by local variables in several modules
 
@@ -4993,6 +5007,8 @@
    * =========================================================== */
   var App = {
     renderAll: function () {
+      // a backup import or a cloud settings change may carry another language
+      if (I18n.syncLanguage()) { Nav.refreshTitle(); if (Sync.refreshStatus) Sync.refreshStatus(); }
       Settings.applyFontMode();
       Settings.applyFontSize();
       Nav.renderHeaderDate();
