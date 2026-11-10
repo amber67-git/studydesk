@@ -3762,8 +3762,11 @@
       var mb = Utils.$('move-banner'), bb = Utils.$('backup-banner');
       if (mb && mb.style.display !== 'none') this.fillMoveBannerText();
       if (bb && bb.style.display !== 'none') {
+        // settings may have changed with the language (an imported backup with a
+        // recent lastBackupAt, or reminders off): a reminder no longer due goes away
         var t = this.backupReminderText();
         if (t) Utils.$('backup-banner-text').textContent = t;
+        else bb.style.display = 'none';
       }
       Settings.updateBannerDock();   // the other language can wrap to another height
     },
@@ -3789,9 +3792,6 @@
     /** Show the reminder banner if the last backup is older than the chosen
         interval. Runs once at startup; "later" hides it for this session. */
     checkBackupReminder: function () {
-      var days = AppState.settings.backupReminderDays;
-      if (!days || days <= 0) return;              // reminders turned off
-      if (AppState.notes.length === 0) return;      // nothing worth backing up yet
       // untouched sample data on a first visit is not the user's: no nag (on a new
       // address the move banner already offers "load backup" in the same spot)
       if (AppState.seededThisSession) return;
@@ -3803,9 +3803,12 @@
       Settings.updateBannerDock();
     },
 
-    /** The reminder line, or null while the last backup is recent enough. */
+    /** The reminder line, or null when no reminder is due: reminders turned
+        off, nothing worth backing up yet, or the last backup is recent enough. */
     backupReminderText: function () {
       var days = AppState.settings.backupReminderDays;
+      if (!days || days <= 0) return null;
+      if (AppState.notes.length === 0) return null;
       var last = AppState.settings.lastBackupAt;
       if (!last) return tx('banner.noBackup');
       var elapsedDays = Math.floor((Date.now() - new Date(last).getTime()) / 86400000);
@@ -3953,8 +3956,12 @@
             return;
           }
 
-          var summary = tx('backup.summary', { n: d.notes.length, c: Array.isArray(d.cards) ? d.cards.length : 0, r: Array.isArray(d.recurring) ? d.recurring.length : 0 });
-          if (!confirm(tx('backup.loadConfirm', { summary: summary }))) return;
+          // formatted on use: the backup may carry another language, and the
+          // success line is written after renderAll() has switched to it
+          var summaryText = function () {
+            return tx('backup.summary', { n: d.notes.length, c: Array.isArray(d.cards) ? d.cards.length : 0, r: Array.isArray(d.recurring) ? d.recurring.length : 0 });
+          };
+          if (!confirm(tx('backup.loadConfirm', { summary: summaryText() }))) return;
 
           // snapshot current state so a bad file can't leave the app wrecked
           var snapshot = {
@@ -3982,7 +3989,7 @@
             Storage.scheduleSave();
             App.renderAll();
             if (AppState.notes.length > 0) NotesModule.selectNote(AppState.notes[0].id);
-            st.textContent = tx('backup.loaded', { summary: summary });
+            st.textContent = tx('backup.loaded', { summary: summaryText() });
             // the new-address hint ("load your backup") is done once a backup is in
             if (location.hostname !== OLD_HOST && Utils.$('move-banner')) Utils.$('move-banner').style.display = 'none';
             Utils.$('backup-reminder-select').value = String(AppState.settings.backupReminderDays);
