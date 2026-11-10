@@ -171,7 +171,7 @@
                       <div class="cues-spacer"></div>
                       <textarea id="cues" class="lined" placeholder="Review cues
 
-Key words / Questions / Vocabulary"></textarea>
+Key words / Questions / Vocabulary" data-i18n-placeholder="cornell.cuesPh"></textarea>
                   </div>
                   <div class="notes-body-wrap">
                     <div class="section-title section-title-notes">MAIN NOTES</div>
@@ -194,7 +194,7 @@ Key words / Questions / Vocabulary"></textarea>
                     </div>
                     <div id="notes-body" class="lined notes-body-editable" contenteditable="true" role="textbox" aria-multiline="true" aria-label="main notes" data-placeholder="Take notes here.
 
-Use short sentences, bullet points, symbols, and diagrams."></div>
+Use short sentences, bullet points, symbols, and diagrams." data-i18n-placeholder="cornell.bodyPh"></div>
                     <input type="file" id="image-file-input" accept="image/*" style="display:none;" />
                   </div>
                 </div>
@@ -202,7 +202,7 @@ Use short sentences, bullet points, symbols, and diagrams."></div>
                   <div class="section-title section-title-summary">SUMMARY</div>
                   <textarea id="summary" placeholder="Quick summary
 
-Write the main idea in your own words."></textarea>
+Write the main idea in your own words." data-i18n-placeholder="cornell.summaryPh"></textarea>
                 </div>
                 <div class="cornell-footer">
                   <button class="bic danger" id="delete-note-btn" title="delete notebook" aria-label="delete notebook"><span class="icon" data-icon="trash" aria-hidden="true"></span></button>
@@ -413,6 +413,18 @@ Write the main idea in your own words."></textarea>
         </div>
 
         <div class="card">
+          <div class="ch"><div class="ct"><span class="icon" data-icon="language" aria-hidden="true"></span>language</div></div>
+          <div class="cb p">
+            <div class="backup-reminder-row">
+              <select id="lang-select" aria-label="language">
+                <option value="en">English</option>
+                <option value="ko">한국어</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
           <div class="ch"><div class="ct"><span class="icon" data-icon="text-size" aria-hidden="true"></span>note text size</div></div>
           <div class="cb p">
             <div style="display:flex; align-items:center; gap:12px;">
@@ -464,7 +476,7 @@ Write the main idea in your own words."></textarea>
         </div>
         <div class="spanel" id="spanel-guide" role="tabpanel" aria-labelledby="stab-guide" tabindex="0" hidden>
         <div class="card">
-          <div class="ch"><div class="ct"><span class="icon" data-icon="help" aria-hidden="true"></span>StudyDesk 사용 설명서</div></div>
+          <div class="ch"><div class="ct"><span class="icon" data-icon="help" aria-hidden="true"></span><span data-i18n="guide.title">StudyDesk 사용 설명서</span></div></div>
           <div class="cb p">
               <div class="guide-body" lang="ko">
 
@@ -498,7 +510,7 @@ Write the main idea in your own words."></textarea>
                   <dt>Flashcards</dt>
                   <dd>과목별 암기 카드를 만들고 <b>review mode</b>로 복습합니다. 카드를 클릭하면 앞/뒤가 뒤집히고, <b>Esc</b> 키나 <b>close</b>로 닫습니다.</dd>
                   <dt>Settings</dt>
-                  <dd>탭 여섯 개로 나뉘어 있습니다. <b>Backup</b>(백업 파일 내려받기 <b>download backup</b>·불러오기 <b>load backup</b>, 백업 알림 주기, 저장 공간 사용량. 맨 아래 빨간 테두리 안에 전체 데이터 삭제 <b>clear all data</b>) · <b>Account</b>(<b>cloud sync</b>, 기기 간 동기화) · <b>Display</b>(글꼴 스타일 <b>handwritten</b> / <b>clean sans-serif</b>, 노트 글자 크기) · <b>Lists</b>(과목, Library 카테고리·장르 목록 관리. 아래 "Lists 탭" 참고) · <b>Integrations</b>(자동 채우기 키) · <b>Guide</b>(이 설명서). 마지막에 본 탭을 기억합니다. (아래 "데이터 보관" 참고)</dd>
+                  <dd>탭 여섯 개로 나뉘어 있습니다. <b>Backup</b>(백업 파일 내려받기 <b>download backup</b>·불러오기 <b>load backup</b>, 백업 알림 주기, 저장 공간 사용량. 맨 아래 빨간 테두리 안에 전체 데이터 삭제 <b>clear all data</b>) · <b>Account</b>(<b>cloud sync</b>, 기기 간 동기화) · <b>Display</b>(글꼴 스타일 <b>handwritten</b> / <b>clean sans-serif</b>, 노트 글자 크기, 언어) · <b>Lists</b>(과목, Library 카테고리·장르 목록 관리. 아래 "Lists 탭" 참고) · <b>Integrations</b>(자동 채우기 키) · <b>Guide</b>(이 설명서). 마지막에 본 탭을 기억합니다. (아래 "데이터 보관" 참고)</dd>
                 </dl>
 
                 <h3>코넬 노트 작성 자세히</h3>
@@ -641,6 +653,7 @@ Write the main idea in your own words."></textarea>
                 <h3>변경 이력</h3>
                 <p>사용자가 체감하는 주요 변경만 적습니다. 최신이 위입니다. 사이드바 왼쪽 아래의 <b>버전 번호</b>는 이 목록의 항목 수이고, 옆의 날짜가 마지막 갱신일입니다.</p>
                 <ul>
+                  <li><b>2026-11-10</b> — <b>영어·한국어</b>: 화면 전체와 이 설명서를 두 언어로 볼 수 있습니다. 처음에는 브라우저 언어를 따르고, Settings → Display → language에서 바꿉니다. 노트 내용은 번역하지 않습니다.</li>
                   <li><b>2026-11-09</b> — <b>열면 바로 종이</b>: 마지막에 쓰던 노트북·페이지를 기억해 그 자리로 열리고, PC에서는 커서가 MAIN NOTES에 놓입니다. 폰에서는 종이가 맨 위로 오고 노트북 목록·오늘 목록·통계가 아래로 내려갔으며(상단 notebooks 버튼), 백업·주소 안내 띠는 화면 아래 한 줄로 붙습니다. 설명서 맨 앞에 "이 앱의 목적"을 적고, 사이드바 왼쪽 아래에 앱 버전과 갱신일을 표시합니다.</li>
                   <li><b>2026-11-09</b> — Settings에 <b>Lists</b> 탭을 추가했습니다. 과목을 이름 변경·삭제할 수 있고(사용 중이면 다른 과목으로 옮긴 뒤 삭제), Library 카테고리·장르는 미리 추가하거나 이름을 바꿔 모든 자료에 한 번에 적용할 수 있습니다.</li>
                   <li><b>2026-11-08</b> — 오늘 목록(today's study list)의 과목·종류·go to note 칸을 고정 너비로 맞춰, 글자 길이에 따라 줄마다 위치가 달라지지 않습니다. Settings와 일정 관리의 긴 설명 문구를 한 줄로 줄이거나 없앴습니다.</li>
@@ -654,8 +667,199 @@ Write the main idea in your own words."></textarea>
                   <li><b>2026-11-02</b> — 기기 간 동기화(Google 로그인 + 클라우드) 기능을 넣었습니다. Firebase 설정 전이라 아직 꺼져 있고, 켜지면 Settings → Account → cloud sync에 로그인 버튼이 보입니다.</li>
                   <li><b>2026-11-01</b> — 설치형 앱(PWA): 홈 화면 설치와 오프라인 실행. 화면 크기 대응 1차 수정, 접근성 보완, 라틴 글꼴 자체 호스팅(폰과 PC의 글씨체 불일치 해결). StudyDesk v1 공개.</li>
                 </ul>
-                <p class="guide-foot">설명서 기준일: <b>2026-11-09</b>. 다음 갱신 때는 이 날짜 이후의 변경만 살펴 변경 이력과 FAQ에 더하면 됩니다.</p>
+                <p class="guide-foot">설명서 기준일: <b>2026-11-10</b>. 다음 갱신 때는 이 날짜 이후의 변경만 살펴 변경 이력과 FAQ에 더하면 됩니다.</p>
 
+              </div>
+              <div class="guide-body" lang="en" hidden>
+
+                <h3>What this app is for</h3>
+                <p><b>Open it and start writing down what you just studied.</b> Every screen and feature of StudyDesk is built and judged against that one sentence. A new feature or design change is measured by "does it cut the number of taps before the first letter?", and anything that does not (decoration, colour themes, and so on) waits.</p>
+                <ul>
+                  <li><b>The first screen is the paper</b> — the app reopens on the page of the notebook you were last writing in (remembered per device). On a PC the caret is already in MAIN NOTES, so you just type; on a phone the paper comes first and the notebook list, today's list and the stat cards sit below it (the <b>notebooks</b> button in the top bar jumps down to the list). Backup and address notices dock at the bottom of the screen and never push the paper down.</li>
+                  <li><b>Fewer hands</b> — every keystroke is saved automatically, a new page gets today's date, text that overflows a page flows onto the next one, and <b>go to note</b> on a task opens its notebook in one tap.</li>
+                  <li><b>Cornell notes as on paper</b> — CUE (key questions) | MAIN NOTES (body) | SUMMARY, plus the self-test review step (hide the body, recall from the cues), laid out like the paper version.</li>
+                  <li><b>Your data is yours</b> — stored only in this browser by default, backups are plain JSON files, and cross-device sync is optional and goes only to your own account's space.</li>
+                </ul>
+
+                <h3>What is StudyDesk?</h3>
+                <p>StudyDesk is a personal study-notes app built on the Cornell note-taking method. Lectures, reading, self-study and other activities are kept in notebooks per subject, and your study schedule is linked to those notebooks so that one click on "today's study list" continues your notes.</p>
+                <ul>
+                  <li><b>Nothing to install</b> — it runs in the browser. No program to install, no account to create.</li>
+                  <li><b>Data stays in your browser by default</b> — unless you sign in, every note lives only in this browser (localStorage) and is sent nowhere. Signing in with a Google account under Settings → Account (cloud sync) copies them to a cloud space only you can read (Firebase) and keeps your devices in sync.</li>
+                  <li><b>The writing flow is automated</b> — a new page gets today's date, a page that overflows creates the next one, and the <b>go to note</b> button on a task opens the last page of that notebook.</li>
+                </ul>
+
+                <h3>The pages</h3>
+                <dl>
+                  <dt>Notebooks</dt>
+                  <dd>The main screen: the Cornell editor, the notebook list with search and filters, and today's study list. It opens on the page you were last writing in. (Details below.)</dd>
+                  <dt>Library</dt>
+                  <dd>A catalogue of what you study from (books, films, courses, papers, music…). Search a title to fill in the details, track status (want / in progress / done), progress and rating, and link an item to its notebook with <b>go to note</b>. (Details below.)</dd>
+                  <dt>Calendar</dt>
+                  <dd>A month view of recurring and one-off tasks. <b>+N more</b> on a day opens that day's full list with <b>go to note</b> buttons.</dd>
+                  <dt>Schedule manager</dt>
+                  <dd>Add and remove recurring tasks (by weekday) and one-off tasks (by date). Every task carries a subject and an activity type, which is how it finds its notebook. (Details below.)</dd>
+                  <dt>Flashcards</dt>
+                  <dd>Memory cards per subject, reviewed in <b>review mode</b>. Click a card to flip it; <b>Esc</b> or <b>close</b> leaves the review.</dd>
+                  <dt>Settings</dt>
+                  <dd>Six tabs. <b>Backup</b> (<b>download backup</b> / <b>load backup</b>, the reminder interval, storage usage, and at the bottom in a red frame <b>clear all data</b>) · <b>Account</b> (<b>cloud sync</b> between devices) · <b>Display</b> (font style <b>handwritten</b> / <b>clean sans-serif</b>, note text size, language) · <b>Lists</b> (subjects and the Library category / genre lists, see "The Lists tab" below) · <b>Integrations</b> (auto-fill keys) · <b>Guide</b> (this text). The last tab you opened is remembered. (See "Keeping your data" below.)</dd>
+                </dl>
+
+                <h3>Writing Cornell notes in detail</h3>
+                <p>One notebook holds "one activity of one subject". For the subject economics, lecture notes (lecture) and reading notes (book) are two different notebooks.</p>
+                <dl>
+                  <dt>Fixed information — set once when the notebook is created</dt>
+                  <dd><b>SUBJECT</b>, <b>TYPE</b> (lecture / book / movie / project / self-study / other), <b>TOPIC</b> (the notebook's name)</dd>
+                  <dt>Per-page information — changes each study day</dt>
+                  <dd><b>chapter / subtitle</b> (what the day covered), <b>tags / keywords</b>, the date (filled in automatically when a page is created)</dd>
+                </dl>
+                <p>The body has the three Cornell areas: review questions and keywords in <b>CUE</b> on the left, the notes themselves in <b>MAIN NOTES</b> on the right, and the <b>SUMMARY</b> at the bottom.</p>
+                <ul>
+                  <li><b>Formatting</b> — the toolbar above MAIN NOTES offers bold, italic, highlighter, text colour (black / red / blue), indent, labels, links and images.</li>
+                  <li><b>Markdown shortcuts</b> — typing <b>**bold**</b>, <b>*italic*</b> or <b>==highlight==</b> converts to formatting at once.</li>
+                  <li><b>Images</b> — pick a file with the image button, or paste a copied image with Ctrl+V. Large images are shrunk automatically to protect storage (longest side 1280px).</li>
+                  <li><b>Turning pages</b> — use the ◀ ▶ arrows beside the paper. On narrow screens (phone, split view) they move next to the page number (1 / 3) at the bottom so they never cover the paper. ▶ on the last page creates a new page, and notes that overflow a page create the next one automatically. A page filled on a PC may not fit a narrow screen; scroll inside MAIN NOTES to see the remaining lines (nothing is cut off).</li>
+                  <li><b>Jump to a page</b> — click the page number (<b>N / M</b>) at the bottom to open the list of pages (chapter, date, preview) and jump straight to one.</li>
+                  <li><b>self-test (review mode)</b> — the <b>self-test</b> button at the bottom (only an eye icon on narrow phones) blurs MAIN NOTES. Look only at the CUE questions and keywords and try to recall the content — the core review step of the Cornell method. <b>show notes</b> brings the text back.</li>
+                  <li><b>Saving</b> — everything is saved as you type. The <b>save</b> button only confirms the saved state.</li>
+                </ul>
+
+                <h3>Linking the schedule to notes (recommended workflow)</h3>
+                <ol>
+                  <li>Add a recurring task in <b>Schedule manager</b>, e.g. title "economics 101 lecture", subject economics, type lecture, Mon · Wed · Fri.</li>
+                  <li>On those days the task appears in <b>today's study list</b> on the <b>Notebooks</b> page.</li>
+                  <li>When you start studying, press <b>go to note</b> next to the task. The notebook for that subject and type opens on its <b>last page</b> (your previous notes). If there is no notebook yet, one is created.</li>
+                  <li>Skim the previous notes, create a new page with ▶, write today's chapter in the chapter field and start taking notes.</li>
+                  <li>When you are done, tick the checkbox in the list.</li>
+                </ol>
+
+                <h3>Using the Library</h3>
+                <p>Keep everything you study from in one place. It is separate from the notebooks, so you can register material you never take notes on. The flow is "search once, then just confirm": type a title in the search box at the top, click a result, and the fields below fill themselves in.</p>
+                <ul>
+                  <li><b>Auto-fill</b> — choose a type and search a title to fill in author, publisher, cover and so on. Books (Google Books), music (MusicBrainz) and papers (Crossref) work out of the box; films and TV switch on when you add a free TMDB key under <b>Settings → Integrations → auto-fill</b> (optional). Fields you typed yourself are <b>never overwritten</b> by auto-fill.</li>
+                  <li><b>Cover</b> — the cover box does everything: click to pick a file, drop an image onto it, or paste a copied image with Ctrl+V inside the dialog (compressed automatically). Below it, <b>↻ 90°</b> rotates and <b>search google images</b> finds a cover.</li>
+                  <li><b>Category and Genre</b> — Category is the <b>form</b> of an item (Novel, Documentary, Online Course…), Genre is its <b>subject</b> (Economics, History…). Items of the same author or series ("Write Right 2 - Beginner" and "Write Right 3" count as one series) inherit the earlier classification and publisher into empty fields. A value missing from the dropdown can be added on the spot with <b>+ Custom…</b> at the bottom; tidying the lists (add, rename, merge) happens under <b>Settings → Lists</b>.</li>
+                  <li><b>Status and progress</b> — enter only the essentials when adding; status (want / in progress / done), progress, rating and call number are managed in <b>edit (the pencil button)</b>. Items in progress show a progress bar on their card.</li>
+                  <li><b>Level</b> — films take an age rating (Rated PG), courses and videos a difficulty (Beginner…), papers a year; a badge appears. Books and music have no level field.</li>
+                  <li><b>Linking a notebook</b> — <b>go to note</b> on a card lets you pick a subject and create or open that item's notebook. Delete is the <b>Delete</b> button at the bottom left of the edit dialog.</li>
+                  <li><b>Bulk edit</b> — tick several cards and a <b>bulk edit</b> bar appears at the top to change Category / Genre / status for all of them at once.</li>
+                </ul>
+
+                <h3>The Lists tab — subjects, categories, genres</h3>
+                <p><b>Settings → Lists</b> is where the app's pick lists are managed in one place.</p>
+                <ul>
+                  <li><b>subjects</b> — add, rename and delete subjects. Each row shows how many notebooks, tasks and cards use it. <b>Deleting a subject that is in use</b> first asks which subject to move everything to, moves the notebooks, tasks and cards there, and then deletes it (this is also how two subjects are merged). At least one subject must remain, so the last one cannot be deleted, and the same name (ignoring case) cannot be added twice.</li>
+                  <li><b>library categories / genres</b> — the values your Library items use plus the ones you added yourself (marked <b>CUSTOM</b>), each with its usage count. The built-in values (Novel, History and about 60 others) are not listed; they stay in the dropdowns. A value added with <b>+ category / + genre</b> appears in the Library dropdowns before any item uses it. <b>Renaming</b> applies to every item using that value at once, so use it to merge two spellings ("Sci-fi" → "Science Fiction"). Values in use have no delete button (merge them by renaming); only unused custom values can be removed.</li>
+                  <li>All of this is ordinary data: it goes into backup files and, with cloud sync on, to your other devices.</li>
+                </ul>
+
+                <h3>Keeping your data — please read</h3>
+                <p>All data (notes, tasks, cards, images) is stored <b>only in the browser you are using right now</b>. It disappears or is not visible in these cases:</p>
+                <ul>
+                  <li>Clearing the browser's browsing data (cookies, site data) <b>deletes every note, and it cannot be recovered.</b></li>
+                  <li>Without signing in, another browser (e.g. Chrome ↔ Edge) or another computer or phone starts empty. To see the same notes on several devices, turn on "cloud sync" below; for a one-off move, a backup file also works.</li>
+                  <li>In a private / incognito window the data is gone the moment the window closes.</li>
+                  <li>Download a backup file (JSON) regularly with <b>Settings → Backup → download backup</b>. It is the only way to restore with <b>load backup</b> after data loss, and the way to move notes to another browser or computer.</li>
+                  <li>When the last backup is older than the chosen interval, a reminder appears at the bottom of the screen. <b>backup now</b> downloads one immediately; the interval is set under <b>Settings → Backup → remind me to back up</b> (3 · 7 · 14 · 30 days or never). It does not show while only the sample notes are present (they are not yours).</li>
+                  <li>Storage is limited to a few MB per browser. Pasting dozens of large screenshots can make saving fail.</li>
+                </ul>
+
+                <h3>The address change (4 November 2026)</h3>
+                <p>StudyDesk's address changed to <b>https://amber-studydesk.netlify.app/</b>. The old address <b>amber67-git.github.io/studydesk</b> shared one <b>site address (origin)</b> with the owner's other apps such as ClassDesk, and current Android Chrome installs <b>only one app per site address</b> (reported as a Chrome bug). So StudyDesk and ClassDesk could not both be installed (installing one made the other say "already installed"). Apps on the same site address also share browser storage, so clearing site data for one wiped the other's data too.</p>
+                <p>Browser storage is per address, so <b>notes do not move over by themselves.</b> Once per device:</p>
+                <ol>
+                  <li>Download a backup <b>where you wrote the notes</b>: in a browser tab, the old address (https://amber67-git.github.io/studydesk/); in an app installed from the old address, <b>that app</b> — press <b>download backup</b> in the notice bar (or Settings → Backup → download backup). On <b>iPhone / iPad</b> the home-screen app and Safari have separate storage, so if you wrote in the app, download from the app (Safari would hold different notes).</li>
+                  <li>Open the new address (https://amber-studydesk.netlify.app/) and load the file with <b>Settings → Backup → load backup</b>. The sample notes shown on first visit are replaced.</li>
+                  <li>Install the app from the new address (see "Installing on a phone or tablet") and check that all notes are there. On iPhone / iPad the new home-screen app has its own storage too, so you may need to load the backup once more inside it.</li>
+                  <li><b>Only after checking</b>, delete the StudyDesk app installed from the old address (phone settings → apps; on iPhone long-press the icon). On Android <b>do not press "clear site data / storage"</b>: it also erases ClassDesk's data on the same site address.</li>
+                </ol>
+                <p>The old address keeps working for now, but Chrome no longer offers to install it, and <b>do not install the app from the old address</b> (including a manual "add to home screen"): it collides with ClassDesk again and your notes pile up at the old address. Cloud sync is not configured yet, so <b>for now a backup file is the only way to move</b>. Once cloud sync is on, signing in at the new address will bring the notes down.</p>
+
+                <h3>Installing on a phone or tablet</h3>
+                <p>StudyDesk is an installable web app (PWA). It installs straight from the browser without an app store, opens full-screen from a home-screen icon, and <b>opens without internet.</b></p>
+                <ol>
+                  <li>Open <b>https://amber-studydesk.netlify.app/</b> in the phone's browser. (The address changed on 4 November 2026, see "The address change" above.)</li>
+                  <li><b>Android (Chrome)</b>: menu (⋮) at the top right → <b>Install app</b> or <b>Add to Home screen</b>.</li>
+                  <li><b>iPhone / iPad (Safari)</b>: share button (□↑) at the bottom → <b>Add to Home Screen</b>. (iOS installs only from Safari.) <b>Note:</b> on iPhone the home-screen app and Safari use separate storage. If you already have notes in Safari, download a backup there with <b>Settings → Backup → download backup</b> first, then open the installed app and load it with <b>Settings → Backup → load backup</b>. It does not carry over by itself.</li>
+                  <li><b>PC (Chrome / Edge)</b>: the install icon at the right of the address bar opens it as a single-window app.</li>
+                </ol>
+                <ul>
+                  <li><b>Open the app once while online right after installing.</b> The offline files are saved then; from that point it opens without internet. Installing and opening it straight away in flight mode can show a blank screen.</li>
+                  <li>With internet, the installed app fetches the latest version each time it opens. If an old screen shows, close the app completely and open it again.</li>
+                  <li>If you have a StudyDesk app installed from the old address (amber67-git.github.io/studydesk), move your notes as described under "The address change" and then delete it.</li>
+                  <li>Library auto-fill (book and film search) needs internet. Notes, schedule and cards all work offline.</li>
+                  <li>To see the same notes on phone and PC, sign in with the same Google account under <b>Settings → Account → cloud sync</b> (see "Cloud sync" below). Devices that are not signed in store only in their own browser.</li>
+                </ul>
+
+                <h3>Cloud sync</h3>
+                <p>To see the same notes on phone, tablet and PC, press <b>Settings → Account → cloud sync → sign in with Google</b> on each device and sign in with the <b>same Google account</b>. From then on a change on one device appears on the others within seconds.</p>
+                <ul>
+                  <li><b>Conflicts</b>: if the same thing is edited on two devices at once, <b>the latest edit wins.</b> Edits to different notebooks or pages are both kept.</li>
+                  <li><b>Offline</b>: everything works as usual without internet; changes queue on the device and upload when the connection returns. The status at the bottom of the sidebar reads <b>synced</b> when up to date and <b>offline · will sync</b> while waiting.</li>
+                  <li><b>First sign-in</b>: a new device with no notes takes the cloud notes as they are (sample notes are dropped). A device that already has notes is merged with the cloud; where both have the same note, the more recently edited copy stays.</li>
+                  <li><b>Size limit</b>: a page with several large images above about 900 KB is not synced and stays on this device only. The cloud sync card in Settings names the page in red; remove one image and it syncs.</li>
+                  <li><b>Signing in with another account</b>: if this browser's notes were synced with a different Google account, the app asks about it. OK discards the local copy and downloads the new account's notes; Cancel signs out and leaves the local notes alone. This prevents two accounts' notes from being mixed.</li>
+                  <li><b>Signing out</b> does not delete the notes on this device. <b>clear all data</b> while signed in clears only this device's copy and downloads from the cloud again after the reload. To delete everywhere, delete the notebook inside the app (deletions sync too).</li>
+                </ul>
+
+                <h3>FAQ</h3>
+                <p><b>Display</b></p>
+                <dl>
+                  <dt>Some formatting buttons (bold, colours…) are missing.</dt>
+                  <dd>In older versions the toolbar scrolled sideways on narrow windows and hid the link and image buttons off-screen. Now the toolbar wraps onto <b>two lines</b> when narrow, so every button is always visible. If some are still missing you are looking at an old copy of the screen: reload the page (an installed app: close it completely and open it again).</dd>
+                  <dt>Icons show as empty squares.</dt>
+                  <dd>An old-version problem that appeared when the external icon font was blocked. The current version embeds its icons, so they always show, even offline. If you see this, you are opening old files; replace them with the latest.</dd>
+                  <dt>Changes made on the phone do not show on the PC.</dt>
+                  <dd>Check that both devices are signed in with the <b>same Google account</b> under <b>Settings → Account → cloud sync</b> and that the bottom of the sidebar reads <b>synced</b>. <b>offline · will sync</b> uploads automatically once online. A device that is not signed in stores only in its own browser. If the cloud sync card in Settings shows "over the 900 KB per-page limit" in red, that page has too many images and is left out of sync.</dd>
+                </dl>
+                <p><b>Installing</b></p>
+                <dl>
+                  <dt>Installing says "This app is already installed", and tapping it says "Could not open app".</dt>
+                  <dd>This happens <b>when another app is already installed from the same site address</b>. Current Android Chrome installs only one app per site address (e.g. amber67-git.github.io), reported as a Chrome bug. It happened at the old address on 4 November 2026 (ClassDesk installed blocked StudyDesk and vice versa), which is why StudyDesk moved to its new address (amber-studydesk.netlify.app). Changing the app id or scope did not fix it. Typing <code>chrome://webapks</code> in Chrome's address bar lists installed apps with their addresses. Installing from the new address works alongside ClassDesk. If a StudyDesk app from the old address is still installed, move your notes as described under "The address change" and then delete it. Do not press Chrome's <b>clear data</b> or clear site data: that erases the notes too.</dd>
+                </dl>
+                <p><b>Data</b></p>
+                <dl>
+                  <dt>All of yesterday's notes are gone.</dt>
+                  <dd>First check (1) that it is the same browser, (2) that it is not a private window, (3) whether browser data was cleared recently. Another browser having no data is normal. With a backup file, restore under <b>Settings → Backup → load backup</b>. Browser data cleared without a backup cannot be recovered.</dd>
+                  <dt>Saving is slow or fails after pasting images.</dt>
+                  <dd>Most likely the browser's storage limit (a few MB) is near. A failed save shows <b>"save failed — storage full"</b> with an explanation. Current usage is shown in the <b>Settings → Backup</b> tab; delete large images and edit again to save. (Large images are shrunk automatically, but dozens of them still reach the limit.)</dd>
+                  <dt>It says "not saving — this browser is blocking storage".</dt>
+                  <dd>You are in a private window or the browser is blocking site data. Nothing you write is saved in this state. Open the app in a normal window. If you already wrote something, download it first with <b>Settings → Backup → download backup</b> before closing the tab.</dd>
+                  <dt>Loading a backup says "that backup could not be loaded".</dt>
+                  <dd>The file is damaged or is not this app's backup format. <b>Your existing notes are kept and not overwritten.</b> Try another backup file.</dd>
+                  <dt>Searching a film in the Library asks for a key.</dt>
+                  <dd>Only film and TV auto-fill needs a free TMDB key (books, music and papers work without one). Sign up at themoviedb.org, get a key from the API section of the settings there, and paste it under <b>Settings → Integrations → auto-fill</b>. "the API key was rejected" means the key was pasted wrongly. Everything can also be typed in by hand without a key.</dd>
+                  <dt>Library search keeps failing.</dt>
+                  <dd>Check the internet connection first. Offline, or when a response takes more than 15 seconds, the search stops and says so. Many searches in a short time can show "search limit reached"; try again a few minutes later. Every item can be registered by hand even when search fails.</dd>
+                </dl>
+                <p><b>Editing</b></p>
+                <dl>
+                  <dt>I typed a chapter, turned the page and back, and it was gone.</dt>
+                  <dd>A saving bug of an old version. The current version saves every field, chapter and tags included, immediately. Make sure you have the latest files.</dd>
+                  <dt>Nothing happens when I press the colour or highlighter buttons.</dt>
+                  <dd>Select the text to colour by dragging first, then press the button. Pressing without a selection shows a "select text first" message.</dd>
+                  <dt>(When editing the files yourself) I renamed a menu but the page title stayed the same.</dt>
+                  <dd>Sidebar labels live in the string table in app.js (I18N), page titles in <b>PAGE_TITLES</b> next to it. Change both, and leave the internal name inside <b>showPage('...')</b> alone or the page stops opening.</dd>
+                </dl>
+
+                <h3>Change log</h3>
+                <p>Only changes you can notice are listed, newest first. The <b>version number</b> at the bottom left of the sidebar is the number of entries here, and the date next to it is the last update.</p>
+                <ul>
+                  <li><b>2026-11-10</b> — <b>English and Korean</b>: the whole interface and this guide are available in both languages. The first run follows the browser language; switch under Settings → Display → language. Note content is never translated.</li>
+                  <li><b>2026-11-09</b> — <b>Open on the paper</b>: the notebook and page you last wrote in are remembered and reopened, and on a PC the caret sits in MAIN NOTES. On phones the paper comes first and the notebook list, today's list and stats moved below it (notebooks button in the top bar); backup and address notices dock at the bottom of the screen in one line. "What this app is for" was added at the top of the guide, and the app version and update date show at the bottom left of the sidebar.</li>
+                  <li><b>2026-11-09</b> — A <b>Lists</b> tab in Settings: subjects can be renamed and deleted (an in-use subject is moved into another one first), and Library categories and genres can be added ahead of time or renamed across every item at once.</li>
+                  <li><b>2026-11-08</b> — The subject, kind and go-to-note columns of today's study list have fixed widths, so rows no longer shift with text length. Long explanatory text in Settings and Schedule manager was cut to one line or removed.</li>
+                  <li><b>2026-11-08</b> — Settings was split into five tabs (<b>Backup · Account · Display · Integrations · Guide</b>). The last tab is remembered per device and the guide shows directly in the Guide tab. clear all data sits at the bottom of the Backup tab.</li>
+                  <li><b>2026-11-08</b> — This change log and the reference date were added to the guide. The "Powered by Netlify" badge that covered the bottom right of the screen was turned off in the site settings.</li>
+                  <li><b>2026-11-07</b> — No backup reminder while only the sample notes are present (two notices overlapped on the first visit to the new address).</li>
+                  <li><b>2026-11-04</b> — <b>Address change</b> to <b>https://amber-studydesk.netlify.app/</b>. The old address (amber67-git.github.io/studydesk) only guides you to download a backup and no longer offers to install. See "The address change" above for the reason and the steps.</li>
+                  <li><b>2026-11-04</b> — Full screen-size review: the editor layout (◀▶ position, two-line toolbar, scrolling for overflowing text), cards and today's list were adjusted for full and split PC windows, tablets in both orientations, and phones in both orientations. Auto page creation no longer happens on a page that already overflows. The app id was fixed.</li>
+                  <li><b>2026-11-04</b> — Design: ink-coloured sidebar (matching the new icon), off-white background, colour bars on the stat cards.</li>
+                  <li><b>2026-11-03</b> — New app icon (four books on ruled paper). The backup menu was merged back into the top of the Settings page.</li>
+                  <li><b>2026-11-02</b> — Cross-device sync (Google sign-in + cloud) was added. It is off until Firebase is configured; once on, a sign-in button appears under Settings → Account → cloud sync.</li>
+                  <li><b>2026-11-01</b> — Installable app (PWA): home-screen install and offline use. First round of screen-size fixes, accessibility improvements, self-hosted Latin fonts (fixes the phone/PC font mismatch). StudyDesk v1 released.</li>
+                </ul>
+                <p class="guide-foot">Guide current as of <b>2026-11-10</b>. On the next update, only changes after this date need to be added to the change log and FAQ.</p>
               </div>
           </div>
         </div>
