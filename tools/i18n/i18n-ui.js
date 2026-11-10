@@ -156,7 +156,10 @@ async function switchTest() {
   await setLang('en');
   ok((await lbl('#review-mode-btn')) === 'show notes', 'switch: "show notes" state follows the switch ("' + (await lbl('#review-mode-btn')) + '")');
   await p.click('#review-mode-btn');
-  await p.click('#save-note-btn'); await setLang('ko');                  // switch during the flash (well inside its 1.2s)
+  // switch during the 1.2s flash: fire the selector's change directly, with no
+  // navigation or fixed waits, so the check cannot drift past the timer
+  const quickLang = l => p.evaluate(v => { const el = document.getElementById('lang-select'); el.value = v; el.dispatchEvent(new Event('change', { bubbles: true })); }, l);
+  await p.click('#save-note-btn'); await quickLang('ko');
   ok((await lbl('#save-note-btn')) === '저장됨', 'switch: the flash itself follows a switch ("' + (await lbl('#save-note-btn')) + '")');
   await p.waitForTimeout(1300);
   ok((await lbl('#save-note-btn')) === '저장', 'switch: save label after the flash ends ("' + (await lbl('#save-note-btn')) + '")');

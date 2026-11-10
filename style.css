@@ -689,6 +689,9 @@ textarea#summary:focus-visible{box-shadow:inset 0 0 0 2px var(--bdr2)}
 @media(max-width:760px){
   @container cbody (max-width:580px){
     .tb-expanded .notes-body-wrap{height:462px}
+    /* CUE sits above MAIN NOTES here: it keeps its own phone height instead
+       of the side-by-side 602px meant for the two-column paper */
+    .tb-expanded .cues-col{height:170px}
   }
   /* the bar under the paper sticks to the bottom of the screen (above the
      banner dock), so ◀ ▶ and save are reachable while the keyboard is up.
