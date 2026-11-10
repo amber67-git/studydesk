@@ -71,7 +71,7 @@
       // stats / today
       'stats.totalNotebooks': 'Total notebooks', 'stats.subjects': 'Subjects', 'stats.todaysTasks': "Today's tasks",
       'today.title': "today's study list", 'today.placeholder': 'add a one-off task for today', 'today.add': 'add',
-      'today.empty': 'Nothing scheduled today.',
+      'today.empty': 'Nothing scheduled today.', 'sched.noRecurring': 'no recurring tasks yet.', 'sched.noOneoff': 'no one-off tasks yet.', 'cal.dayEmpty': 'No tasks this day.', 'notes.saved': 'saved', 'lib.coverAlt': 'cover',
       'sched.kind.recurring': 'recurring', 'sched.kind.oneoff': 'one-off', 'go.toNote': 'go to note',
       // notebook types
       'type.lecture': 'lecture', 'type.book': 'book', 'type.movie': 'movie', 'type.project': 'project',
@@ -254,7 +254,7 @@
       'banner.lastBackup': '마지막 백업이 {n}일 전입니다.',
       'stats.totalNotebooks': '전체 노트북', 'stats.subjects': '과목', 'stats.todaysTasks': '오늘 할 일',
       'today.title': '오늘의 공부 목록', 'today.placeholder': '오늘 할 일 추가', 'today.add': '추가',
-      'today.empty': '오늘은 일정이 없습니다.',
+      'today.empty': '오늘은 일정이 없습니다.', 'sched.noRecurring': '아직 반복 일정이 없습니다.', 'sched.noOneoff': '아직 단발 일정이 없습니다.', 'cal.dayEmpty': '이날은 일정이 없습니다.', 'notes.saved': '저장됨', 'lib.coverAlt': '표지',
       'sched.kind.recurring': '반복', 'sched.kind.oneoff': '단발', 'go.toNote': '노트 열기',
       'type.lecture': '강의', 'type.book': '책', 'type.movie': '영화', 'type.project': '프로젝트',
       'type.self-study': '자습', 'type.other': '기타',
@@ -1882,7 +1882,7 @@
         Storage.scheduleSave();
         var btn = Utils.$('save-note-btn');
         var original = btn.innerHTML;
-        btn.innerHTML = '<span class="icon" data-icon="check" aria-hidden="true"></span> saved';
+        btn.innerHTML = '<span class="icon" data-icon="check" aria-hidden="true"></span> ' + Utils.escapeHtml(tx('notes.saved'));
         setTimeout(function () { btn.innerHTML = original; }, 1200);
       });
 
@@ -1988,8 +1988,8 @@
         var cornell = document.querySelector('.cornell');
         var on = cornell.classList.toggle('review-mode');
         this.innerHTML = on
-          ? '<span class="icon" data-icon="eye" aria-hidden="true"></span><span class="btn-label"> show notes</span>'
-          : '<span class="icon" data-icon="eye-off" aria-hidden="true"></span><span class="btn-label"> self-test</span>';
+          ? '<span class="icon" data-icon="eye" aria-hidden="true"></span><span class="btn-label"> ' + Utils.escapeHtml(tx('notes.showNotes')) + '</span>'
+          : '<span class="icon" data-icon="eye-off" aria-hidden="true"></span><span class="btn-label"> ' + Utils.escapeHtml(tx('notes.selfTest')) + '</span>';
         Icons.hydrate(this);
       });
 
@@ -2003,7 +2003,7 @@
       if (cornell && cornell.classList.contains('review-mode')) {
         cornell.classList.remove('review-mode');
         var b = Utils.$('review-mode-btn');
-        b.innerHTML = '<span class="icon" data-icon="eye-off" aria-hidden="true"></span><span class="btn-label"> self-test</span>';
+        b.innerHTML = '<span class="icon" data-icon="eye-off" aria-hidden="true"></span><span class="btn-label"> ' + Utils.escapeHtml(tx('notes.selfTest')) + '</span>';
         Icons.hydrate(b);
       }
     }
@@ -2179,7 +2179,7 @@
 
     function renderRecurringList() {
       if (AppState.recurring.length === 0) {
-        Utils.$('recurring-list').innerHTML = '<p class="empty-note">no recurring tasks yet.</p>';
+        Utils.$('recurring-list').innerHTML = '<p class="empty-note">' + tx('sched.noRecurring') + '</p>';
         return;
       }
       Utils.$('recurring-list').innerHTML = AppState.recurring.map(function (r) {
@@ -2259,7 +2259,7 @@
         return (a.date || '').localeCompare(b.date || '');
       });
       if (upcoming.length === 0) {
-        Utils.$('manager-task-list').innerHTML = '<p class="empty-note">no one-off tasks yet.</p>';
+        Utils.$('manager-task-list').innerHTML = '<p class="empty-note">' + tx('sched.noOneoff') + '</p>';
         return;
       }
       Utils.$('manager-task-list').innerHTML = upcoming.map(function (t) {
@@ -2463,11 +2463,11 @@
       var items = getTasksForDate(dateStr);
       var parts = dateStr.split('-').map(Number);
       var d = new Date(parts[0], parts[1] - 1, parts[2]);
-      Utils.$('day-events-title').textContent = d.toLocaleDateString('en-US', {
+      Utils.$('day-events-title').textContent = d.toLocaleDateString(I18n.locale(), {
         weekday: 'long', month: 'long', day: 'numeric'
       });
       if (items.length === 0) {
-        Utils.$('day-events-list').innerHTML = '<p class="empty-note">No tasks this day.</p>';
+        Utils.$('day-events-list').innerHTML = '<p class="empty-note">' + tx('cal.dayEmpty') + '</p>';
       } else {
         Utils.$('day-events-list').innerHTML = items.map(function (it) {
           var colorClass = AppState.subjectColorClass(it.subjectId);
@@ -2973,7 +2973,7 @@
       }
       box.classList.remove('empty');
       var rotStyle = coverRot ? ' style="transform:rotate(' + coverRot + 'deg)"' : '';
-      box.innerHTML = '<img src="' + Utils.escapeHtml(url) + '" alt="cover"' + rotStyle + '>';
+      box.innerHTML = '<img src="' + Utils.escapeHtml(url) + '" alt="' + Utils.escapeHtml(tx('lib.coverAlt')) + '"' + rotStyle + '>';
     }
 
     /* Uploaded covers MUST be downscaled: one phone photo is 3-5MB and
@@ -3964,6 +3964,7 @@
           if (!confirm(tx('backup.loadConfirm', { summary: summaryText() }))) return;
 
           // snapshot current state so a bad file can't leave the app wrecked
+          var bannerBefore = Utils.$('backup-banner') ? Utils.$('backup-banner').style.display : 'none';
           var snapshot = {
             subjects: AppState.subjects, notes: AppState.notes,
             recurring: AppState.recurring, adhocTasks: AppState.adhocTasks,
@@ -3990,6 +3991,9 @@
             App.renderAll();
             if (AppState.notes.length > 0) NotesModule.selectNote(AppState.notes[0].id);
             st.textContent = tx('backup.loaded', { summary: summaryText() });
+            // the imported settings may make a visible reminder no longer due
+            // (recent lastBackupAt, reminders off) even when the language is the same
+            Settings.retranslateBanners();
             // the new-address hint ("load your backup") is done once a backup is in
             if (location.hostname !== OLD_HOST && Utils.$('move-banner')) Utils.$('move-banner').style.display = 'none';
             Utils.$('backup-reminder-select').value = String(AppState.settings.backupReminderDays);
@@ -4004,7 +4008,10 @@
             AppState.cards = snapshot.cards;
             AppState.library = snapshot.library;
             AppState.settings = snapshot.settings;
+            // a language switch inside the failed render may have hidden the reminder
+            if (Utils.$('backup-banner')) Utils.$('backup-banner').style.display = bannerBefore;
             App.renderAll();
+            Settings.updateBannerDock();
             st.textContent = tx('backup.loadFailed');
           }
         };
