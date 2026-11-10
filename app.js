@@ -575,7 +575,7 @@
       'backup-status': 1, 'save-status': 1, 'storage-usage': 1, 'lib-status': 1, 'lib-notebook-link': 1,
       'font-size-value': 1, 'move-banner-text': 1, 'backup-banner-text': 1
     };
-    var ATTRS = ['placeholder', 'title', 'aria-label'];
+    var ATTRS = ['placeholder', 'data-placeholder', 'title', 'aria-label'];   // data-placeholder: the contenteditable editor's hint
 
     function lang() {
       var l = (typeof AppState !== 'undefined' && AppState.settings) ? AppState.settings.lang : null;
@@ -643,9 +643,12 @@
         var lead = raw.slice(0, raw.indexOf(trimmed)), trail = raw.slice(raw.indexOf(trimmed) + trimmed.length);
         n.nodeValue = lead + t(key) + trail;
       });
-      var els = root.querySelectorAll('[placeholder],[title],[aria-label],[data-i18n-placeholder],[data-i18n-title],[data-i18n-aria-label]');
+      var els = root.querySelectorAll('[placeholder],[data-placeholder],[title],[aria-label],[data-i18n-placeholder],[data-i18n-data-placeholder],[data-i18n-title],[data-i18n-aria-label]');
       Array.prototype.forEach.call(els, function (el) {
-        if (skipElement(el) || insideSkipped(el)) return;
+        // a skipped container keeps its CONTENTS (user data) but its own
+        // label / hint attributes are UI text: the editor's aria-label and
+        // placeholder, a filter select's title
+        if (insideSkipped(el)) return;
         ATTRS.forEach(function (attr) {
           var dataName = 'i18n' + attr.charAt(0).toUpperCase() + attr.slice(1).replace(/-(\w)/g, function (m, c) { return c.toUpperCase(); });
           var key = el.dataset[dataName];
