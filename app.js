@@ -44,8 +44,380 @@
   var APP_HOME = 'https://amber-studydesk.netlify.app/';
   // Shown bottom-left in the sidebar. Bump both in the same PR that adds a
   // line to the guide's 변경 이력 (version = number of entries there).
-  var APP_VERSION = 'v12';
-  var APP_UPDATED = '2026-11-09';
+  var APP_VERSION = 'v13';
+  var APP_UPDATED = '2026-11-10';
+
+  /* ===========================================================
+   * I18N - every user-facing string, English and Korean. Static HTML text
+   * is matched against the English column at startup (I18n.apply), dynamic
+   * strings go through I18n.t('key', vars). Keep both columns' key sets
+   * identical: scratch i18n-check.js fails the build otherwise.
+   * {name} placeholders are substituted; "(s)" is resolved by I18n.tn().
+   * =========================================================== */
+  var I18N = {
+    en: {
+      // navigation / page titles
+      'nav.notebooks': 'Notebooks', 'nav.library': 'Library', 'nav.calendar': 'Calendar',
+      'nav.manager': 'Schedule manager', 'nav.cards': 'Flashcards', 'nav.settings': 'Settings',
+      'tb.notebooks': 'notebooks', 'tb.notebooksTitle': 'go to the notebook list', 'a.menu': 'menu',
+      'ver.title': 'app version · last update',
+      // banners
+      'banner.downloadBackup': 'download backup', 'banner.openNew': 'open new address', 'banner.loadBackup': 'load backup',
+      'banner.backupNow': 'backup now', 'common.later': 'later',
+      'banner.moveOld': 'The app moved to a new address. ① Download a backup here → ② load it at the new address. Do not install the app from this address.',
+      'banner.moveNew': 'These are sample notes. If you have a backup file from the old address, load it with load backup.',
+      'banner.noBackup': "You haven't downloaded a backup yet — your notes exist only in this browser.",
+      'banner.lastBackup': 'Last backup was {n} day(s) ago.',
+      // stats / today
+      'stats.totalNotebooks': 'Total notebooks', 'stats.subjects': 'Subjects', 'stats.todaysTasks': "Today's tasks",
+      'today.title': "today's study list", 'today.placeholder': 'add a one-off task for today', 'today.add': 'add',
+      'today.empty': 'Nothing scheduled today.', 'sched.noRecurring': 'no recurring tasks yet.', 'sched.noOneoff': 'no one-off tasks yet.', 'cal.dayEmpty': 'No tasks this day.', 'notes.saved': 'saved', 'lib.coverAlt': 'cover',
+      'sched.kind.recurring': 'recurring', 'sched.kind.oneoff': 'one-off', 'go.toNote': 'go to note',
+      // notebook types
+      'type.lecture': 'lecture', 'type.book': 'book', 'type.movie': 'movie', 'type.project': 'project',
+      'type.self-study': 'self-study', 'type.other': 'other',
+      'a.subject': 'subject', 'a.type': 'type', 'a.topic': 'topic',
+      'filter.allTypes': 'all types', 'filter.allSubjects': 'all subjects', 'filter.allCategories': 'all categories',
+      'filter.allGenres': 'all genres', 'filter.anyStatus': 'any status',
+      'filter.bySubject': 'filter by subject', 'filter.byType': 'filter by type', 'filter.byCategory': 'filter by category',
+      'filter.byGenre': 'filter by genre', 'filter.byStatus': 'filter by status',
+      // notebooks page
+      'notes.search': 'search notebooks', 'notes.newNotebook': 'new notebook', 'notes.noneFound': 'No notes found.',
+      'notes.untitled': 'untitled', 'notes.pageCount': '{n} page(s)',
+      'notes.confirmDelete': 'Delete "{title}" and all {pages} in it?\n\nThis cannot be undone.', 'notes.thisNotebook': 'this notebook',
+      'notes.addSubjectFirst': 'Add a subject first.', 'notes.openNotebookFirst': 'Open a notebook first.',
+      'notes.deleteNotebook': 'delete notebook', 'notes.selfTest': 'self-test', 'notes.showNotes': 'show notes',
+      'notes.selfTestTitle': 'hide MAIN NOTES and recall from cues', 'notes.save': 'save',
+      'page.prev': 'previous page', 'page.next': 'next page', 'page.nextAdds': 'next page (adds a page at the end)',
+      'page.jump': 'jump to a page', 'pages.title': 'Pages in this notebook', 'pages.noChapter': '(no chapter)',
+      'cornell.subject': 'SUBJECT', 'cornell.type': 'TYPE', 'cornell.topic': 'TOPIC', 'cornell.cue': 'CUE',
+      'cornell.main': 'MAIN NOTES', 'cornell.summary': 'SUMMARY',
+      'cornell.topicPh': 'name, topic, class', 'cornell.chapterPh': 'chapter / subtitle (this page)',
+      'cornell.tagsPh': 'tags / keywords (this page)', 'cornell.dateTitle': 'date (auto-filled per page)',
+      'cornell.cuesPh': 'Review cues\n\nKey words / Questions / Vocabulary',
+      'cornell.bodyPh': 'Take notes here.\n\nUse short sentences, bullet points, symbols, and diagrams.',
+      'cornell.summaryPh': 'Quick summary\n\nWrite the main idea in your own words.',
+      'a.mainNotes': 'main notes',
+      'fmt.bold': 'bold', 'fmt.italic': 'italic', 'fmt.highlight': 'highlight', 'fmt.textColor': 'text color',
+      'fmt.black': 'black', 'fmt.red': 'red', 'fmt.blue': 'blue', 'fmt.indent': 'indent', 'fmt.outdent': 'outdent',
+      'fmt.label': 'label', 'fmt.link': 'link', 'fmt.insertLink': 'insert link', 'fmt.insertImage': 'insert image',
+      'fmt.selectFirstHighlight': 'Select some text first, then click highlight.',
+      'fmt.selectFirstColor': 'Select some text first, then pick a color.',
+      'img.notImage': "That file is not an image, so it can't be inserted into a note.",
+      'img.tooLarge': 'That image is very large ({mb} MB). Please resize it below 20 MB before adding it.',
+      'img.unreadable': 'That image could not be read. It may be corrupted.',
+      'link.title': 'Insert link', 'link.url': 'URL', 'link.text': 'Link text (optional)', 'link.textPh': 'leave blank to use the URL',
+      'link.notAllowed': 'That link type is not allowed. Use an http://, https://, or mailto: address.',
+      'label.title': 'Insert label', 'label.text': 'Label text', 'label.textPh': 'e.g. "exam tip", "definition"', 'common.insert': 'Insert',
+      // new notebook modal
+      'nb.title': 'New notebook', 'nb.subject': 'Subject', 'nb.type': 'Type', 'nb.topic': 'Topic / name',
+      'nb.note': 'A subject can have one notebook per type - e.g. economics/lecture and economics/book are different notebooks.',
+      'nb.create': 'Create notebook', 'common.pickSubject': 'Pick a subject.', 'nb.giveName': 'Give this notebook a name.',
+      'nb.topicPh': 'e.g. "Econ 101", "Freakonomics"',
+      'nb.exists': 'You already have a "{type}" notebook for this subject ("{title}"). Open it instead?',
+      // subjects
+      'subj.addBtn': 'subject', 'subj.addTitle': 'Add subject', 'subj.nameLabel': 'Subject name',
+      'subj.namePh': 'e.g. economics, french, startup',
+      // library
+      'lib.addItem': 'add item', 'lib.bulkEdit': 'bulk edit', 'lib.clearSelection': 'clear selection',
+      'lib.searchPh': 'search title, author, ISBN, call no, notes', 'lib.selected': '{n} selected',
+      'lib.empty': 'Nothing in your library yet. Add a book, film, or course.', 'lib.noMatch': 'No items match these filters.',
+      'lib.modalAdd': 'Add to library', 'lib.modalEdit': 'Edit item', 'lib.saveItem': 'Save item', 'common.delete': 'Delete',
+      'lib.searchTitlePh': 'search a title to auto-fill everything below', 'common.search': 'search',
+      'lib.coverTitle': 'paste, drag, or click to upload', 'lib.rotate': '90°', 'lib.rotateTitle': 'rotate 90°',
+      'common.remove': 'remove', 'lib.searchGoogleImages': 'search google images',
+      'lib.coverLine1': 'Paste, drag', 'lib.coverLine2': 'or click to upload',
+      'lib.f.title': 'Title *', 'lib.f.publisher': 'Publisher / studio / year', 'lib.f.author': 'Author / creator',
+      'lib.f.illustrator': 'Illustrator', 'lib.f.category': 'Category', 'lib.f.categoryHint': '(form)',
+      'lib.f.genre': 'Genre', 'lib.f.genreHint': '(subject)', 'lib.f.isbn': 'ISBN / DOI', 'lib.f.level': 'Level',
+      'lib.f.status': 'Status', 'lib.f.progress': 'Progress %', 'lib.f.rating': 'Rating (0-5)', 'lib.f.callNo': 'Call no.',
+      'lib.f.notes': 'Notes', 'lib.callNoPh': 'auto',
+      'libtypeopt.series': 'series / TV', 'libtypeopt.lecture': 'lecture / course', 'libtypeopt.article': 'article / news',
+      'lt.book': 'book', 'lt.movie': 'movie', 'lt.series': 'series', 'lt.lecture': 'lecture', 'lt.video': 'video',
+      'lt.paper': 'paper', 'lt.article': 'article', 'lt.music': 'music', 'lt.other': 'other',
+      'status.want': 'want', 'status.inProgress': 'in progress', 'status.done': 'done',
+      'level.rated': 'Rated {r}', 'level.beginner': 'Beginner', 'level.intermediate': 'Intermediate', 'level.advanced': 'Advanced',
+      'level.ratingPh': 'age rating, e.g. PG / 15', 'level.difficultyPh': 'beginner / intermediate / advanced', 'level.yearPh': 'year, e.g. 2024',
+      'lib.custom': '+ Custom…', 'lib.customPrompt': 'Enter a custom value:',
+      'lib.inherited': 'inherited details from "{title}"', 'lib.linkedTo': 'linked to notebook: {title}',
+      'lib.titleRequired': 'a title is required.', 'lib.removeConfirm': 'Remove "{title}" from the library?',
+      'lib.offline': 'you appear to be offline — connect and try again, or fill the form in by hand.',
+      'lib.timeout': 'the search timed out. Check your connection, or enter the details manually.',
+      'lib.quota': 'search limit reached for now. Wait a few minutes, or enter the details manually.',
+      'lib.authFail': 'the API key was rejected. Check it in Settings, or enter the details manually.',
+      'lib.searchFailed': 'search failed. You can still fill the form in by hand.',
+      'lib.noLookup': "automatic lookup isn't available for this type — fill the form in by hand.",
+      'lib.noMatches': 'no matches — fill the form in by hand.',
+      'lib.filled': 'filled in from search — check the details and adjust as needed.',
+      'lib.needTmdb': 'film & TV lookup needs a free TMDB key — add one in Settings (auto-fill card), or fill the form in by hand.',
+      'lib.coverUnreadable': 'that image could not be read.', 'lib.coverNotImage': 'that file is not an image.',
+      'lib.coverAdded': 'cover added (resized to save space).', 'lib.enterTitleFirst': 'enter a title first.',
+      'lib.coverSearch': 'title copied — find a cover, copy the image, then press Ctrl+V here.',
+      'lib.whichSubject': 'Which subject is "{title}" for?\n\n{names}\n\nEnter a number:', 'lib.notNumber': 'That is not one of the numbers listed.',
+      'lib.edit': 'edit', 'lib.select': 'select',
+      'bulk.title': 'Bulk edit', 'bulk.note': 'Leave a field on "(keep)" to change only the other ones.',
+      'bulk.apply': 'Apply to selected', 'bulk.keep': '(keep — no change)', 'bulk.count': '{n} item(s) selected',
+      // calendar / schedule
+      'cal.title': 'calendar', 'cal.prev': 'previous month', 'cal.next': 'next month', 'cal.more': '+{n} more',
+      'day.0': 'MON', 'day.1': 'TUE', 'day.2': 'WED', 'day.3': 'THU', 'day.4': 'FRI', 'day.5': 'SAT', 'day.6': 'SUN',
+      'dayev.title': 'Tasks', 'common.close': 'Close', 'a.close': 'close',
+      'sched.recurring': 'recurring schedule', 'sched.addRecurring': 'add recurring task', 'sched.recTitlePh': 'e.g. economics 101 lecture',
+      'sched.oneOff': 'one-off tasks', 'sched.addOneOff': 'add one-off task', 'sched.taskTitlePh': 'task title',
+      'sched.enterTitle': 'Enter a task title.', 'sched.pickDay': 'Pick at least one day.',
+      'sched.noSubject': 'This task has no subject linked yet.',
+      'sched.subjectGone': "The subject for this task no longer exists, so its notebook can't be opened.",
+      // flashcards
+      'cards.reviewMode': 'review mode', 'cards.addBtn': 'card', 'cards.filterAria': 'filter cards by subject',
+      'cards.prev': 'previous card', 'cards.next': 'next card', 'cards.flip': 'flip', 'cards.empty': 'No cards yet.',
+      'card.title': 'Add flashcard', 'card.front': 'Question / front', 'card.back': 'Answer / back', 'card.add': 'Add card',
+      'cards.addSubjectFirst': 'Add a subject first — cards are grouped by subject.',
+      'cards.fillBoth': 'Fill in both the question and the answer.', 'cards.noneToReview': 'No cards to review.',
+      // settings tabs + cards
+      'stab.backup': 'Backup', 'stab.account': 'Account', 'stab.display': 'Display', 'stab.lists': 'Lists',
+      'stab.integrations': 'Integrations', 'stab.guide': 'Guide', 'stab.aria': 'settings sections',
+      'backup.title': 'backup & restore', 'backup.remind': 'remind me to back up',
+      'backup.every3': 'every 3 days', 'backup.every7': 'every 7 days', 'backup.every14': 'every 14 days',
+      'backup.every30': 'every 30 days', 'backup.never': 'never',
+      'backup.downloaded': 'backup downloaded ({n} notebooks, {c} cards)',
+      'backup.fileTooLarge': 'that file is too large to be a backup ({mb} MB).',
+      'backup.notJson': 'that file is not a valid backup (could not read it as JSON).',
+      'backup.notBackup': 'that file does not look like a StudyDesk backup.',
+      'backup.summary': '{n} notebooks, {c} cards, {r} recurring tasks',
+      'backup.loadConfirm': 'Load this backup? ({summary})\n\nThis REPLACES everything currently in this browser.',
+      'backup.loaded': 'backup loaded: {summary}',
+      'backup.loadFailed': 'that backup could not be loaded — your existing notes were left untouched.',
+      'backup.fileUnreadable': 'could not read that file.',
+      'danger.title': 'clear all data', 'danger.note': 'Deletes everything stored in this browser.',
+      'danger.confirmSync': 'Cloud sync is on: this clears only the copy in this browser and downloads your notes again from the cloud after the reload.\n\nTo delete notes everywhere, delete them inside the app (deletions sync too). Continue?',
+      'danger.confirm': 'This will permanently delete all notes, tasks, and flashcards in this browser. Continue?',
+      'storage.used': 'storage used: ~{size} (about {pct}% of a typical 5 MB browser limit)',
+      'storage.unavailable': 'storage unavailable — this browser is blocking it, so nothing is being saved.',
+      'storage.blockedStatus': 'not saving — this browser is blocking storage',
+      'storage.blockedAlert': 'This browser is blocking local storage, so your notes cannot be saved.\n\nThis usually happens in a private/incognito window or when site data is blocked. Open the app in a normal window, or use Settings → Backup → download backup before you close the tab.',
+      'storage.corruptAlert': 'Your saved data could not be read (it appears corrupted). Starting fresh — a copy of the unreadable data was kept in browser storage. If you have a backup file, use Settings → Backup → load backup to restore it.',
+      'storage.fullStatus': 'save failed — storage full',
+      'storage.fullAlert': "Saving failed: this browser's storage is full.\n\nYour most recent edits are NOT saved. To fix this:\n1. Use Settings → Backup → download backup to save what you can.\n2. Delete some large images from your notes, then edit again.\n\nImages are the usual cause — check Settings for current usage.",
+      'sync.title': 'cloud sync', 'sync.note': 'Same Google account on every device.',
+      'sync.signin': 'sign in with Google', 'sync.signout': 'sign out',
+      'sync.foot.local': 'stored only in this browser', 'sync.foot.syncing': 'syncing…', 'sync.foot.synced': 'synced · {name}',
+      'sync.foot.offline': 'offline · will sync', 'sync.foot.error': 'sync error', 'sync.signedIn': 'signed in',
+      'sync.unconfigured': 'cloud sync is not set up yet: this build has no Firebase config, so notes stay in this browser only.',
+      'sync.loading': 'loading sync…',
+      'sync.signedout': 'not signed in: notes stay only in this browser. Sign in with the same Google account on every device to keep them in sync.',
+      'sync.as': ' as {email}', 'sync.syncing': 'syncing{who}{detail}…', 'sync.synced': 'synced{who} · last change {time}',
+      'sync.offline': 'offline{who}: changes are kept here and sent when you are back online.', 'sync.error': 'sync error: {detail}',
+      'sync.permissionDenied': 'Firestore rejected this account (permission denied). Check the security rules in the Firebase console (firestore.rules in the repository).',
+      'sync.unavailable': 'Firestore is unreachable right now; it retries when the connection returns.',
+      'sync.unauthorizedDomain': 'this site is not on the Firebase "authorized domains" list (Authentication → Settings).',
+      'sync.googleDisabled': 'Google sign-in is not enabled in the Firebase console (Authentication → Sign-in method).',
+      'sync.sdkFailed': 'the sync library could not be loaded ({msg}). The app keeps working locally.',
+      'sync.discardConfirm': 'You changed notes or settings while the download was running. Discard those changes too and use the cloud copy of {email}?\n\nCancel = sign out and keep the local notes.',
+      'sync.otherAccount': 'The notes in this browser were synced with a different Google account.\n\nOK = replace them with the notes of {email} from the cloud (the local copy is discarded; download a backup first if you want to keep it).\nCancel = sign out and keep the local notes.',
+      'sync.signingOut': 'signing out', 'sync.signingIn': 'signing in', 'sync.downloadPending': 'download pending',
+      'sync.uploading': 'uploading {n}', 'sync.pageOf': 'page {n} of "{title}"',
+      'sync.oversized': 'not synced (over the 900 KB per-page limit, too many images): {parts}. These stay on this device only; remove or shrink an image to sync them.',
+      'display.fontStyle': 'font style', 'display.hand': 'handwritten', 'display.clean': 'clean sans-serif',
+      'display.textSize': 'note text size', 'display.language': 'language',
+      'lang.en': 'English', 'lang.ko': '한국어',
+      'lists.subjects': 'subjects', 'lists.subjectsNote': 'Used by notebooks, tasks and flashcards.',
+      'lists.categories': 'library categories', 'lists.addCategory': 'category',
+      'lists.categoriesNote': 'Form of an item (novel, documentary…). Built-in options stay in the dropdown.',
+      'lists.genres': 'library genres', 'lists.addGenre': 'genre',
+      'lists.genresNote': 'Subject of an item (history, economics…). Built-in options stay in the dropdown.',
+      'lists.empty': 'Nothing yet. Values you pick in Library show up here.', 'lists.customTag': 'custom',
+      'lists.rename': 'rename', 'lists.renameX': 'Rename {noun}', 'lists.addX': 'Add {noun}',
+      'lists.noun.subject': 'subject', 'lists.noun.category': 'category', 'lists.noun.genre': 'genre',
+      'lists.n.notebook': '{n} notebook(s)', 'lists.n.task': '{n} task(s)', 'lists.n.card': '{n} card(s)',
+      'lists.n.item': '{n} item(s)', 'lists.n.libItem': '{n} library item(s)',
+      'lists.subjectPh': 'e.g. economics', 'lists.categoryPh': 'e.g. Field Guide', 'lists.genrePh': 'e.g. Urban Planning',
+      'lists.appliesTo': 'Applies to {items} using this value.',
+      'lists.dupSubject': 'There is already a subject called "{name}".', 'lists.alreadyInList': '"{name}" is already in the list.',
+      'lists.keepOne': 'Keep at least one subject. Add another one first.', 'lists.confirmDeleteSubject': 'Delete the subject "{name}"?',
+      'lists.usedBy': '"{name}" is used by {parts}.',
+      'lists.stillUsed': '"{name}" is still used by library items. Rename it to merge it into another value.',
+      'listedit.rename': 'Rename', 'listedit.name': 'Name', 'common.save': 'Save', 'common.add': 'Add', 'common.cancel': 'Cancel',
+      'subjdel.title': 'Delete subject', 'subjdel.moveTo': 'Move them to', 'subjdel.confirm': 'move & delete',
+      'integ.title': 'auto-fill (optional)', 'integ.note': 'Film & TV search. Free key at themoviedb.org',
+      'integ.tmdbLabel': 'TMDB API key', 'integ.keyPh': 'paste your key (optional)',
+      'guide.title': 'StudyDesk user guide'
+    },
+    ko: {
+      'nav.notebooks': '노트북', 'nav.library': '자료실', 'nav.calendar': '달력',
+      'nav.manager': '일정 관리', 'nav.cards': '암기 카드', 'nav.settings': '설정',
+      'tb.notebooks': '노트북 목록', 'tb.notebooksTitle': '노트북 목록으로 이동', 'a.menu': '메뉴',
+      'ver.title': '앱 버전 · 마지막 갱신',
+      'banner.downloadBackup': '백업 받기', 'banner.openNew': '새 주소 열기', 'banner.loadBackup': '백업 불러오기',
+      'banner.backupNow': '지금 백업', 'common.later': '나중에',
+      'banner.moveOld': '새 주소로 옮겼어요. ① 여기서 백업 받기 → ② 새 주소에서 백업 불러오기. 이 주소로는 앱을 설치하지 마세요.',
+      'banner.moveNew': '샘플 노트예요. 옛 주소에서 받은 백업 파일이 있으면 백업 불러오기로 불러오세요.',
+      'banner.noBackup': '아직 백업을 받지 않았어요. 노트는 이 브라우저에만 있습니다.',
+      'banner.lastBackup': '마지막 백업이 {n}일 전입니다.',
+      'stats.totalNotebooks': '전체 노트북', 'stats.subjects': '과목', 'stats.todaysTasks': '오늘 할 일',
+      'today.title': '오늘의 공부 목록', 'today.placeholder': '오늘 할 일 추가', 'today.add': '추가',
+      'today.empty': '오늘은 일정이 없습니다.', 'sched.noRecurring': '아직 반복 일정이 없습니다.', 'sched.noOneoff': '아직 단발 일정이 없습니다.', 'cal.dayEmpty': '이날은 일정이 없습니다.', 'notes.saved': '저장됨', 'lib.coverAlt': '표지',
+      'sched.kind.recurring': '반복', 'sched.kind.oneoff': '단발', 'go.toNote': '노트 열기',
+      'type.lecture': '강의', 'type.book': '책', 'type.movie': '영화', 'type.project': '프로젝트',
+      'type.self-study': '자습', 'type.other': '기타',
+      'a.subject': '과목', 'a.type': '종류', 'a.topic': '주제',
+      'filter.allTypes': '모든 종류', 'filter.allSubjects': '모든 과목', 'filter.allCategories': '모든 카테고리',
+      'filter.allGenres': '모든 장르', 'filter.anyStatus': '모든 상태',
+      'filter.bySubject': '과목으로 거르기', 'filter.byType': '종류로 거르기', 'filter.byCategory': '카테고리로 거르기',
+      'filter.byGenre': '장르로 거르기', 'filter.byStatus': '상태로 거르기',
+      'notes.search': '노트북 검색', 'notes.newNotebook': '새 노트북', 'notes.noneFound': '노트북이 없습니다.',
+      'notes.untitled': '제목 없음', 'notes.pageCount': '{n}쪽',
+      'notes.confirmDelete': '"{title}" 노트북과 그 안의 {pages}을 모두 삭제할까요?\n\n되돌릴 수 없습니다.', 'notes.thisNotebook': '이 노트북',
+      'notes.addSubjectFirst': '먼저 과목을 추가하세요.', 'notes.openNotebookFirst': '먼저 노트북을 여세요.',
+      'notes.deleteNotebook': '노트북 삭제', 'notes.selfTest': '셀프 테스트', 'notes.showNotes': '노트 보기',
+      'notes.selfTestTitle': 'MAIN NOTES를 가리고 CUE만 보고 떠올리기', 'notes.save': '저장',
+      'page.prev': '이전 페이지', 'page.next': '다음 페이지', 'page.nextAdds': '다음 페이지(마지막이면 새 페이지)',
+      'page.jump': '페이지로 바로 이동', 'pages.title': '이 노트북의 페이지', 'pages.noChapter': '(챕터 없음)',
+      'cornell.subject': '과목', 'cornell.type': '종류', 'cornell.topic': '주제', 'cornell.cue': 'CUE',
+      'cornell.main': 'MAIN NOTES', 'cornell.summary': 'SUMMARY',
+      'cornell.topicPh': '이름, 주제, 수업명', 'cornell.chapterPh': '챕터 / 소제목 (이 페이지)',
+      'cornell.tagsPh': '태그 / 키워드 (이 페이지)', 'cornell.dateTitle': '날짜(페이지마다 자동 입력)',
+      'cornell.cuesPh': '복습용 질문\n\n핵심 단어 / 질문 / 어휘',
+      'cornell.bodyPh': '여기에 필기하세요.\n\n짧은 문장, 글머리 기호, 약호, 그림을 활용하세요.',
+      'cornell.summaryPh': '한 줄 요약\n\n핵심 내용을 내 말로 적어 보세요.',
+      'a.mainNotes': '본문 필기',
+      'fmt.bold': '굵게', 'fmt.italic': '기울임', 'fmt.highlight': '형광펜', 'fmt.textColor': '글자색',
+      'fmt.black': '검정', 'fmt.red': '빨강', 'fmt.blue': '파랑', 'fmt.indent': '들여쓰기', 'fmt.outdent': '내어쓰기',
+      'fmt.label': '라벨', 'fmt.link': '링크', 'fmt.insertLink': '링크 넣기', 'fmt.insertImage': '이미지 넣기',
+      'fmt.selectFirstHighlight': '먼저 글자를 선택한 뒤 형광펜을 누르세요.',
+      'fmt.selectFirstColor': '먼저 글자를 선택한 뒤 색을 고르세요.',
+      'img.notImage': '이미지 파일이 아니라 노트에 넣을 수 없습니다.',
+      'img.tooLarge': '이미지가 너무 큽니다({mb} MB). 20 MB 미만으로 줄여서 다시 넣어 주세요.',
+      'img.unreadable': '이미지를 읽을 수 없습니다. 파일이 손상됐을 수 있습니다.',
+      'link.title': '링크 넣기', 'link.url': 'URL', 'link.text': '링크 글자 (선택)', 'link.textPh': '비우면 URL이 그대로 보입니다',
+      'link.notAllowed': '허용되지 않는 링크입니다. http://, https://, mailto: 주소만 넣을 수 있습니다.',
+      'label.title': '라벨 넣기', 'label.text': '라벨 글자', 'label.textPh': '예: "시험 포인트", "정의"', 'common.insert': '넣기',
+      'nb.title': '새 노트북', 'nb.subject': '과목', 'nb.type': '종류', 'nb.topic': '주제 / 이름',
+      'nb.note': '한 과목은 종류마다 노트북을 하나씩 가집니다. 예: 경제학/강의와 경제학/책은 서로 다른 노트북입니다.',
+      'nb.create': '노트북 만들기', 'common.pickSubject': '과목을 고르세요.', 'nb.giveName': '노트북 이름을 입력하세요.',
+      'nb.topicPh': '예: "경제학 101", "괴짜경제학"',
+      'nb.exists': '이 과목에는 이미 "{type}" 노트북("{title}")이 있습니다. 그 노트북을 열까요?',
+      'subj.addBtn': '과목', 'subj.addTitle': '과목 추가', 'subj.nameLabel': '과목 이름',
+      'subj.namePh': '예: 경제학, 프랑스어, 창업',
+      'lib.addItem': '자료 추가', 'lib.bulkEdit': '일괄 편집', 'lib.clearSelection': '선택 해제',
+      'lib.searchPh': '제목, 저자, ISBN, 청구기호, 메모 검색', 'lib.selected': '{n}개 선택',
+      'lib.empty': '아직 자료가 없습니다. 책, 영화, 강의를 추가해 보세요.', 'lib.noMatch': '조건에 맞는 자료가 없습니다.',
+      'lib.modalAdd': '자료 추가', 'lib.modalEdit': '자료 편집', 'lib.saveItem': '자료 저장', 'common.delete': '삭제',
+      'lib.searchTitlePh': '제목을 검색하면 아래 항목이 자동으로 채워집니다', 'common.search': '검색',
+      'lib.coverTitle': '붙여넣기, 끌어다 놓기, 또는 클릭해서 업로드', 'lib.rotate': '90°', 'lib.rotateTitle': '90° 회전',
+      'common.remove': '지우기', 'lib.searchGoogleImages': '구글 이미지에서 표지 찾기',
+      'lib.coverLine1': '붙여넣거나 끌어다 놓거나', 'lib.coverLine2': '클릭해서 업로드',
+      'lib.f.title': '제목 *', 'lib.f.publisher': '출판사 / 제작사 / 연도', 'lib.f.author': '저자 / 제작자',
+      'lib.f.illustrator': '그림', 'lib.f.category': '카테고리', 'lib.f.categoryHint': '(형태)',
+      'lib.f.genre': '장르', 'lib.f.genreHint': '(주제)', 'lib.f.isbn': 'ISBN / DOI', 'lib.f.level': '레벨',
+      'lib.f.status': '상태', 'lib.f.progress': '진행률 %', 'lib.f.rating': '별점 (0-5)', 'lib.f.callNo': '청구기호',
+      'lib.f.notes': '메모', 'lib.callNoPh': '자동',
+      'libtypeopt.series': '시리즈 / TV', 'libtypeopt.lecture': '강의 / 강좌', 'libtypeopt.article': '기사 / 뉴스',
+      'lt.book': '책', 'lt.movie': '영화', 'lt.series': '시리즈', 'lt.lecture': '강의', 'lt.video': '영상',
+      'lt.paper': '논문', 'lt.article': '기사', 'lt.music': '음악', 'lt.other': '기타',
+      'status.want': '예정', 'status.inProgress': '진행 중', 'status.done': '완료',
+      'level.rated': '등급 {r}', 'level.beginner': '초급', 'level.intermediate': '중급', 'level.advanced': '고급',
+      'level.ratingPh': '연령 등급, 예: PG / 15', 'level.difficultyPh': '초급 / 중급 / 고급', 'level.yearPh': '연도, 예: 2024',
+      'lib.custom': '+ 직접 입력…', 'lib.customPrompt': '값을 입력하세요:',
+      'lib.inherited': '"{title}"의 정보를 이어받았습니다', 'lib.linkedTo': '연결된 노트북: {title}',
+      'lib.titleRequired': '제목은 꼭 입력해야 합니다.', 'lib.removeConfirm': '"{title}"을(를) 자료실에서 지울까요?',
+      'lib.offline': '오프라인인 것 같습니다. 연결 후 다시 시도하거나 직접 입력하세요.',
+      'lib.timeout': '검색 시간이 초과됐습니다. 연결을 확인하거나 직접 입력하세요.',
+      'lib.quota': '검색 한도에 도달했습니다. 몇 분 뒤 다시 시도하거나 직접 입력하세요.',
+      'lib.authFail': 'API 키가 거부됐습니다. 설정에서 키를 확인하거나 직접 입력하세요.',
+      'lib.searchFailed': '검색에 실패했습니다. 직접 입력할 수 있습니다.',
+      'lib.noLookup': '이 종류는 자동 검색을 지원하지 않습니다. 직접 입력하세요.',
+      'lib.noMatches': '검색 결과가 없습니다. 직접 입력하세요.',
+      'lib.filled': '검색 결과로 채웠습니다. 내용을 확인하고 필요하면 고치세요.',
+      'lib.needTmdb': '영화/TV 검색에는 무료 TMDB 키가 필요합니다. 설정(자동 채우기)에 키를 넣거나 직접 입력하세요.',
+      'lib.coverUnreadable': '이미지를 읽을 수 없습니다.', 'lib.coverNotImage': '이미지 파일이 아닙니다.',
+      'lib.coverAdded': '표지를 넣었습니다(용량을 위해 축소).', 'lib.enterTitleFirst': '먼저 제목을 입력하세요.',
+      'lib.coverSearch': '제목을 복사했습니다. 표지를 찾아 이미지를 복사한 뒤 여기서 Ctrl+V 하세요.',
+      'lib.whichSubject': '"{title}"은(는) 어느 과목인가요?\n\n{names}\n\n번호를 입력하세요:', 'lib.notNumber': '목록에 있는 번호가 아닙니다.',
+      'lib.edit': '편집', 'lib.select': '선택',
+      'bulk.title': '일괄 편집', 'bulk.note': '바꾸지 않을 항목은 "(유지)"로 두세요.',
+      'bulk.apply': '선택한 자료에 적용', 'bulk.keep': '(유지 — 변경 없음)', 'bulk.count': '{n}개 선택됨',
+      'cal.title': '달력', 'cal.prev': '이전 달', 'cal.next': '다음 달', 'cal.more': '+{n}개 더',
+      'day.0': '월', 'day.1': '화', 'day.2': '수', 'day.3': '목', 'day.4': '금', 'day.5': '토', 'day.6': '일',
+      'dayev.title': '일정', 'common.close': '닫기', 'a.close': '닫기',
+      'sched.recurring': '반복 일정', 'sched.addRecurring': '반복 일정 추가', 'sched.recTitlePh': '예: 경제학 101 강의',
+      'sched.oneOff': '단발 일정', 'sched.addOneOff': '단발 일정 추가', 'sched.taskTitlePh': '일정 이름',
+      'sched.enterTitle': '일정 이름을 입력하세요.', 'sched.pickDay': '요일을 하나 이상 고르세요.',
+      'sched.noSubject': '이 일정에는 아직 과목이 없습니다.',
+      'sched.subjectGone': '이 일정의 과목이 삭제되어 노트북을 열 수 없습니다.',
+      'cards.reviewMode': '복습 모드', 'cards.addBtn': '카드', 'cards.filterAria': '과목으로 카드 거르기',
+      'cards.prev': '이전 카드', 'cards.next': '다음 카드', 'cards.flip': '뒤집기', 'cards.empty': '아직 카드가 없습니다.',
+      'card.title': '암기 카드 추가', 'card.front': '질문 / 앞면', 'card.back': '답 / 뒷면', 'card.add': '카드 추가',
+      'cards.addSubjectFirst': '먼저 과목을 추가하세요. 카드는 과목별로 묶입니다.',
+      'cards.fillBoth': '질문과 답을 모두 입력하세요.', 'cards.noneToReview': '복습할 카드가 없습니다.',
+      'stab.backup': '백업', 'stab.account': '계정', 'stab.display': '화면', 'stab.lists': '목록',
+      'stab.integrations': '연동', 'stab.guide': '설명서', 'stab.aria': '설정 구역',
+      'backup.title': '백업 & 복원', 'backup.remind': '백업 알림 주기',
+      'backup.every3': '3일마다', 'backup.every7': '7일마다', 'backup.every14': '14일마다',
+      'backup.every30': '30일마다', 'backup.never': '알림 안 함',
+      'backup.downloaded': '백업을 내려받았습니다(노트북 {n}개, 카드 {c}개)',
+      'backup.fileTooLarge': '백업 파일로 보기에는 너무 큽니다({mb} MB).',
+      'backup.notJson': '올바른 백업 파일이 아닙니다(JSON으로 읽을 수 없음).',
+      'backup.notBackup': 'StudyDesk 백업 파일이 아닌 것 같습니다.',
+      'backup.summary': '노트북 {n}개, 카드 {c}개, 반복 일정 {r}개',
+      'backup.loadConfirm': '이 백업을 불러올까요? ({summary})\n\n지금 이 브라우저에 있는 내용을 모두 대체합니다.',
+      'backup.loaded': '백업을 불러왔습니다: {summary}',
+      'backup.loadFailed': '백업을 불러오지 못했습니다. 기존 노트는 그대로 있습니다.',
+      'backup.fileUnreadable': '파일을 읽을 수 없습니다.',
+      'danger.title': '전체 데이터 삭제', 'danger.note': '이 브라우저에 저장된 모든 내용을 지웁니다.',
+      'danger.confirmSync': '클라우드 동기화가 켜져 있습니다: 이 브라우저의 사본만 지우고, 새로고침 뒤 클라우드에서 노트를 다시 받아옵니다.\n\n모든 기기에서 지우려면 앱 안에서 노트북을 삭제하세요(삭제도 동기화됩니다). 계속할까요?',
+      'danger.confirm': '이 브라우저의 모든 노트, 일정, 카드를 영구적으로 삭제합니다. 계속할까요?',
+      'storage.used': '사용 중인 저장 공간: 약 {size} (일반적인 5 MB 한도의 약 {pct}%)',
+      'storage.unavailable': '저장소를 쓸 수 없습니다. 브라우저가 차단하고 있어 아무것도 저장되지 않습니다.',
+      'storage.blockedStatus': '저장 안 됨 — 브라우저가 저장소를 차단함',
+      'storage.blockedAlert': '브라우저가 로컬 저장소를 차단하고 있어 노트를 저장할 수 없습니다.\n\n보통 시크릿 창이거나 사이트 데이터가 차단된 경우입니다. 일반 창에서 열거나, 탭을 닫기 전에 설정 → 백업 → 백업 받기를 하세요.',
+      'storage.corruptAlert': '저장된 데이터를 읽을 수 없습니다(손상된 것 같습니다). 빈 상태로 시작하며, 읽지 못한 데이터의 사본은 브라우저에 남겨 두었습니다. 백업 파일이 있으면 설정 → 백업 → 백업 불러오기로 복원하세요.',
+      'storage.fullStatus': '저장 실패 — 저장 공간 부족',
+      'storage.fullAlert': '저장에 실패했습니다: 브라우저 저장 공간이 가득 찼습니다.\n\n최근 편집 내용이 저장되지 않았습니다. 해결 방법:\n1. 설정 → 백업 → 백업 받기로 가능한 내용을 저장하세요.\n2. 노트에서 큰 이미지를 몇 개 지운 뒤 다시 편집하세요.\n\n보통 이미지가 원인입니다. 설정에서 현재 사용량을 확인하세요.',
+      'sync.title': '클라우드 동기화', 'sync.note': '모든 기기에서 같은 Google 계정으로 로그인하세요.',
+      'sync.signin': 'Google로 로그인', 'sync.signout': '로그아웃',
+      'sync.foot.local': '이 브라우저에만 저장됨', 'sync.foot.syncing': '동기화 중…', 'sync.foot.synced': '동기화됨 · {name}',
+      'sync.foot.offline': '오프라인 · 연결되면 동기화', 'sync.foot.error': '동기화 오류', 'sync.signedIn': '로그인됨',
+      'sync.unconfigured': '클라우드 동기화가 아직 설정되지 않았습니다: 이 빌드에는 Firebase 설정이 없어 노트는 이 브라우저에만 저장됩니다.',
+      'sync.loading': '동기화 불러오는 중…',
+      'sync.signedout': '로그인하지 않음: 노트는 이 브라우저에만 저장됩니다. 모든 기기에서 같은 Google 계정으로 로그인하면 동기화됩니다.',
+      'sync.as': ' · {email}', 'sync.syncing': '동기화 중{who}{detail}…', 'sync.synced': '동기화됨{who} · 마지막 변경 {time}',
+      'sync.offline': '오프라인{who}: 변경 내용은 여기 보관되고 연결되면 전송됩니다.', 'sync.error': '동기화 오류: {detail}',
+      'sync.permissionDenied': 'Firestore가 이 계정을 거부했습니다(permission denied). Firebase 콘솔의 보안 규칙(저장소의 firestore.rules)을 확인하세요.',
+      'sync.unavailable': '지금은 Firestore에 연결할 수 없습니다. 연결이 돌아오면 다시 시도합니다.',
+      'sync.unauthorizedDomain': '이 사이트가 Firebase의 "승인된 도메인" 목록에 없습니다(Authentication → Settings).',
+      'sync.googleDisabled': 'Firebase 콘솔에서 Google 로그인이 켜져 있지 않습니다(Authentication → Sign-in method).',
+      'sync.sdkFailed': '동기화 라이브러리를 불러오지 못했습니다({msg}). 앱은 이 기기에서 계속 동작합니다.',
+      'sync.discardConfirm': '내려받는 동안 노트나 설정을 바꿨습니다. 그 변경도 버리고 {email}의 클라우드 사본을 쓸까요?\n\n취소 = 로그아웃하고 이 기기의 노트를 그대로 둡니다.',
+      'sync.otherAccount': '이 브라우저의 노트는 다른 Google 계정과 동기화된 것입니다.\n\n확인 = {email}의 클라우드 노트로 바꿉니다(이 기기의 사본은 버려집니다. 남기려면 먼저 백업을 받으세요).\n취소 = 로그아웃하고 이 기기의 노트를 그대로 둡니다.',
+      'sync.signingOut': '로그아웃 중', 'sync.signingIn': '로그인 중', 'sync.downloadPending': '다운로드 대기 중',
+      'sync.uploading': '올리는 중 {n}', 'sync.pageOf': '"{title}"의 {n}쪽',
+      'sync.oversized': '동기화되지 않음(페이지당 900 KB 한도 초과, 이미지 과다): {parts}. 이 기기에만 남습니다. 이미지를 지우거나 줄이면 동기화됩니다.',
+      'display.fontStyle': '글꼴', 'display.hand': '손글씨', 'display.clean': '깔끔한 고딕',
+      'display.textSize': '노트 글자 크기', 'display.language': '언어',
+      'lang.en': 'English', 'lang.ko': '한국어',
+      'lists.subjects': '과목', 'lists.subjectsNote': '노트북·일정·카드가 쓰는 과목입니다.',
+      'lists.categories': '자료실 카테고리', 'lists.addCategory': '카테고리',
+      'lists.categoriesNote': '자료의 형태(소설, 다큐멘터리…). 기본 값은 드롭다운에만 있습니다.',
+      'lists.genres': '자료실 장르', 'lists.addGenre': '장르',
+      'lists.genresNote': '자료의 주제(역사, 경제…). 기본 값은 드롭다운에만 있습니다.',
+      'lists.empty': '아직 없습니다. 자료실에서 고른 값이 여기 나타납니다.', 'lists.customTag': '직접 추가',
+      'lists.rename': '이름 바꾸기', 'lists.renameX': '{noun} 이름 바꾸기', 'lists.addX': '{noun} 추가',
+      'lists.noun.subject': '과목', 'lists.noun.category': '카테고리', 'lists.noun.genre': '장르',
+      'lists.n.notebook': '노트북 {n}개', 'lists.n.task': '일정 {n}개', 'lists.n.card': '카드 {n}개',
+      'lists.n.item': '자료 {n}개', 'lists.n.libItem': '자료 {n}개',
+      'lists.subjectPh': '예: 경제학', 'lists.categoryPh': '예: 도감', 'lists.genrePh': '예: 도시계획',
+      'lists.appliesTo': '이 값을 쓰는 {items}에 적용됩니다.',
+      'lists.dupSubject': '"{name}" 과목이 이미 있습니다.', 'lists.alreadyInList': '"{name}"은(는) 이미 목록에 있습니다.',
+      'lists.keepOne': '과목은 최소 하나 남아야 합니다. 다른 과목을 먼저 추가하세요.', 'lists.confirmDeleteSubject': '"{name}" 과목을 삭제할까요?',
+      'lists.usedBy': '"{name}" 과목을 {parts}가 쓰고 있습니다.',
+      'lists.stillUsed': '"{name}"은(는) 아직 자료가 쓰고 있습니다. 이름을 바꾸어 다른 값과 합치세요.',
+      'listedit.rename': '이름 바꾸기', 'listedit.name': '이름', 'common.save': '저장', 'common.add': '추가', 'common.cancel': '취소',
+      'subjdel.title': '과목 삭제', 'subjdel.moveTo': '옮길 과목', 'subjdel.confirm': '옮기고 삭제',
+      'integ.title': '자동 채우기 (선택)', 'integ.note': '영화 & TV 검색용. themoviedb.org에서 무료 키 발급',
+      'integ.tmdbLabel': 'TMDB API 키', 'integ.keyPh': '키 붙여넣기 (선택)',
+      'guide.title': 'StudyDesk 사용 설명서'
+    }
+  };
+
   var OLD_HOST = 'amber67-git.github.io';
 
   /* ===========================================================
@@ -174,9 +546,153 @@
         String(d.getDate()).padStart(2, '0');
     },
 
-    DAY_LABELS: ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'],
+    DAY_LABELS: ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'],   // English keys; display via dayLabel()
+    dayLabel: function (i) { return I18n.t('day.' + i); },
     SUBJECT_COLOR_CLASSES: ['bdg-c0', 'bdg-c1', 'bdg-c2', 'bdg-c3', 'bdg-c4', 'bdg-c5', 'bdg-c6']
   };
+
+  /* ===========================================================
+   * I18n - language switch (Settings → Display). Static HTML text is
+   * matched against the English column of I18N and annotated with its key
+   * on first apply(), so later applies (language change) just re-look-up
+   * the key. Dynamic strings call I18n.t('key', vars). Containers that hold
+   * user data (lists the app renders from AppState, the note body, the
+   * guides) are never walked: a subject named "Library" stays as typed.
+   * =========================================================== */
+  var I18n = (function () {
+    var LOCALES = { en: 'en-US', ko: 'ko-KR' };
+    var reverse = null;
+    // ids of containers rendered from user data (never translated by the walker)
+    var SKIP_IDS = {
+      'note-list': 1, 'today-task-list': 1, 'lib-grid': 1, 'cal-grid': 1, 'card-grid': 1, 'notes-body': 1,
+      'day-events-list': 1, 'page-list-body': 1, 'recurring-list': 1, 'manager-task-list': 1, 'lib-results': 1,
+      'study-card': 1, 'sb-foot-ver': 1, 'header-date': 1, 'today-date-label': 1, 'cal-month-label': 1,
+      'note-subject-select': 1, 'notebook-subject-filter': 1, 'deck-filter': 1, 'rec-subject': 1,
+      'adhoc-task-subject': 1, 'manager-task-subject': 1, 'new-notebook-subject': 1, 'subject-delete-target': 1,
+      'lib-category': 1, 'lib-genre': 1, 'lib-type-filter': 1, 'lib-category-filter': 1, 'lib-genre-filter': 1,
+      'lib-status-filter': 1, 'bulk-category': 1, 'bulk-genre': 1, 'bulk-status': 1, 'lists-subjects': 1,
+      'lists-categories': 1, 'lists-genres': 1, 'sb-foot-status': 1, 'sync-status': 1, 'sync-oversized': 1,
+      'backup-status': 1, 'save-status': 1, 'storage-usage': 1, 'lib-status': 1, 'lib-notebook-link': 1,
+      'font-size-value': 1, 'move-banner-text': 1, 'backup-banner-text': 1
+    };
+    var ATTRS = ['placeholder', 'data-placeholder', 'title', 'aria-label'];   // data-placeholder: the contenteditable editor's hint
+
+    var appliedLang = null;   // language the static markup was last translated into
+
+    function lang() {
+      var l = (typeof AppState !== 'undefined' && AppState.settings) ? AppState.settings.lang : null;
+      // settings from an older backup/device have no lang: follow the browser, not a fixed English
+      return (l === 'ko' || l === 'en') ? l : detect();
+    }
+    /** First run: the browser language decides (Korean browsers → Korean). */
+    function detect() {
+      var n = ((navigator.languages && navigator.languages[0]) || navigator.language || 'en').toLowerCase();
+      return n.indexOf('ko') === 0 ? 'ko' : 'en';
+    }
+    function locale() { return LOCALES[lang()] || 'en-US'; }
+
+    function t(key, vars) {
+      var table = I18N[lang()] || I18N.en;
+      var s = (table[key] != null) ? table[key] : (I18N.en[key] != null ? I18N.en[key] : key);
+      if (vars) {
+        s = s.replace(/\{(\w+)\}/g, function (m, k) { return vars[k] != null ? String(vars[k]) : m; });
+      }
+      return s;
+    }
+    /** Count template: "{n} page(s)" → "1 page" / "3 pages" (Korean has no plural, no "(s)"). */
+    function tn(key, n) {
+      return t(key, { n: n }).replace(/\(s\)/g, n === 1 ? '' : 's');
+    }
+
+    function buildReverse() {
+      reverse = {};
+      Object.keys(I18N.en).forEach(function (k) {
+        var v = I18N.en[k];
+        if (!(v in reverse)) reverse[v] = k;   // first key wins; duplicates share a translation anyway
+      });
+    }
+
+    function skipElement(el) {
+      return !!(el && (SKIP_IDS[el.id] || el.classList.contains('guide-body') || el.hasAttribute('data-i18n-skip')));
+    }
+    function insideSkipped(node) {
+      for (var p = node.parentNode; p && p !== document; p = p.parentNode) {
+        if (p.nodeType === 1 && skipElement(p)) return true;
+      }
+      return false;
+    }
+
+    /** Translate static text nodes and attributes under root (default: whole document). */
+    function apply(root) {
+      if (!reverse) buildReverse();
+      root = root || document.body;
+      var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+        acceptNode: function (n) {
+          var p = n.parentNode;
+          if (!p || p.nodeType !== 1) return NodeFilter.FILTER_REJECT;
+          var tag = p.tagName;
+          if (tag === 'SCRIPT' || tag === 'STYLE') return NodeFilter.FILTER_REJECT;
+          if (!n.nodeValue || !n.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+          return insideSkipped(n) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+        }
+      });
+      var nodes = [];
+      while (walker.nextNode()) nodes.push(walker.currentNode);
+      nodes.forEach(function (n) {
+        var raw = n.nodeValue, trimmed = raw.trim();
+        var key = n.__i18nKey || (n.parentNode.childNodes.length === 1 && n.parentNode.getAttribute('data-i18n')) || reverse[trimmed];
+        if (!key || I18N.en[key] == null) return;
+        n.__i18nKey = key;
+        var lead = raw.slice(0, raw.indexOf(trimmed)), trail = raw.slice(raw.indexOf(trimmed) + trimmed.length);
+        n.nodeValue = lead + t(key) + trail;
+      });
+      var els = root.querySelectorAll('[placeholder],[data-placeholder],[title],[aria-label],[data-i18n-placeholder],[data-i18n-data-placeholder],[data-i18n-title],[data-i18n-aria-label]');
+      Array.prototype.forEach.call(els, function (el) {
+        // a skipped container keeps its CONTENTS (user data) but its own
+        // label / hint attributes are UI text: the editor's aria-label and
+        // placeholder, a filter select's title
+        if (insideSkipped(el)) return;
+        ATTRS.forEach(function (attr) {
+          var dataName = 'i18n' + attr.charAt(0).toUpperCase() + attr.slice(1).replace(/-(\w)/g, function (m, c) { return c.toUpperCase(); });
+          var key = el.dataset[dataName];
+          if (!key) {
+            var cur = el.getAttribute(attr);
+            if (cur == null) return;
+            key = reverse[cur.trim()];
+            if (!key) return;
+            el.dataset[dataName] = key;
+          }
+          if (I18N.en[key] != null) el.setAttribute(attr, t(key));
+        });
+      });
+      document.documentElement.lang = lang();
+      appliedLang = lang();
+      applyGuide();
+      // dynamic banner lines are not static markup: rewrite the visible ones
+      if (typeof Settings !== 'undefined' && Settings && Settings.retranslateBanners) Settings.retranslateBanners();
+    }
+
+    /** Settings can change under the page (backup import, cloud sync): re-translate
+        the static markup only when the language actually differs. */
+    function syncLanguage() {
+      var sel = document.getElementById('lang-select');
+      if (sel) sel.value = lang();
+      if (appliedLang === lang()) return false;
+      apply();
+      return true;
+    }
+
+    /** Only the guide of the current language is shown. */
+    function applyGuide() {
+      var l = lang();
+      Array.prototype.forEach.call(document.querySelectorAll('.guide-body'), function (g) {
+        g.hidden = (g.getAttribute('lang') !== l);
+      });
+    }
+
+    return { t: t, tn: tn, lang: lang, detect: detect, locale: locale, apply: apply, applyGuide: applyGuide, syncLanguage: syncLanguage };
+  })();
+  var tx = I18n.t;   // short alias; `t` is taken by local variables in several modules
 
   /* ===========================================================
    * AppState - the single in-memory store; all modules read/write here
@@ -273,14 +789,14 @@
       if (t === 'book' || t === 'music') return '';   // no level concept here
       if (t === 'movie' || t === 'series') {
         var r = (item.levelInput || '').trim().toUpperCase();
-        return r ? 'Rated ' + r : '';
+        return r ? I18n.t('level.rated', { r: r }) : '';
       }
       if (t === 'lecture' || t === 'video' || t === 'other') {
         var d = (item.levelInput || '').trim().toLowerCase();
         if (!d) return '';
-        if (d.indexOf('begin') === 0 || d === '1') return 'Beginner';
-        if (d.indexOf('inter') === 0 || d === '2') return 'Intermediate';
-        if (d.indexOf('adv') === 0 || d === '3') return 'Advanced';
+        if (d.indexOf('begin') === 0 || d === '1') return I18n.t('level.beginner');
+        if (d.indexOf('inter') === 0 || d === '2') return I18n.t('level.intermediate');
+        if (d.indexOf('adv') === 0 || d === '3') return I18n.t('level.advanced');
         return item.levelInput;
       }
       return (item.levelInput || '').trim();  // paper/article: year or free text
@@ -553,10 +1069,8 @@
       if (warnedBlocked) return;
       warnedBlocked = true;
       var status = Utils.$('save-status');
-      if (status) status.textContent = 'not saving — this browser is blocking storage';
-      alert('This browser is blocking local storage, so your notes cannot be saved.\n\n' +
-        'This usually happens in a private/incognito window or when site data is blocked. ' +
-        'Open the app in a normal window, or use Settings → Backup → download backup before you close the tab.');
+      if (status) status.textContent = tx('storage.blockedStatus');
+      alert(tx('storage.blockedAlert'));
     }
 
     function load() {
@@ -578,9 +1092,7 @@
         // Saved data is corrupted (rare, but a truncated write can do it).
         // Don't silently wipe it: keep a copy so it can be inspected/recovered.
         try { localStorage.setItem(KEY + '-corrupt-' + Date.now(), raw); } catch (e2) { /* ignore */ }
-        alert('Your saved data could not be read (it appears corrupted). ' +
-          'Starting fresh — a copy of the unreadable data was kept in browser storage. ' +
-          'If you have a backup file, use Settings → Backup → load backup to restore it.');
+        alert(tx('storage.corruptAlert'));
         return false;
       }
       if (!d || typeof d !== 'object') return false;
@@ -608,6 +1120,7 @@
       var days = parseInt(s.backupReminderDays, 10);
       s.backupReminderDays = isNaN(days) ? 7 : days;
       if (typeof s.tmdbKey !== 'string') s.tmdbKey = '';
+      if (s.lang !== 'ko' && s.lang !== 'en') s.lang = I18n.detect();   // first run: browser language
       // Settings → Lists: library category / genre values the user added
       // themselves, kept so they stay in the dropdowns before any item uses them.
       ['customCategories', 'customGenres'].forEach(function (k) {
@@ -624,15 +1137,14 @@
       var el = Utils.$('storage-usage');
       if (!el) return;
       if (!storageAvailable()) {
-        el.textContent = 'storage unavailable — this browser is blocking it, so nothing is being saved.';
+        el.textContent = tx('storage.unavailable');
         return;
       }
       var raw = '';
       try { raw = localStorage.getItem(KEY) || ''; } catch (e) { /* ignore */ }
       var kb = Math.round(raw.length / 1024);
       var pct = Math.min(100, Math.round((raw.length / (5 * 1024 * 1024)) * 100));
-      el.textContent = 'storage used: ~' + (kb >= 1024 ? (kb / 1024).toFixed(1) + ' MB' : kb + ' KB') +
-        ' (about ' + pct + '% of a typical 5 MB browser limit)';
+      el.textContent = tx('storage.used', { size: (kb >= 1024 ? (kb / 1024).toFixed(1) + ' MB' : kb + ' KB'), pct: pct });
     }
 
     function save() {
@@ -664,14 +1176,10 @@
       } catch (e) {
         // Almost always QuotaExceededError: browser storage is full. This is
         // the one failure that can silently lose work, so say it loudly once.
-        if (status) status.textContent = 'save failed — storage full';
+        if (status) status.textContent = tx('storage.fullStatus');
         if (!warnedFull) {
           warnedFull = true;
-          alert('Saving failed: this browser\'s storage is full.\n\n' +
-            'Your most recent edits are NOT saved. To fix this:\n' +
-            '1. Use Settings → Backup → download backup to save what you can.\n' +
-            '2. Delete some large images from your notes, then edit again.\n\n' +
-            'Images are the usual cause — check Settings for current usage.');
+          alert(tx('storage.fullAlert'));
         }
         updateUsageDisplay();
       }
@@ -725,14 +1233,15 @@
    * Nav - sidebar page switching + mobile drawer + page title
    * =========================================================== */
   var Nav = (function () {
-    var PAGE_TITLES = {
-      notes: 'Notebooks',
-      library: 'Library',
-      schedule: 'Calendar',
-      manager: 'Schedule manager',
-      cards: 'Flashcards',
-      settings: 'Settings'
+    var PAGE_TITLES = {   // keys into I18N
+      notes: 'nav.notebooks',
+      library: 'nav.library',
+      schedule: 'nav.calendar',
+      manager: 'nav.manager',
+      cards: 'nav.cards',
+      settings: 'nav.settings'
     };
+    var currentPage = 'notes';
 
     function showPage(page) {
       if (page === 'backup') page = 'settings';   // Backup is the first tab of Settings
@@ -744,7 +1253,8 @@
       });
       var target = Utils.$('page-' + page);
       if (target) target.classList.add('active');
-      Utils.$('tb-title').textContent = PAGE_TITLES[page] || page;
+      currentPage = page;
+      Utils.$('tb-title').textContent = PAGE_TITLES[page] ? tx(PAGE_TITLES[page]) : page;
       if (Utils.$('tb-notebooks-btn')) Utils.$('tb-notebooks-btn').hidden = (page !== 'notes');
       closeMobile();
     }
@@ -761,18 +1271,20 @@
 
     function renderHeaderDate() {
       var d = new Date();
-      Utils.$('header-date').textContent = d.toLocaleDateString('en-US', {
+      Utils.$('header-date').textContent = d.toLocaleDateString(I18n.locale(), {
         weekday: 'long', month: 'short', day: 'numeric'
       });
       var lbl = Utils.$('today-date-label');
       if (lbl) {
-        lbl.textContent = d.toLocaleDateString('en-US', {
+        lbl.textContent = d.toLocaleDateString(I18n.locale(), {
           weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
         });
       }
     }
 
-    return { showPage: showPage, toggleMobile: toggleMobile, renderHeaderDate: renderHeaderDate };
+    function refreshTitle() { showPage(currentPage); }
+
+    return { showPage: showPage, toggleMobile: toggleMobile, renderHeaderDate: renderHeaderDate, refreshTitle: refreshTitle };
   })();
 
   // Expose Nav methods for inline onclick handlers in HTML
@@ -789,10 +1301,10 @@
       }).join('');
       // notebook list filter (Notebooks page)
       if (Utils.$('notebook-subject-filter')) {
-        Utils.$('notebook-subject-filter').innerHTML = '<option value="all">all subjects</option>' + opts;
+        Utils.$('notebook-subject-filter').innerHTML = '<option value="all">' + tx('filter.allSubjects') + '</option>' + opts;
       }
       Utils.$('note-subject-select').innerHTML = opts;
-      Utils.$('deck-filter').innerHTML = '<option value="all">all subjects</option>' + opts;
+      Utils.$('deck-filter').innerHTML = '<option value="all">' + tx('filter.allSubjects') + '</option>' + opts;
       // schedule manager / today's list now use real subjects instead of free categories
       ['rec-subject', 'adhoc-task-subject', 'manager-task-subject'].forEach(function (id) {
         if (Utils.$(id)) Utils.$(id).innerHTML = opts;
@@ -898,7 +1410,7 @@
 
       if (groups.length === 0) {
         Utils.$('note-list').innerHTML =
-          '<div class="empty"><span class="icon" data-icon="notes" aria-hidden="true"></span><p>No notes found.</p></div>';
+          '<div class="empty"><span class="icon" data-icon="notes" aria-hidden="true"></span><p>' + tx('notes.noneFound') + '</p></div>';
         return;
       }
 
@@ -908,9 +1420,9 @@
           var active = n.id === AppState.activeNoteId;
           var pageCount = (n.pages || []).length;
           return '<div class="note-item ' + (active ? 'active' : '') + '" data-id="' + n.id + '">' +
-            '<p class="ni-title">' + Utils.escapeHtml(n.title || 'untitled') + '</p>' +
-            '<p class="ni-meta"><span class="badge bdg-type">' + Utils.escapeHtml(n.type || 'other') +
-            '</span><span>' + pageCount + (pageCount === 1 ? ' page' : ' pages') + '</span></p>' +
+            '<p class="ni-title">' + Utils.escapeHtml(n.title || tx('notes.untitled')) + '</p>' +
+            '<p class="ni-meta"><span class="badge bdg-type">' + Utils.escapeHtml(tx('type.' + (n.type || 'other'))) +
+            '</span><span>' + I18n.tn('notes.pageCount', pageCount) + '</span></p>' +
             '</div>';
         }).join('');
         return '<div class="note-group">' +
@@ -1057,6 +1569,14 @@
     /** On a keyboard device put the caret at the end of MAIN NOTES so typing
         can start at once. Not on touch screens (it would pop the keyboard
         and scroll), and not while a modal is open. */
+    /** Icon + label for a button whose text changes at runtime. The label span
+        names its key, so I18n.apply() can re-translate it after a language switch
+        (a plain text node set from tx() would only match the English column). */
+    function btnLabel(icon, key, cls) {
+      return '<span class="icon" data-icon="' + icon + '" aria-hidden="true"></span>' +
+        '<span' + (cls ? ' class="' + cls + '"' : '') + ' data-i18n="' + key + '"> ' + Utils.escapeHtml(tx(key)) + '</span>';
+    }
+
     function focusBodyIfDesktop() {
       if (!window.matchMedia || !window.matchMedia('(min-width: 761px) and (hover: hover)').matches) return;
       if (document.querySelector('.mo.show')) return;
@@ -1174,12 +1694,11 @@
       // guard against non-images (a dragged PDF, a renamed file) and against
       // huge originals that would stall the browser before compression runs
       if (!/^image\//.test(file.type || '')) {
-        alert('That file is not an image, so it can\'t be inserted into a note.');
+        alert(tx('img.notImage'));
         return;
       }
       if (file.size > 20 * 1024 * 1024) {
-        alert('That image is very large (' + Math.round(file.size / 1048576) + ' MB). ' +
-          'Please resize it below 20 MB before adding it.');
+        alert(tx('img.tooLarge', { mb: Math.round(file.size / 1048576) }));
         return;
       }
       var reader = new FileReader();
@@ -1191,7 +1710,7 @@
         });
       };
       reader.onerror = function () {
-        alert('That image could not be read. It may be corrupted.');
+        alert(tx('img.unreadable'));
       };
       reader.readAsDataURL(file);
     }
@@ -1228,7 +1747,7 @@
       var hasSelection = sel && sel.rangeCount > 0 && !sel.isCollapsed;
 
       if (cmd === 'highlight' && !hasSelection) {
-        alert('Select some text first, then click highlight.');
+        alert(tx('fmt.selectFirstHighlight'));
         return;
       }
 
@@ -1263,7 +1782,7 @@
       editor.focus();
       var sel = window.getSelection();
       if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
-        alert('Select some text first, then pick a color.');
+        alert(tx('fmt.selectFirstColor'));
         return;
       }
       document.execCommand('foreColor', false, color);
@@ -1345,7 +1864,7 @@
     function setupEditor() {
       // create / delete / save
       Utils.$('new-note-btn').addEventListener('click', function () {
-        if (AppState.subjects.length === 0) { alert('Add a subject first.'); return; }
+        if (AppState.subjects.length === 0) { alert(tx('notes.addSubjectFirst')); return; }
         openNewNotebookModal();
       });
 
@@ -1353,8 +1872,7 @@
         if (!AppState.activeNoteId) return;
         var n = AppState.currentNote();
         var pageCount = (n && n.pages) ? n.pages.length : 0;
-        if (!confirm('Delete "' + ((n && n.title) || 'this notebook') + '" and all ' +
-          pageCount + (pageCount === 1 ? ' page' : ' pages') + ' in it?\n\nThis cannot be undone.')) return;
+        if (!confirm(tx('notes.confirmDelete', { title: (n && n.title) || tx('notes.thisNotebook'), pages: I18n.tn('notes.pageCount', pageCount) }))) return;
         AppState.notes = AppState.notes.filter(function (x) { return x.id !== AppState.activeNoteId; });
         AppState.activeNoteId = null;
         AppState.activePageIndex = 0;
@@ -1371,9 +1889,12 @@
         saveCurrentFields();
         Storage.scheduleSave();
         var btn = Utils.$('save-note-btn');
-        var original = btn.innerHTML;
-        btn.innerHTML = '<span class="icon" data-icon="check" aria-hidden="true"></span> saved';
-        setTimeout(function () { btn.innerHTML = original; }, 1200);
+        // labels carry their key (data-i18n) so a language switch, during or after
+        // the flash, re-translates them; the label is rebuilt rather than restored
+        // from a copy taken in what may by then be the other language
+        btn.innerHTML = btnLabel('check', 'notes.saved');
+        clearTimeout(btn._flash);
+        btn._flash = setTimeout(function () { btn.innerHTML = btnLabel('check', 'notes.save'); Icons.hydrate(btn); }, 1200);
       });
 
       // meta fields write-through
@@ -1474,12 +1995,12 @@
 
       // ------ self-test (review) mode: hide MAIN NOTES, recall from cues ------
       Utils.$('review-mode-btn').addEventListener('click', function () {
-        if (!AppState.currentNote()) { alert('Open a notebook first.'); return; }
+        if (!AppState.currentNote()) { alert(tx('notes.openNotebookFirst')); return; }
         var cornell = document.querySelector('.cornell');
         var on = cornell.classList.toggle('review-mode');
         this.innerHTML = on
-          ? '<span class="icon" data-icon="eye" aria-hidden="true"></span><span class="btn-label"> show notes</span>'
-          : '<span class="icon" data-icon="eye-off" aria-hidden="true"></span><span class="btn-label"> self-test</span>';
+          ? btnLabel('eye', 'notes.showNotes', 'btn-label')
+          : btnLabel('eye-off', 'notes.selfTest', 'btn-label');
         Icons.hydrate(this);
       });
 
@@ -1493,7 +2014,7 @@
       if (cornell && cornell.classList.contains('review-mode')) {
         cornell.classList.remove('review-mode');
         var b = Utils.$('review-mode-btn');
-        b.innerHTML = '<span class="icon" data-icon="eye-off" aria-hidden="true"></span><span class="btn-label"> self-test</span>';
+        b.innerHTML = btnLabel('eye-off', 'notes.selfTest', 'btn-label');
         Icons.hydrate(b);
       }
     }
@@ -1509,7 +2030,7 @@
       AppState.ensurePages(n);
       Utils.$('page-list-body').innerHTML = n.pages.map(function (p, i) {
         var current = (i === AppState.activePageIndex) ? ' current' : '';
-        var chapter = (p.chapter || '').trim() || '(no chapter)';
+        var chapter = (p.chapter || '').trim() || tx('pages.noChapter');
         var preview = htmlToText(p.body).slice(0, 60);
         return '<button type="button" class="page-list-item' + current + '" data-idx="' + i + '">' +
           '<span class="pli-num">' + (i + 1) + '</span>' +
@@ -1546,11 +2067,11 @@
         var subjectId = Utils.$('new-notebook-subject').value;
         var type = Utils.$('new-notebook-type').value;
         var title = Utils.$('new-notebook-title').value.trim();
-        if (!subjectId) { alert('Pick a subject.'); return; }
-        if (!title) { alert('Give this notebook a name.'); return; }
+        if (!subjectId) { alert(tx('common.pickSubject')); return; }
+        if (!title) { alert(tx('nb.giveName')); return; }
         var existing = AppState.noteBySubjectAndType(subjectId, type);
         if (existing) {
-          if (!confirm('You already have a "' + type + '" notebook for this subject ("' + existing.title + '"). Open it instead?')) return;
+          if (!confirm(tx('nb.exists', { type: tx('type.' + type), title: existing.title }))) return;
           Modal.close('mo-new-notebook');
           selectNote(existing.id);
           return;
@@ -1606,7 +2127,7 @@
         // "example.com" should produce a working link, not a broken one).
         var url = raw;
         if (/^\s*(javascript|data|vbscript|file):/i.test(url)) {
-          alert('That link type is not allowed. Use an http://, https://, or mailto: address.');
+          alert(tx('link.notAllowed'));
           return;
         }
         if (!/^[a-z][a-z0-9+.-]*:/i.test(url) && !/^\/\//.test(url)) {
@@ -1656,7 +2177,8 @@
 
     // ------ recurring schedule ------
     function renderDayPicker() {
-      Utils.$('day-picker').innerHTML = Utils.DAY_LABELS.map(function (label, idx) {
+      Utils.$('day-picker').innerHTML = Utils.DAY_LABELS.map(function (_label, idx) {
+        var label = Utils.dayLabel(idx);
         return '<label><input type="checkbox" class="day-check" value="' + idx + '"><span>' + label + '</span></label>';
       }).join('');
     }
@@ -1668,14 +2190,14 @@
 
     function renderRecurringList() {
       if (AppState.recurring.length === 0) {
-        Utils.$('recurring-list').innerHTML = '<p class="empty-note">no recurring tasks yet.</p>';
+        Utils.$('recurring-list').innerHTML = '<p class="empty-note">' + tx('sched.noRecurring') + '</p>';
         return;
       }
       Utils.$('recurring-list').innerHTML = AppState.recurring.map(function (r) {
-        var dayLabels = r.days.map(function (d) { return Utils.DAY_LABELS[d]; }).join(', ');
+        var dayLabels = r.days.map(function (d) { return Utils.dayLabel(d); }).join(', ');
         return '<div class="recurring-item">' +
           '<span>' + Utils.escapeHtml(r.title) + ' &middot; ' + Utils.escapeHtml(subjectName(r.subjectId)) +
-          ' (' + r.type + ') &middot; ' + dayLabels + '</span>' +
+          ' (' + Utils.escapeHtml(tx('type.' + r.type)) + ') &middot; ' + dayLabels + '</span>' +
           '<button class="del-recurring" data-id="' + r.id + '"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>';
       }).join('');
       document.querySelectorAll('.del-recurring').forEach(function (b) {
@@ -1695,9 +2217,9 @@
         var days = Array.prototype.slice
           .call(document.querySelectorAll('.day-check:checked'))
           .map(function (c) { return parseInt(c.value, 10); });
-        if (!title) { alert('Enter a task title.'); return; }
-        if (!subjectId) { alert('Pick a subject.'); return; }
-        if (days.length === 0) { alert('Pick at least one day.'); return; }
+        if (!title) { alert(tx('sched.enterTitle')); return; }
+        if (!subjectId) { alert(tx('common.pickSubject')); return; }
+        if (days.length === 0) { alert(tx('sched.pickDay')); return; }
         AppState.recurring.push({ id: Utils.uid(), title: title, subjectId: subjectId, type: type, days: days });
         Utils.$('rec-title').value = '';
         document.querySelectorAll('.day-check:checked').forEach(function (c) { c.checked = false; });
@@ -1732,7 +2254,7 @@
         var subjectId = Utils.$('manager-task-subject').value;
         var type = Utils.$('manager-task-type').value;
         var date = Utils.$('manager-task-date').value || Utils.todayStr();
-        if (!title) { alert('Enter a task title.'); return; }
+        if (!title) { alert(tx('sched.enterTitle')); return; }
         AppState.adhocTasks.push({ id: Utils.uid(), title: title, subjectId: subjectId, type: type, date: date });
         Utils.$('manager-task-input').value = '';
         renderTodayTasks(); renderCalendar(); renderManagerTaskList();
@@ -1748,13 +2270,13 @@
         return (a.date || '').localeCompare(b.date || '');
       });
       if (upcoming.length === 0) {
-        Utils.$('manager-task-list').innerHTML = '<p class="empty-note">no one-off tasks yet.</p>';
+        Utils.$('manager-task-list').innerHTML = '<p class="empty-note">' + tx('sched.noOneoff') + '</p>';
         return;
       }
       Utils.$('manager-task-list').innerHTML = upcoming.map(function (t) {
         return '<div class="recurring-item">' +
           '<span>' + Utils.escapeHtml(t.title) + ' &middot; ' + Utils.escapeHtml(subjectName(t.subjectId)) +
-          ' (' + t.type + ') &middot; ' + (t.date || '') + '</span>' +
+          ' (' + Utils.escapeHtml(tx('type.' + t.type)) + ') &middot; ' + (t.date || '') + '</span>' +
           '<button class="del-manager-task" data-id="' + t.id + '"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>';
       }).join('');
       document.querySelectorAll('.del-manager-task').forEach(function (b) {
@@ -1771,11 +2293,11 @@
         silently creates a new page - it shows prior content and lets the
         user decide whether to add a fresh page. */
     function goToNoteForTask(subjectId, type, fallbackTitle) {
-      if (!subjectId) { alert('This task has no subject linked yet.'); return; }
+      if (!subjectId) { alert(tx('sched.noSubject')); return; }
       var subj = AppState.subjectById(subjectId);
       if (!subj) {
         // the subject this task pointed at no longer exists
-        alert('The subject for this task no longer exists, so its notebook can\'t be opened.');
+        alert(tx('sched.subjectGone'));
         return;
       }
       var note = AppState.noteBySubjectAndType(subjectId, type);
@@ -1825,7 +2347,7 @@
         '<span class="task-meta">' +
           '<span class="badge ' + colorClass + '" title="' + Utils.escapeHtml(subjectName(subjectId)) + '">' + Utils.escapeHtml(subjectName(subjectId)) + '</span>' +
           '<span class="task-kind">' + freqLabel + '</span>' +
-          '<button class="btn-go-to-note" data-subject="' + (subjectId || '') + '" data-type="' + type + '" data-title="' + Utils.escapeHtml(title) + '">go to note</button>' +
+          '<button class="btn-go-to-note" data-subject="' + (subjectId || '') + '" data-type="' + type + '" data-title="' + Utils.escapeHtml(title) + '">' + tx('go.toNote') + '</button>' +
         '</span>' +
         delBtn + '</div>';
     }
@@ -1836,15 +2358,15 @@
       var adhocToday = AppState.adhocTasks.filter(function (t) { return t.date === Utils.todayStr(); });
       var rows = [];
       recurringToday.forEach(function (r) {
-        rows.push(taskRowHtml('rec:' + r.id, r.title, r.subjectId, r.type, 'recurring'));
+        rows.push(taskRowHtml('rec:' + r.id, r.title, r.subjectId, r.type, tx('sched.kind.recurring')));
       });
       adhocToday.forEach(function (t) {
-        rows.push(taskRowHtml('adhoc:' + t.id, t.title, t.subjectId, t.type, 'one-off', t.id));
+        rows.push(taskRowHtml('adhoc:' + t.id, t.title, t.subjectId, t.type, tx('sched.kind.oneoff'), t.id));
       });
 
       if (rows.length === 0) {
         Utils.$('today-task-list').innerHTML =
-          '<p class="empty-note">Nothing scheduled today.</p>';
+          '<p class="empty-note">' + tx('today.empty') + '</p>';
       } else {
         Utils.$('today-task-list').innerHTML = rows.join('');
       }
@@ -1878,11 +2400,11 @@
       var items = [];
       AppState.recurring.forEach(function (r) {
         if (r.days.indexOf(dayIdx) !== -1) {
-          items.push({ title: r.title, subjectId: r.subjectId, type: r.type, kind: 'recurring' });
+          items.push({ title: r.title, subjectId: r.subjectId, type: r.type, kind: tx('sched.kind.recurring') });
         }
       });
       AppState.adhocTasks.forEach(function (t) {
-        if (t.date === dateStr) items.push({ title: t.title, subjectId: t.subjectId, type: t.type, kind: 'one-off' });
+        if (t.date === dateStr) items.push({ title: t.title, subjectId: t.subjectId, type: t.type, kind: tx('sched.kind.oneoff') });
       });
       return items;
     }
@@ -1898,7 +2420,7 @@
       var parts = AppState.calMonth.split('-').map(Number);
       var year = parts[0], monthNum = parts[1];
       Utils.$('cal-month-label').textContent = new Date(year, monthNum - 1, 1)
-        .toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        .toLocaleDateString(I18n.locale(), { month: 'long', year: 'numeric' });
 
       var firstOfMonth = new Date(year, monthNum - 1, 1);
       var leadOffset = (firstOfMonth.getDay() + 6) % 7;
@@ -1934,7 +2456,7 @@
           return '<div class="cal-event" style="background:var(--surf2);border-color:var(--txt2);color:var(--txt);" title="' + safeTitle + '">' + safeTitle + '</div>';
         }).join('');
         var moreHtml = extra > 0
-          ? '<button class="cal-more-btn" data-date="' + cell.date + '">+' + extra + ' more</button>'
+          ? '<button class="cal-more-btn" data-date="' + cell.date + '">' + tx('cal.more', { n: extra }) + '</button>'
           : '';
         var cls = 'cal-day' + (cell.otherMonth ? ' other-month' : '');
         return '<div class="' + cls + '">' +
@@ -1952,11 +2474,11 @@
       var items = getTasksForDate(dateStr);
       var parts = dateStr.split('-').map(Number);
       var d = new Date(parts[0], parts[1] - 1, parts[2]);
-      Utils.$('day-events-title').textContent = d.toLocaleDateString('en-US', {
+      Utils.$('day-events-title').textContent = d.toLocaleDateString(I18n.locale(), {
         weekday: 'long', month: 'long', day: 'numeric'
       });
       if (items.length === 0) {
-        Utils.$('day-events-list').innerHTML = '<p class="empty-note">No tasks this day.</p>';
+        Utils.$('day-events-list').innerHTML = '<p class="empty-note">' + tx('cal.dayEmpty') + '</p>';
       } else {
         Utils.$('day-events-list').innerHTML = items.map(function (it) {
           var colorClass = AppState.subjectColorClass(it.subjectId);
@@ -1965,7 +2487,7 @@
             '<span class="task-meta">' +
               '<span class="badge ' + colorClass + '" title="' + Utils.escapeHtml(subjectName(it.subjectId)) + '">' + Utils.escapeHtml(subjectName(it.subjectId)) + '</span>' +
               '<span class="task-kind">' + it.kind + '</span>' +
-              '<button class="btn-go-to-note" data-subject="' + (it.subjectId || '') + '" data-type="' + it.type + '" data-title="' + Utils.escapeHtml(it.title) + '">go to note</button>' +
+              '<button class="btn-go-to-note" data-subject="' + (it.subjectId || '') + '" data-type="' + it.type + '" data-title="' + Utils.escapeHtml(it.title) + '">' + tx('go.toNote') + '</button>' +
             '</span>' +
             '</div>';
         }).join('');
@@ -2151,7 +2673,7 @@
       if (Utils.$('lib-type').value === 'book') {
         got = fillIfUntouched('lib-illustrator', src.illustrator) || got;
       }
-      if (got) setStatus('inherited details from "' + src.title + '"');
+      if (got) setStatus(tx('lib.inherited', { title: src.title }));
     }
 
     // ---------- autocomplete datalists (author / illustrator / publisher) ----------
@@ -2179,6 +2701,11 @@
       });
     }
 
+    /** Display label for a stored status value ('in progress' -> status.inProgress). */
+    function statusLabel(s) {
+      return tx('status.' + (s === 'in progress' ? 'inProgress' : s));
+    }
+
     // ---------- select helpers (category/genre stay as <select>) ----------
 
     /* Category/Genre are fixed-choice axes, so they stay <select> (a
@@ -2197,7 +2724,7 @@
         opts.push('<option value="' + Utils.escapeHtml(currentValue) + '">' + Utils.escapeHtml(currentValue) + '</option>');
         seen[currentValue] = true;
       }
-      opts.push('<option value="__custom__">+ Custom\u2026</option>');
+      opts.push('<option value="__custom__">' + tx('lib.custom') + '</option>');
       el.innerHTML = opts.join('');
       el.value = currentValue || '';
     }
@@ -2218,7 +2745,7 @@
     function handleCustomSelect(id) {
       Utils.$(id).addEventListener('change', function () {
         if (this.value !== '__custom__') return;
-        var v = (prompt('Enter a custom value:') || '').trim();
+        var v = (prompt(tx('lib.customPrompt')) || '').trim();
         if (!v) { this.value = ''; return; }
         setSelectValue(id, v);
       });
@@ -2237,9 +2764,9 @@
 
     function levelPlaceholder() {
       var t = Utils.$('lib-type').value;
-      if (t === 'movie' || t === 'series') return 'age rating, e.g. PG / 15';
-      if (t === 'lecture' || t === 'video') return 'beginner / intermediate / advanced';
-      if (t === 'paper' || t === 'article') return 'year, e.g. 2024';
+      if (t === 'movie' || t === 'series') return tx('level.ratingPh');
+      if (t === 'lecture' || t === 'video') return tx('level.difficultyPh');
+      if (t === 'paper' || t === 'article') return tx('level.yearPh');
       return 'level';
     }
 
@@ -2267,7 +2794,7 @@
        manual entry - the form stays editable throughout. */
     function fetchJson(url, cb) {
       if (!navigator.onLine) {
-        setStatus('you appear to be offline — connect and try again, or fill the form in by hand.', true);
+        setStatus(tx('lib.offline'), true);
         return;
       }
       if (lookupAbort) lookupAbort.abort();
@@ -2286,13 +2813,13 @@
         .catch(function (e) {
           clearTimeout(timer);
           if (e.name === 'AbortError') {
-            setStatus('the search timed out. Check your connection, or enter the details manually.', true);
+            setStatus(tx('lib.timeout'), true);
           } else if (e.message === 'quota') {
-            setStatus('search limit reached for now. Wait a few minutes, or enter the details manually.', true);
+            setStatus(tx('lib.quota'), true);
           } else if (e.message === 'auth') {
-            setStatus('the API key was rejected. Check it in Settings, or enter the details manually.', true);
+            setStatus(tx('lib.authFail'), true);
           } else {
-            setStatus('search failed. You can still fill the form in by hand.', true);
+            setStatus(tx('lib.searchFailed'), true);
           }
         });
     }
@@ -2308,11 +2835,11 @@
       if (type === 'movie' || type === 'series') return searchTmdb(q, type);
       if (type === 'music') return searchMusic(q);
       if (type === 'paper') return searchCrossref(q);
-      setStatus('automatic lookup isn\'t available for this type — fill the form in by hand.');
+      setStatus(tx('lib.noLookup'));
     }
 
     function renderResults(rows) {
-      if (rows.length === 0) { setStatus('no matches — fill the form in by hand.'); return; }
+      if (rows.length === 0) { setStatus(tx('lib.noMatches')); return; }
       setStatus('');
       Utils.$('lib-results').innerHTML = rows.map(function (r, i) {
         return '<button type="button" class="lib-result" data-idx="' + i + '">' +
@@ -2356,7 +2883,7 @@
         else if (r.rawGenre) setSelectValue('lib-genre', r.rawGenre);
       }
       Utils.$('lib-results').innerHTML = '';     // collapse results
-      setStatus('filled in from search — check the details and adjust as needed.');
+      setStatus(tx('lib.filled'));
     }
 
     function searchBooks(q) {
@@ -2384,7 +2911,7 @@
     function searchTmdb(q, type) {
       var key = (AppState.settings.tmdbKey || '').trim();
       if (!key) {
-        setStatus('film & TV lookup needs a free TMDB key — add one in Settings (auto-fill card), or fill the form in by hand.');
+        setStatus(tx('lib.needTmdb'));
         return;
       }
       var kind = (type === 'series') ? 'tv' : 'movie';
@@ -2451,13 +2978,13 @@
       var url = Utils.$('lib-cover-url').value;
       var box = Utils.$('lib-cover-preview');
       if (!url) {
-        box.innerHTML = '<span class="lib-cover-hint">Paste, drag<br>or click to upload</span>';
+        box.innerHTML = '<span class="lib-cover-hint">' + tx('lib.coverLine1') + '<br>' + tx('lib.coverLine2') + '</span>';
         box.classList.add('empty');
         return;
       }
       box.classList.remove('empty');
       var rotStyle = coverRot ? ' style="transform:rotate(' + coverRot + 'deg)"' : '';
-      box.innerHTML = '<img src="' + Utils.escapeHtml(url) + '" alt="cover"' + rotStyle + '>';
+      box.innerHTML = '<img src="' + Utils.escapeHtml(url) + '" alt="' + Utils.escapeHtml(tx('lib.coverAlt')) + '"' + rotStyle + '>';
     }
 
     /* Uploaded covers MUST be downscaled: one phone photo is 3-5MB and
@@ -2481,14 +3008,14 @@
         ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
         cb(c.toDataURL('image/jpeg', 0.85));
       };
-      img.onerror = function () { setStatus('that image could not be read.', true); };
+      img.onerror = function () { setStatus(tx('lib.coverUnreadable'), true); };
       img.src = dataUrl;
     }
 
     function readCoverFile(file) {
       if (!file) return;
       if (!/^image\//.test(file.type || '')) {
-        setStatus('that file is not an image.', true);
+        setStatus(tx('lib.coverNotImage'), true);
         return;
       }
       var reader = new FileReader();
@@ -2498,10 +3025,10 @@
           coverRot = 0;
           coverTouched = true;
           renderCoverPreview();
-          setStatus('cover added (resized to save space).');
+          setStatus(tx('lib.coverAdded'));
         });
       };
-      reader.onerror = function () { setStatus('that image could not be read.', true); };
+      reader.onerror = function () { setStatus(tx('lib.coverUnreadable'), true); };
       reader.readAsDataURL(file);
     }
 
@@ -2543,7 +3070,7 @@
       touched = {};
       coverTouched = false;
       coverRot = it.coverRotation || 0;
-      Utils.$('lib-modal-title').textContent = id ? 'Edit item' : 'Add to library';
+      Utils.$('lib-modal-title').textContent = id ? tx('lib.modalEdit') : tx('lib.modalAdd');
       Utils.$('lib-search-input').value = '';
       Utils.$('lib-results').innerHTML = '';
       setStatus('');
@@ -2584,7 +3111,7 @@
     function renderNotebookLink(it) {
       var el = Utils.$('lib-notebook-link');
       var note = it.noteId ? AppState.notes.find(function (n) { return n.id === it.noteId; }) : null;
-      el.textContent = note ? 'linked to notebook: ' + note.title : '';
+      el.textContent = note ? tx('lib.linkedTo', { title: note.title }) : '';
     }
 
     function valueOf(id) {
@@ -2594,7 +3121,7 @@
 
     function save() {
       var title = Utils.$('lib-title').value.trim();
-      if (!title) { setStatus('a title is required.', true); return; }
+      if (!title) { setStatus(tx('lib.titleRequired'), true); return; }
 
       var it = editingId ? AppState.itemById(editingId) : null;
       var isNew = !it;
@@ -2642,7 +3169,7 @@
       if (!editingId) return;
       var it = AppState.itemById(editingId);
       if (!it) return;
-      if (!confirm('Remove "' + it.title + '" from the library?')) return;
+      if (!confirm(tx('lib.removeConfirm', { title: it.title }))) return;
       AppState.library = AppState.library.filter(function (x) { return x.id !== editingId; });
       delete AppState.librarySelection[editingId];
       Modal.close('mo-library');
@@ -2669,21 +3196,21 @@
     }
 
     function renderFilters() {
-      var mk = function (id, values, current, allLabel) {
+      var mk = function (id, values, current, allLabel, labelOf) {
         var el = Utils.$(id);
         el.innerHTML = '<option value="all">' + allLabel + '</option>' +
           values.map(function (v) {
-            return '<option value="' + Utils.escapeHtml(v) + '">' + Utils.escapeHtml(v) + '</option>';
+            return '<option value="' + Utils.escapeHtml(v) + '">' + Utils.escapeHtml(labelOf ? labelOf(v) : v) + '</option>';
           }).join('');
         el.value = current;
         if (el.value !== current) el.value = 'all';
       };
       var types = {};
       AppState.library.forEach(function (it) { if (it.type) types[it.type] = true; });
-      mk('lib-type-filter', Object.keys(types).sort(), AppState.libraryTypeFilter, 'all types');
-      mk('lib-category-filter', AppState.usedValues('category'), AppState.libraryCategoryFilter, 'all categories');
-      mk('lib-genre-filter', AppState.usedValues('genre'), AppState.libraryGenreFilter, 'all genres');
-      mk('lib-status-filter', AppState.ITEM_STATUSES.slice(), AppState.libraryStatusFilter, 'any status');
+      mk('lib-type-filter', Object.keys(types).sort(), AppState.libraryTypeFilter, tx('filter.allTypes'), function (v) { return tx('lt.' + v); });
+      mk('lib-category-filter', AppState.usedValues('category'), AppState.libraryCategoryFilter, tx('filter.allCategories'));
+      mk('lib-genre-filter', AppState.usedValues('genre'), AppState.libraryGenreFilter, tx('filter.allGenres'));
+      mk('lib-status-filter', AppState.ITEM_STATUSES.slice(), AppState.libraryStatusFilter, tx('filter.anyStatus'), statusLabel);
     }
 
     function selectedIds() {
@@ -2695,7 +3222,7 @@
     function renderBulkBar() {
       var n = selectedIds().length;
       Utils.$('lib-bulk-bar').style.display = n > 0 ? 'flex' : 'none';
-      Utils.$('lib-bulk-count').textContent = n + ' selected';
+      Utils.$('lib-bulk-count').textContent = tx('lib.selected', { n: n });
     }
 
     function renderList() {
@@ -2706,8 +3233,8 @@
       if (items.length === 0) {
         grid.innerHTML = '<div class="empty"><span class="icon" data-icon="library" aria-hidden="true"></span>' +
           '<p>' + (AppState.library.length === 0
-            ? 'Nothing in your library yet. Add a book, film, or course.'
-            : 'No items match these filters.') + '</p></div>';
+            ? tx('lib.empty')
+            : tx('lib.noMatch')) + '</p></div>';
         renderBulkBar();
         return;
       }
@@ -2722,7 +3249,7 @@
         var rotStyle = (it.coverRotation && !/^data:/.test(it.coverUrl))
           ? ' style="transform:rotate(' + it.coverRotation + 'deg)"' : '';
         return '<div class="lib-card" data-id="' + it.id + '">' +
-          '<input type="checkbox" class="lib-check" data-id="' + it.id + '" ' + checked + ' aria-label="select">' +
+          '<input type="checkbox" class="lib-check" data-id="' + it.id + '" ' + checked + ' aria-label="' + Utils.escapeHtml(tx('lib.select')) + '">' +
           (it.coverUrl
             ? '<span class="lib-cover-box"><img class="lib-cover" src="' + Utils.escapeHtml(it.coverUrl) + '" alt=""' + rotStyle + ' onerror="this.classList.add(\'broken\')"></span>'
             : '<div class="lib-cover-box lib-cover-empty"><span class="icon" data-icon="library" aria-hidden="true"></span></div>') +
@@ -2730,19 +3257,19 @@
           '<p class="lib-title">' + Utils.escapeHtml(it.title) + '</p>' +
           '<p class="lib-author">' + Utils.escapeHtml(it.author || '') + '</p>' +
           '<p class="lib-meta">' +
-          '<span class="badge bdg-type">' + Utils.escapeHtml(it.type) + '</span>' +
+          '<span class="badge bdg-type">' + Utils.escapeHtml(tx('lt.' + it.type)) + '</span>' +
           (it.category ? '<span class="badge bdg-type">' + Utils.escapeHtml(it.category) + '</span>' : '') +
           (it.genre ? '<span class="badge bdg-type">' + Utils.escapeHtml(it.genre) + '</span>' : '') +
           (lvl ? '<span class="badge bdg-level">' + Utils.escapeHtml(lvl) + '</span>' : '') +
           '</p>' +
           '<p class="lib-meta">' +
-          '<span class="lib-status lib-status-' + it.status.replace(/\s/g, '-') + '">' + Utils.escapeHtml(it.status) + '</span>' +
+          '<span class="lib-status lib-status-' + it.status.replace(/\s/g, '-') + '">' + Utils.escapeHtml(statusLabel(it.status)) + '</span>' +
           (it.callNo ? '<span class="lib-callno">' + Utils.escapeHtml(it.callNo) + '</span>' : '') +
           stars + '</p>' + prog +
           '</div>' +
           '<div class="lib-actions">' +
-          '<button class="btn-go-to-note lib-open-note" data-id="' + it.id + '">go to note</button>' +
-          '<button class="bic lib-edit" data-id="' + it.id + '" aria-label="edit"><span class="icon" data-icon="pencil" aria-hidden="true"></span></button>' +
+          '<button class="btn-go-to-note lib-open-note" data-id="' + it.id + '">' + tx('go.toNote') + '</button>' +
+          '<button class="bic lib-edit" data-id="' + it.id + '" aria-label="' + Utils.escapeHtml(tx('lib.edit')) + '"><span class="icon" data-icon="pencil" aria-hidden="true"></span></button>' +
           '</div>' +
           '</div>';
       }).join('');
@@ -2774,13 +3301,13 @@
         it.noteId = '';
       }
 
-      if (AppState.subjects.length === 0) { alert('Add a subject first.'); return; }
+      if (AppState.subjects.length === 0) { alert(tx('notes.addSubjectFirst')); return; }
       var names = AppState.subjects.map(function (s, i) { return (i + 1) + '. ' + s.name; }).join('\n');
-      var pick = prompt('Which subject is "' + it.title + '" for?\n\n' + names + '\n\nEnter a number:');
+      var pick = prompt(tx('lib.whichSubject', { title: it.title, names: names }));
       if (pick === null) return;
       var idx = parseInt(pick, 10) - 1;
       if (isNaN(idx) || idx < 0 || idx >= AppState.subjects.length) {
-        alert('That is not one of the numbers listed.');
+        alert(tx('lib.notNumber'));
         return;
       }
       var subject = AppState.subjects[idx];
@@ -2809,12 +3336,12 @@
     function openBulkModal() {
       var ids = selectedIds();
       if (ids.length === 0) return;
-      Utils.$('bulk-count-label').textContent = ids.length + ' item' + (ids.length === 1 ? '' : 's') + ' selected';
+      Utils.$('bulk-count-label').textContent = I18n.tn('bulk.count', ids.length);
 
       var uniq = function (arr) {
         return arr.filter(function (v, i) { return v && arr.indexOf(v) === i; });
       };
-      var catOpts = ['<option value="__keep__">(keep — no change)</option>'];
+      var catOpts = ['<option value="__keep__">' + tx('bulk.keep') + '</option>'];
       uniq(AppState.usedValues('category').concat(AppState.customValues('category'),
         AppState.CATEGORY_PRESETS.book, AppState.CATEGORY_PRESETS.movie,
         AppState.CATEGORY_PRESETS.lecture)).forEach(function (v) {
@@ -2822,15 +3349,15 @@
         });
       Utils.$('bulk-category').innerHTML = catOpts.join('');
 
-      var genOpts = ['<option value="__keep__">(keep — no change)</option>'];
+      var genOpts = ['<option value="__keep__">' + tx('bulk.keep') + '</option>'];
       uniq(AppState.GENRE_PRESETS.concat(AppState.customValues('genre'), AppState.usedValues('genre'))).forEach(function (v) {
         genOpts.push('<option value="' + Utils.escapeHtml(v) + '">' + Utils.escapeHtml(v) + '</option>');
       });
       Utils.$('bulk-genre').innerHTML = genOpts.join('');
 
-      var stOpts = ['<option value="__keep__">(keep — no change)</option>'];
+      var stOpts = ['<option value="__keep__">' + tx('bulk.keep') + '</option>'];
       AppState.ITEM_STATUSES.forEach(function (v) {
-        stOpts.push('<option value="' + v + '">' + v + '</option>');
+        stOpts.push('<option value="' + v + '">' + Utils.escapeHtml(statusLabel(v)) + '</option>');
       });
       Utils.$('bulk-status').innerHTML = stOpts.join('');
 
@@ -2954,11 +3481,11 @@
       });
       Utils.$('lib-cover-google').addEventListener('click', function () {
         var t = Utils.$('lib-title').value.trim();
-        if (!t) { setStatus('enter a title first.', true); return; }
+        if (!t) { setStatus(tx('lib.enterTitleFirst'), true); return; }
         if (navigator.clipboard) navigator.clipboard.writeText(t).catch(function () { /* ignore */ });
         window.open('https://www.google.com/search?tbm=isch&q=' +
           encodeURIComponent(t + ' cover'), '_blank', 'noopener');
-        setStatus('title copied — find a cover, copy the image, then press Ctrl+V here.');
+        setStatus(tx('lib.coverSearch'));
       });
 
       // bulk
@@ -2987,7 +3514,7 @@
       });
       if (list.length === 0) {
         Utils.$('card-grid').innerHTML =
-          '<div class="empty" style="grid-column:1/-1;"><span class="icon" data-icon="cards" aria-hidden="true"></span><p>No cards yet.</p></div>';
+          '<div class="empty" style="grid-column:1/-1;"><span class="icon" data-icon="cards" aria-hidden="true"></span><p>' + tx('cards.empty') + '</p></div>';
         return;
       }
       Utils.$('card-grid').innerHTML = list.map(function (c) {
@@ -3007,7 +3534,7 @@
     function setupCards() {
       Utils.$('add-card-btn').addEventListener('click', function () {
         if (AppState.subjects.length === 0) {
-          alert('Add a subject first — cards are grouped by subject.');
+          alert(tx('cards.addSubjectFirst'));
           return;
         }
         Utils.$('card-front-input').value = '';
@@ -3020,8 +3547,8 @@
       Utils.$('card-modal-save').addEventListener('click', function () {
         var front = Utils.$('card-front-input').value.trim();
         var back = Utils.$('card-back-input').value.trim();
-        if (!front || !back) { alert('Fill in both the question and the answer.'); return; }
-        if (AppState.subjects.length === 0) { alert('Add a subject first.'); Modal.close('mo-card'); return; }
+        if (!front || !back) { alert(tx('cards.fillBoth')); return; }
+        if (AppState.subjects.length === 0) { alert(tx('notes.addSubjectFirst')); Modal.close('mo-card'); return; }
         var filter = Utils.$('deck-filter').value;
         // when the deck filter is "all", fall back to the first subject
         var subjectId = (filter && filter !== 'all') ? filter : AppState.subjects[0].id;
@@ -3075,7 +3602,7 @@
 
       Utils.$('study-mode-btn').addEventListener('click', function () {
         var deck = getStudyDeck();
-        if (deck.length === 0) { alert('No cards to review.'); return; }
+        if (deck.length === 0) { alert(tx('cards.noneToReview')); return; }
         AppState.studyIdx = 0;
         AppState.studyFlipped = false;
         overlay.classList.add('open');
@@ -3160,7 +3687,7 @@
       this.hideBackupBanner();
       if (Utils.$('backup-status')) {
         Utils.$('backup-status').textContent =
-          'backup downloaded (' + AppState.notes.length + ' notebooks, ' + AppState.cards.length + ' cards)';
+          tx('backup.downloaded', { n: AppState.notes.length, c: AppState.cards.length });
       }
     },
 
@@ -3225,14 +3752,34 @@
       var onOld = host === OLD_HOST;
       var onNewFirstVisit = host === new URL(APP_HOME).hostname && AppState.seededThisSession;
       if (!onOld && !onNewFirstVisit) return;
-      Utils.$('move-banner-text').textContent = onOld
-        ? '새 주소로 옮겼어요. ① 여기서 백업 받기 → ② 새 주소에서 load backup. 이 주소로는 앱을 설치하지 마세요.'
-        : '샘플 노트예요. 옛 주소에서 받은 백업 파일이 있으면 load backup으로 불러오세요.';
+      this.fillMoveBannerText();
       Utils.$('move-banner-backup').style.display = onOld ? '' : 'none';
       Utils.$('move-banner-open').style.display = onOld ? '' : 'none';
       Utils.$('move-banner-load').style.display = onOld ? 'none' : '';
       b.style.display = 'flex';
       Settings.updateBannerDock();
+    },
+
+    fillMoveBannerText: function () {
+      Utils.$('move-banner-text').textContent = location.hostname === OLD_HOST
+        ? tx('banner.moveOld')
+        : tx('banner.moveNew');
+    },
+
+    /** Banner texts are written with tx() when shown, so a language switch
+        must rewrite the ones on screen (I18n.apply only covers static text).
+        Hidden banners stay hidden ("later" holds for the session). */
+    retranslateBanners: function () {
+      var mb = Utils.$('move-banner'), bb = Utils.$('backup-banner');
+      if (mb && mb.style.display !== 'none') this.fillMoveBannerText();
+      if (bb && bb.style.display !== 'none') {
+        // settings may have changed with the language (an imported backup with a
+        // recent lastBackupAt, or reminders off): a reminder no longer due goes away
+        var t = this.backupReminderText();
+        if (t) Utils.$('backup-banner-text').textContent = t;
+        else bb.style.display = 'none';
+      }
+      Settings.updateBannerDock();   // the other language can wrap to another height
     },
 
     hideBackupBanner: function () {
@@ -3256,25 +3803,28 @@
     /** Show the reminder banner if the last backup is older than the chosen
         interval. Runs once at startup; "later" hides it for this session. */
     checkBackupReminder: function () {
-      var days = AppState.settings.backupReminderDays;
-      if (!days || days <= 0) return;              // reminders turned off
-      if (AppState.notes.length === 0) return;      // nothing worth backing up yet
       // untouched sample data on a first visit is not the user's: no nag (on a new
       // address the move banner already offers "load backup" in the same spot)
       if (AppState.seededThisSession) return;
 
-      var last = AppState.settings.lastBackupAt;
-      var text;
-      if (!last) {
-        text = "You haven't downloaded a backup yet — your notes exist only in this browser.";
-      } else {
-        var elapsedDays = Math.floor((Date.now() - new Date(last).getTime()) / 86400000);
-        if (elapsedDays < days) return;
-        text = 'Last backup was ' + elapsedDays + (elapsedDays === 1 ? ' day' : ' days') + ' ago.';
-      }
+      var text = this.backupReminderText();
+      if (!text) return;
       Utils.$('backup-banner-text').textContent = text;
       Utils.$('backup-banner').style.display = 'flex';
       Settings.updateBannerDock();
+    },
+
+    /** The reminder line, or null when no reminder is due: reminders turned
+        off, nothing worth backing up yet, or the last backup is recent enough. */
+    backupReminderText: function () {
+      var days = AppState.settings.backupReminderDays;
+      if (!days || days <= 0) return null;
+      if (AppState.notes.length === 0) return null;
+      var last = AppState.settings.lastBackupAt;
+      if (!last) return tx('banner.noBackup');
+      var elapsedDays = Math.floor((Date.now() - new Date(last).getTime()) / 86400000);
+      if (elapsedDays < days) return null;
+      return I18n.tn('banner.lastBackup', elapsedDays);
     },
 
     applyFontSize: function () {
@@ -3307,6 +3857,20 @@
           Storage.scheduleSave();
         }
       });
+      // language (Settings → Display): static text is re-translated in place, dynamic views re-rendered
+      if (Utils.$('lang-select')) {
+        Utils.$('lang-select').value = AppState.settings.lang;
+        Utils.$('lang-select').addEventListener('change', function () {
+          AppState.settings.lang = this.value === 'ko' ? 'ko' : 'en';
+          I18n.apply();
+          Nav.refreshTitle();
+          App.renderAll();
+          NotesModule.refreshEditor();
+          Sync.refreshStatus();
+          Storage.updateUsageDisplay();
+          Storage.scheduleSave();
+        });
+      }
       Utils.$('font-size-slider').addEventListener('input', function () {
         AppState.settings.noteFontSize = parseInt(this.value, 10);
         self.applyFontSize();
@@ -3314,9 +3878,8 @@
       });
       Utils.$('reset-data-btn').addEventListener('click', function () {
         var msg = Sync.isSignedIn()
-          ? 'Cloud sync is on: this clears only the copy in this browser and downloads your notes again from the cloud after the reload.\n\n'
-            + 'To delete notes everywhere, delete them inside the app (deletions sync too). Continue?'
-          : 'This will permanently delete all notes, tasks, and flashcards in this browser. Continue?';
+          ? tx('danger.confirmSync')
+          : tx('danger.confirm');
         if (!confirm(msg)) return;
         Storage.reset();
         location.reload();
@@ -3383,8 +3946,7 @@
         // a real backup is text; anything huge is either not ours or would
         // never fit in storage anyway - reject before reading it into memory
         if (file.size > 25 * 1024 * 1024) {
-          st.textContent = 'that file is too large to be a backup (' +
-            Math.round(file.size / 1048576) + ' MB).';
+          st.textContent = tx('backup.fileTooLarge', { mb: Math.round(file.size / 1048576) });
           return;
         }
 
@@ -3394,23 +3956,26 @@
           try {
             parsed = JSON.parse(reader.result);
           } catch (e) {
-            st.textContent = 'that file is not a valid backup (could not read it as JSON).';
+            st.textContent = tx('backup.notJson');
             return;
           }
           // accept both wrapped backups and raw data objects
           // accept backups from both the old app name and the new one
           var d = (parsed && (parsed.app === 'studydesk' || parsed.app === 'my-notebook') && parsed.data) ? parsed.data : parsed;
           if (!d || typeof d !== 'object' || !Array.isArray(d.subjects) || !Array.isArray(d.notes)) {
-            st.textContent = 'that file does not look like a StudyDesk backup.';
+            st.textContent = tx('backup.notBackup');
             return;
           }
 
-          var summary = d.notes.length + ' notebooks, ' +
-            (Array.isArray(d.cards) ? d.cards.length : 0) + ' cards, ' +
-            (Array.isArray(d.recurring) ? d.recurring.length : 0) + ' recurring tasks';
-          if (!confirm('Load this backup? (' + summary + ')\n\nThis REPLACES everything currently in this browser.')) return;
+          // formatted on use: the backup may carry another language, and the
+          // success line is written after renderAll() has switched to it
+          var summaryText = function () {
+            return tx('backup.summary', { n: d.notes.length, c: Array.isArray(d.cards) ? d.cards.length : 0, r: Array.isArray(d.recurring) ? d.recurring.length : 0 });
+          };
+          if (!confirm(tx('backup.loadConfirm', { summary: summaryText() }))) return;
 
           // snapshot current state so a bad file can't leave the app wrecked
+          var bannerBefore = Utils.$('backup-banner') ? Utils.$('backup-banner').style.display : 'none';
           var snapshot = {
             subjects: AppState.subjects, notes: AppState.notes,
             recurring: AppState.recurring, adhocTasks: AppState.adhocTasks,
@@ -3436,7 +4001,10 @@
             Storage.scheduleSave();
             App.renderAll();
             if (AppState.notes.length > 0) NotesModule.selectNote(AppState.notes[0].id);
-            st.textContent = 'backup loaded: ' + summary;
+            st.textContent = tx('backup.loaded', { summary: summaryText() });
+            // the imported settings may make a visible reminder no longer due
+            // (recent lastBackupAt, reminders off) even when the language is the same
+            Settings.retranslateBanners();
             // the new-address hint ("load your backup") is done once a backup is in
             if (location.hostname !== OLD_HOST && Utils.$('move-banner')) Utils.$('move-banner').style.display = 'none';
             Utils.$('backup-reminder-select').value = String(AppState.settings.backupReminderDays);
@@ -3451,12 +4019,15 @@
             AppState.cards = snapshot.cards;
             AppState.library = snapshot.library;
             AppState.settings = snapshot.settings;
+            // a language switch inside the failed render may have hidden the reminder
+            if (Utils.$('backup-banner')) Utils.$('backup-banner').style.display = bannerBefore;
             App.renderAll();
-            st.textContent = 'that backup could not be loaded — your existing notes were left untouched.';
+            Settings.updateBannerDock();
+            st.textContent = tx('backup.loadFailed');
           }
         };
         reader.onerror = function () {
-          Utils.$('backup-status').textContent = 'could not read that file.';
+          Utils.$('backup-status').textContent = tx('backup.fileUnreadable');
         };
         reader.readAsText(file);
       });
@@ -3486,7 +4057,7 @@
     var editing = null;   // { kind: 'subject'|'category'|'genre', id?: subjectId, value?: oldValue }
     var deletingSubjectId = null;
 
-    var FIELD = { category: { key: 'customCategories', label: 'Category' }, genre: { key: 'customGenres', label: 'Genre' } };
+    var FIELD = { category: { key: 'customCategories', label: 'lib.f.category' }, genre: { key: 'customGenres', label: 'lib.f.genre' } };
 
     function esc(v) { return Utils.escapeHtml(v); }
 
@@ -3505,7 +4076,7 @@
       };
     }
 
-    function plural(n, word) { return n + ' ' + word + (n === 1 ? '' : 's'); }
+    function plural(n, word) { return I18n.tn('lists.n.' + word, n); }   // word = notebook|task|card|item|libItem
 
     function renderSubjects() {
       var el = Utils.$('lists-subjects');
@@ -3516,8 +4087,8 @@
           '<span class="lrow-name" title="' + esc(s.name) + '">' + esc(s.name) + '</span>' +
           '<span class="lrow-meta"><span>' + plural(u.notes, 'notebook') + '</span><span>' + plural(u.tasks, 'task') + '</span><span>' + plural(u.cards, 'card') + '</span></span>' +
           '<span class="lrow-actions">' +
-            '<button class="bic" data-act="rename-subject" title="rename" aria-label="rename ' + esc(s.name) + '"><span class="icon" data-icon="pencil" aria-hidden="true"></span></button>' +
-            '<button class="bic danger" data-act="delete-subject" title="delete" aria-label="delete ' + esc(s.name) + '"><span class="icon" data-icon="trash" aria-hidden="true"></span></button>' +
+            '<button class="bic" data-act="rename-subject" title="' + esc(tx('lists.rename')) + '" aria-label="' + esc(tx('lists.rename') + ' ' + s.name) + '"><span class="icon" data-icon="pencil" aria-hidden="true"></span></button>' +
+            '<button class="bic danger" data-act="delete-subject" title="' + esc(tx('common.delete')) + '" aria-label="' + esc(tx('common.delete') + ' ' + s.name) + '"><span class="icon" data-icon="trash" aria-hidden="true"></span></button>' +
           '</span></div>';
       }).join('');
     }
@@ -3545,18 +4116,18 @@
       if (!el) return;
       var rows = valueRows(field);
       if (rows.length === 0) {
-        el.innerHTML = '<p class="lrows-empty">Nothing yet. Values you pick in Library show up here.</p>';
+        el.innerHTML = '<p class="lrows-empty">' + tx('lists.empty') + '</p>';
         return;
       }
       el.innerHTML = rows.map(function (r) {
         return '<div class="lrow" data-value="' + esc(r.value) + '">' +
           '<span class="lrow-name" title="' + esc(r.value) + '">' + esc(r.value) +
-            (r.custom ? '<span class="lrow-tag">custom</span>' : '') + '</span>' +
+            (r.custom ? '<span class="lrow-tag">' + esc(tx('lists.customTag')) + '</span>' : '') + '</span>' +
           '<span class="lrow-meta one"><span>' + plural(r.count, 'item') + '</span></span>' +
           '<span class="lrow-actions">' +
-            '<button class="bic" data-act="rename-' + field + '" title="rename" aria-label="rename ' + esc(r.value) + '"><span class="icon" data-icon="pencil" aria-hidden="true"></span></button>' +
+            '<button class="bic" data-act="rename-' + field + '" title="' + esc(tx('lists.rename')) + '" aria-label="' + esc(tx('lists.rename') + ' ' + r.value) + '"><span class="icon" data-icon="pencil" aria-hidden="true"></span></button>' +
             (r.count === 0
-              ? '<button class="bic danger" data-act="delete-' + field + '" title="remove" aria-label="remove ' + esc(r.value) + '"><span class="icon" data-icon="trash" aria-hidden="true"></span></button>'
+              ? '<button class="bic danger" data-act="delete-' + field + '" title="' + esc(tx('common.remove')) + '" aria-label="' + esc(tx('common.remove') + ' ' + r.value) + '"><span class="icon" data-icon="trash" aria-hidden="true"></span></button>'
               : '<span class="bic-ph" aria-hidden="true"></span>') +
           '</span></div>';
       }).join('');
@@ -3573,17 +4144,17 @@
     function openEdit(kind, opts) {
       editing = { kind: kind, id: opts.id || null, value: opts.value || '' };
       var isSubject = kind === 'subject';
-      var noun = isSubject ? 'subject' : kind;
-      Utils.$('list-edit-title').textContent = (opts.id || opts.value ? 'Rename ' : 'Add ') + noun;
-      Utils.$('list-edit-label').textContent = isSubject ? 'Subject name' : FIELD[kind].label;
-      Utils.$('list-edit-save').textContent = (opts.id || opts.value) ? 'Save' : 'Add';
+      var noun = tx('lists.noun.' + kind);
+      Utils.$('list-edit-title').textContent = tx((opts.id || opts.value) ? 'lists.renameX' : 'lists.addX', { noun: noun });
+      Utils.$('list-edit-label').textContent = isSubject ? tx('subj.nameLabel') : tx(FIELD[kind].label);
+      Utils.$('list-edit-save').textContent = (opts.id || opts.value) ? tx('common.save') : tx('common.add');
       var input = Utils.$('list-edit-input');
       input.value = opts.id ? (AppState.subjectById(opts.id) || {}).name || '' : (opts.value || '');
-      input.placeholder = isSubject ? 'e.g. economics' : (kind === 'category' ? 'e.g. Field Guide' : 'e.g. Urban Planning');
+      input.placeholder = isSubject ? tx('lists.subjectPh') : (kind === 'category' ? tx('lists.categoryPh') : tx('lists.genrePh'));
       var note = Utils.$('list-edit-note');
       if (!isSubject && opts.value) {
         var n = AppState.library.filter(function (it) { return (it[kind] || '').trim() === opts.value; }).length;
-        note.textContent = n ? 'Applies to ' + plural(n, 'library item') + ' using this value.' : '';
+        note.textContent = n ? tx('lists.appliesTo', { items: plural(n, 'libItem') }) : '';
         note.hidden = !n;
       } else {
         note.hidden = true;
@@ -3603,7 +4174,7 @@
 
       if (kind === 'subject') {
         var dup = AppState.subjects.find(function (s) { return s.id !== editing.id && sameName(s.name, name); });
-        if (dup) { alert('There is already a subject called "' + dup.name + '".'); return; }
+        if (dup) { alert(tx('lists.dupSubject', { name: dup.name })); return; }
         if (editing.id) {
           var subj = AppState.subjectById(editing.id);
           if (!subj) { Modal.close('mo-list-edit'); return; }
@@ -3621,7 +4192,7 @@
         // vs "Science Fiction"): a rename merges INTO the existing spelling,
         // an add is refused. Case-insensitive, so no near-duplicates appear.
         var match = listed.concat(presetList).find(function (v) { return v !== old && sameName(v, name); });
-        if (!old && match) { alert('"' + match + '" is already in the list.'); return; }
+        if (!old && match) { alert(tx('lists.alreadyInList', { name: match })); return; }
         if (old && match) name = match;
         if (old && old === name) { Modal.close('mo-list-edit'); return; }
         var exists = listed.indexOf(name) !== -1;
@@ -3656,13 +4227,13 @@
       var subj = AppState.subjectById(id);
       if (!subj) return;
       if (AppState.subjects.length === 1) {
-        alert('Keep at least one subject. Add another one first.');
+        alert(tx('lists.keepOne'));
         return;
       }
       var u = subjectUsage(id);
       var total = u.notes + u.tasks + u.cards;
       if (total === 0) {
-        if (!confirm('Delete the subject "' + subj.name + '"?')) return;
+        if (!confirm(tx('lists.confirmDeleteSubject', { name: subj.name }))) return;
         removeSubject(id, null);
         return;
       }
@@ -3671,7 +4242,7 @@
       if (u.notes) parts.push(plural(u.notes, 'notebook'));
       if (u.tasks) parts.push(plural(u.tasks, 'task'));
       if (u.cards) parts.push(plural(u.cards, 'card'));
-      Utils.$('subject-delete-text').textContent = '"' + subj.name + '" is used by ' + parts.join(', ') + '.';
+      Utils.$('subject-delete-text').textContent = tx('lists.usedBy', { name: subj.name, parts: parts.join(', ') });
       Utils.$('subject-delete-target').innerHTML = AppState.subjects.filter(function (s) { return s.id !== id; })
         .map(function (s) { return '<option value="' + esc(s.id) + '">' + esc(s.name) + '</option>'; }).join('');
       Modal.open('mo-subject-delete');
@@ -3693,7 +4264,7 @@
     function deleteValue(field, value) {
       var key = FIELD[field].key;
       var inUse = AppState.library.some(function (it) { return (it[field] || '').trim() === value; });
-      if (inUse) { alert('"' + value + '" is still used by library items. Rename it to merge it into another value.'); return; }
+      if (inUse) { alert(tx('lists.stillUsed', { name: value })); return; }
       var list = customList(key);
       var i = list.indexOf(value);
       if (i === -1) return;
@@ -4090,33 +4661,32 @@
       return (d.getHours() < 10 ? '0' : '') + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes();
     }
 
+    function refreshStatus() { setStatus(phase, detail); }
+
     function setStatus(p, d) {
       phase = p; detail = d || '';
       if (p === 'synced') lastSyncAt = new Date();
       var card = $('sync-status'), foot = $('sb-foot-status');
-      var who = userEmail ? ' as ' + userEmail : '';
+      var who = userEmail ? tx('sync.as', { email: userEmail }) : '';
       var text, footText;
       switch (p) {
         case 'unconfigured':
-          text = 'cloud sync is not set up yet: this build has no Firebase config, so notes stay in this browser only.';
-          footText = 'stored only in this browser'; break;
+          text = tx('sync.unconfigured'); footText = tx('sync.foot.local'); break;
         case 'loading':
-          text = 'loading sync…'; footText = 'stored only in this browser'; break;
+          text = tx('sync.loading'); footText = tx('sync.foot.local'); break;
         case 'signedout':
-          text = 'not signed in: notes stay only in this browser. Sign in with the same Google account on every device to keep them in sync.';
-          footText = 'stored only in this browser'; break;
+          text = tx('sync.signedout'); footText = tx('sync.foot.local'); break;
         case 'syncing':
-          text = 'syncing' + who + (detail ? ' (' + detail + ')' : '') + '…'; footText = 'syncing…'; break;
+          text = tx('sync.syncing', { who: who, detail: detail ? ' (' + detail + ')' : '' }); footText = tx('sync.foot.syncing'); break;
         case 'synced':
-          text = 'synced' + who + ' · last change ' + timeLabel(lastSyncAt);
-          footText = 'synced · ' + (userEmail.split('@')[0] || 'signed in'); break;
+          text = tx('sync.synced', { who: who, time: timeLabel(lastSyncAt) });
+          footText = tx('sync.foot.synced', { name: userEmail.split('@')[0] || tx('sync.signedIn') }); break;
         case 'offline':
-          text = 'offline' + who + ': changes are kept here and sent when you are back online.';
-          footText = 'offline · will sync'; break;
+          text = tx('sync.offline', { who: who }); footText = tx('sync.foot.offline'); break;
         case 'error':
-          text = 'sync error: ' + detail; footText = 'sync error'; break;
+          text = tx('sync.error', { detail: detail }); footText = tx('sync.foot.error'); break;
         default:
-          text = ''; footText = 'stored only in this browser';
+          text = ''; footText = tx('sync.foot.local');
       }
       if (card) card.textContent = text;
       if (foot) foot.textContent = footText;
@@ -4128,10 +4698,10 @@
 
     function describe(e) {
       var code = (e && e.code) || '';
-      if (code === 'permission-denied') return 'Firestore rejected this account (permission denied). Check the security rules in the Firebase console (firestore.rules in the repository).';
-      if (code === 'unavailable') return 'Firestore is unreachable right now; it retries when the connection returns.';
-      if (code === 'auth/unauthorized-domain') return 'this site is not on the Firebase "authorized domains" list (Authentication → Settings).';
-      if (code === 'auth/operation-not-allowed') return 'Google sign-in is not enabled in the Firebase console (Authentication → Sign-in method).';
+      if (code === 'permission-denied') return tx('sync.permissionDenied');
+      if (code === 'unavailable') return tx('sync.unavailable');
+      if (code === 'auth/unauthorized-domain') return tx('sync.unauthorizedDomain');
+      if (code === 'auth/operation-not-allowed') return tx('sync.googleDisabled');
       return (code ? code + ': ' : '') + ((e && e.message) || String(e));
     }
 
@@ -4228,9 +4798,8 @@
         if (wipeFingerprint) {
           // edits made while the download was running are not thrown away silently
           if ((SyncCore.fingerprint(AppState) !== wipeFingerprint || JSON.stringify(AppState.settings) !== wipeSettings) &&
-              !confirm('You changed notes or settings while the download was running. Discard those changes too and use the cloud copy of ' +
-                userEmail + '?\n\nCancel = sign out and keep the local notes.')) {
-            setStatus('syncing', 'signing out'); auth.signOut(); return null;
+              !confirm(tx('sync.discardConfirm', { email: userEmail }))) {
+            setStatus('syncing', tx('sync.signingOut')); auth.signOut(); return null;
           }
           emptyLocal(true); changed = true; replaced = true;
         } else if (stillSample() && cloudHasData) {
@@ -4325,10 +4894,8 @@
       var wipeFp = null, wipeSettings = null, prev = storedUid();
       if (prev && prev !== user.uid) {
         if (hasLocalContent() && !stillSample()) {
-          var ok = confirm('The notes in this browser were synced with a different Google account.\n\n' +
-            'OK = replace them with the notes of ' + userEmail + ' from the cloud (the local copy is discarded; ' +
-            'download a backup first if you want to keep it).\nCancel = sign out and keep the local notes.');
-          if (!ok) { setStatus('syncing', 'signing out'); auth.signOut(); return; }
+          var ok = confirm(tx('sync.otherAccount', { email: userEmail }));
+          if (!ok) { setStatus('syncing', tx('sync.signingOut')); auth.signOut(); return; }
         }
         wipeFp = SyncCore.fingerprint(AppState);   // emptied inside initialMerge, only once the download has succeeded
         wipeSettings = JSON.stringify(AppState.settings);
@@ -4345,7 +4912,7 @@
         if (gen !== generation) return;
         var code = (e && e.code) || '';
         // first download not possible right now: retried by the 'online' handler (start() again)
-        if (code === 'unavailable' || !navigator.onLine) { setStatus('offline', 'download pending'); return; }
+        if (code === 'unavailable' || !navigator.onLine) { setStatus('offline', tx('sync.downloadPending')); return; }
         setStatus('error', describe(e));
       });
     }
@@ -4363,7 +4930,7 @@
     function signIn() {
       if (!auth) return;
       var provider = new firebase.auth.GoogleAuthProvider();
-      setStatus('syncing', 'signing in');
+      setStatus('syncing', tx('sync.signingIn'));
       auth.signInWithPopup(provider).catch(function (e) {
         var code = (e && e.code) || '';
         if (code === 'auth/popup-blocked') { auth.signInWithRedirect(provider); return; }   // browser refused the popup: full-page flow
@@ -4396,7 +4963,7 @@
     function push(d) {
       var ops = d.puts.concat(d.tombstones);
       if (!ops.length || !db) return;
-      setStatus('syncing', 'uploading ' + ops.length);
+      setStatus('syncing', tx('sync.uploading', { n: ops.length }));
       var snap = snapshot;   // the signed-in session this push belongs to (stop() replaces the object)
       var prev = ops.map(function (op) { snap[op.col] = snap[op.col] || {}; return snap[op.col][op.id]; });
       ops.forEach(function (op) { snap[op.col][op.id] = op.json; });
@@ -4433,11 +5000,11 @@
         if (o.col === 'pages') {
           var ref = SyncCore.splitPageId(o.id);
           var n = AppState.notes.find(function (x) { return x.id === ref.noteId; });
-          return 'page ' + (ref.idx + 1) + ' of "' + ((n && n.title) || 'untitled') + '"';
+          return tx('sync.pageOf', { n: ref.idx + 1, title: (n && n.title) || tx('notes.untitled') });
         }
         return o.col + ' ' + o.id;
       });
-      el.textContent = 'not synced (over the 900 KB per-page limit, too many images): ' + parts.join(', ') + '. These stay on this device only; remove or shrink an image to sync them.';
+      el.textContent = tx('sync.oversized', { parts: parts.join(', ') });
     }
 
     function setup() {
@@ -4454,7 +5021,7 @@
       if (!FIREBASE_CONFIG) { setStatus('unconfigured'); return; }
       setStatus('loading');
       loadSdk(function (err) {
-        if (err) { setStatus('error', 'the sync library could not be loaded (' + err.message + '). The app keeps working locally.'); return; }
+        if (err) { setStatus('error', tx('sync.sdkFailed', { msg: err.message })); return; }
         try {
           firebase.initializeApp(FIREBASE_CONFIG);
           auth = firebase.auth();
@@ -4472,6 +5039,7 @@
     }
 
     return {
+      refreshStatus: refreshStatus,
       setup: setup,
       collectChanges: collectChanges,
       push: push,
@@ -4486,6 +5054,8 @@
    * =========================================================== */
   var App = {
     renderAll: function () {
+      // a backup import or a cloud settings change may carry another language
+      if (I18n.syncLanguage()) { Nav.refreshTitle(); if (Sync.refreshStatus) Sync.refreshStatus(); }
       Settings.applyFontMode();
       Settings.applyFontSize();
       Nav.renderHeaderDate();
@@ -4535,6 +5105,10 @@
       Flashcards.setupStudyMode();
       Settings.setup();
       Lists.setup();
+
+      // translate the static markup before anything renders (first run: browser language)
+      I18n.apply();
+      Nav.refreshTitle();
 
       // first render
       this.renderAll();
