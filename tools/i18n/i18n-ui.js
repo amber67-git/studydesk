@@ -62,15 +62,19 @@ async function run(lang, browserLang) {
     else await scan(pg);
   }
   // modals
-  await p.evaluate(() => showPage('library')); await p.click('#lib-add-btn'); await p.waitForTimeout(300); await scan('modal/library'); await p.click('#lib-modal-close');
-  await p.evaluate(() => showPage('notes')); await p.click('#new-note-btn'); await p.waitForTimeout(200); await scan('modal/new-notebook'); await p.evaluate(() => document.querySelectorAll('.mo.show').forEach(m => m.classList.remove('show')));
-  await p.click('#new-subject-btn'); await p.waitForTimeout(200); await scan('modal/subject'); await p.evaluate(() => document.querySelectorAll('.mo.show').forEach(m => m.classList.remove('show')));
-  await p.evaluate(() => showPage('cards')); await p.click('#add-card-btn, button:has-text("card")').catch(() => {}); await p.waitForTimeout(200); await scan('modal/card'); await p.evaluate(() => document.querySelectorAll('.mo.show').forEach(m => m.classList.remove('show')));
   const closeAll = () => p.evaluate(() => document.querySelectorAll('.mo.show').forEach(m => m.classList.remove('show')));
   const shown = () => p.evaluate(() => Array.from(document.querySelectorAll('.mo.show')).map(m => m.id));
-  const scanned = new Set(['mo-library', 'mo-new-notebook', 'mo-subject', 'mo-card']);
+  // a dialog counts as scanned only once it has actually opened (natural() asserts exactly one is showing)
+  const scanned = new Set();
   // dialogs opened the way the user opens them, so their dynamic text is filled in
-  const natural = async (label, open) => { await open(); await p.waitForTimeout(250); const ids = await shown(); ok(ids.length === 1, lang + ': ' + label + ' opened (' + ids + ')'); ids.forEach(i => scanned.add(i)); await scan(label); await closeAll(); };
+  const natural = async (label, open) => { await open(); await p.waitForTimeout(250); const ids = await shown(); ok(ids.length === 1, lang + ': ' + label + ' opened (' + ids + ')'); if (ids.length === 1) scanned.add(ids[0]); await scan(label); await closeAll(); };
+  await p.evaluate(() => showPage('library'));
+  await natural('modal/library', () => p.click('#lib-add-btn'));
+  await p.evaluate(() => showPage('notes'));
+  await natural('modal/new-notebook', () => p.click('#new-note-btn'));
+  await natural('modal/subject', () => p.click('#new-subject-btn'));
+  await p.evaluate(() => showPage('cards'));
+  await natural('modal/card', () => p.click('#add-card-btn'));
   await p.evaluate(() => showPage('settings')); await p.click('.stab[data-stab=lists]');
   await natural('modal/list-edit', () => p.click('#lists-add-subject'));
   await natural('modal/subject-delete', () => p.click('#lists-subjects .lrow:first-child [data-act="delete-subject"]'));
@@ -138,6 +142,22 @@ async function switchTest() {
   await p.evaluate(() => showPage('settings')); await p.click('.stab[data-stab=display]'); await p.selectOption('#lang-select', 'en'); await p.waitForTimeout(700);
   ok((await p.textContent('.ni[data-page=notes]')).trim() === 'Notebooks', 'switch: back to English in place');
   ok((await p.getAttribute('#adhoc-task-input', 'placeholder')) === 'add a one-off task for today', 'switch: placeholder back to English');
+  // labels rewritten at runtime keep their key: click in Korean, switch, they follow
+  const lbl = sel => p.evaluate(x => document.querySelector(x).textContent.trim(), sel);
+  const setLang = async l => { await p.evaluate(() => showPage('settings')); await p.click('.stab[data-stab=display]'); await p.selectOption('#lang-select', l); await p.waitForTimeout(500); await p.evaluate(() => showPage('notes')); await p.waitForTimeout(150); };
+  await setLang('ko');
+  await p.click('#review-mode-btn'); await p.click('#review-mode-btn');   // self-test on, off: label rebuilt in Korean
+  await p.click('#save-note-btn'); await p.waitForTimeout(1400);         // flash and restore, both in Korean
+  ok((await lbl('#review-mode-btn')) === '셀프 테스트' && (await lbl('#save-note-btn')) === '저장', 'switch: Korean labels after clicking (' + (await lbl('#review-mode-btn')) + ' / ' + (await lbl('#save-note-btn')) + ')');
+  await setLang('en');
+  ok((await lbl('#review-mode-btn')) === 'self-test', 'switch: self-test label follows the switch after a click ("' + (await lbl('#review-mode-btn')) + '")');
+  ok((await lbl('#save-note-btn')) === 'save', 'switch: save label follows the switch after a click ("' + (await lbl('#save-note-btn')) + '")');
+  await setLang('ko'); await p.click('#review-mode-btn');                 // show notes, in Korean
+  await setLang('en');
+  ok((await lbl('#review-mode-btn')) === 'show notes', 'switch: "show notes" state follows the switch ("' + (await lbl('#review-mode-btn')) + '")');
+  await p.click('#review-mode-btn');
+  await p.click('#save-note-btn'); await setLang('ko'); await p.waitForTimeout(1300);   // switch during the flash
+  ok((await lbl('#save-note-btn')) === '저장', 'switch: save label after a switch during the flash ("' + (await lbl('#save-note-btn')) + '")');
   ok(errs.length === 0, 'switch: no page errors ' + JSON.stringify(errs));
   await b.close();
 }

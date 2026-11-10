@@ -35,6 +35,7 @@ for (const mm of app.matchAll(/'([a-z]+\.[a-zA-Z.-]+)'\s*:\s*'([^']*)'/g)) if (m
 for (const mm of app.matchAll(/'(lists\.n\.|type\.|lt\.|day\.|status\.|lists\.noun\.|lang\.)' \+/g)) used.add(mm[1] + '*');
 for (const mm of app.matchAll(/'(lists\.(?:renameX|addX))'/g)) used.add(mm[1]);
 for (const mm of app.matchAll(/'(lib\.f\.(?:category|genre))'/g)) used.add(mm[1]);
+for (const mm of app.matchAll(/\bbtnLabel\(\s*'[^']*'\s*,\s*'([^']+)'/g)) used.add(mm[1]);   // NotesModule.btnLabel(icon, key)
 for (const mm of html.matchAll(/data-i18n(?:-[a-z-]+)?="([^"]+)"/g)) used.add(mm[1]);
 const missing = [...used].filter(k => !k.endsWith('*') && !(k in I18N.en));
 ok(missing.length === 0, 'every key the code references exists ' + JSON.stringify(missing));

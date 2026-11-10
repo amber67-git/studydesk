@@ -1569,6 +1569,14 @@
     /** On a keyboard device put the caret at the end of MAIN NOTES so typing
         can start at once. Not on touch screens (it would pop the keyboard
         and scroll), and not while a modal is open. */
+    /** Icon + label for a button whose text changes at runtime. The label span
+        names its key, so I18n.apply() can re-translate it after a language switch
+        (a plain text node set from tx() would only match the English column). */
+    function btnLabel(icon, key, cls) {
+      return '<span class="icon" data-icon="' + icon + '" aria-hidden="true"></span>' +
+        '<span' + (cls ? ' class="' + cls + '"' : '') + ' data-i18n="' + key + '"> ' + Utils.escapeHtml(tx(key)) + '</span>';
+    }
+
     function focusBodyIfDesktop() {
       if (!window.matchMedia || !window.matchMedia('(min-width: 761px) and (hover: hover)').matches) return;
       if (document.querySelector('.mo.show')) return;
@@ -1881,9 +1889,12 @@
         saveCurrentFields();
         Storage.scheduleSave();
         var btn = Utils.$('save-note-btn');
-        var original = btn.innerHTML;
-        btn.innerHTML = '<span class="icon" data-icon="check" aria-hidden="true"></span> ' + Utils.escapeHtml(tx('notes.saved'));
-        setTimeout(function () { btn.innerHTML = original; }, 1200);
+        // labels carry their key (data-i18n) so a language switch, during or after
+        // the flash, re-translates them; the label is rebuilt rather than restored
+        // from a copy taken in what may by then be the other language
+        btn.innerHTML = btnLabel('check', 'notes.saved');
+        clearTimeout(btn._flash);
+        btn._flash = setTimeout(function () { btn.innerHTML = btnLabel('check', 'notes.save'); Icons.hydrate(btn); }, 1200);
       });
 
       // meta fields write-through
@@ -1988,8 +1999,8 @@
         var cornell = document.querySelector('.cornell');
         var on = cornell.classList.toggle('review-mode');
         this.innerHTML = on
-          ? '<span class="icon" data-icon="eye" aria-hidden="true"></span><span class="btn-label"> ' + Utils.escapeHtml(tx('notes.showNotes')) + '</span>'
-          : '<span class="icon" data-icon="eye-off" aria-hidden="true"></span><span class="btn-label"> ' + Utils.escapeHtml(tx('notes.selfTest')) + '</span>';
+          ? btnLabel('eye', 'notes.showNotes', 'btn-label')
+          : btnLabel('eye-off', 'notes.selfTest', 'btn-label');
         Icons.hydrate(this);
       });
 
@@ -2003,7 +2014,7 @@
       if (cornell && cornell.classList.contains('review-mode')) {
         cornell.classList.remove('review-mode');
         var b = Utils.$('review-mode-btn');
-        b.innerHTML = '<span class="icon" data-icon="eye-off" aria-hidden="true"></span><span class="btn-label"> ' + Utils.escapeHtml(tx('notes.selfTest')) + '</span>';
+        b.innerHTML = btnLabel('eye-off', 'notes.selfTest', 'btn-label');
         Icons.hydrate(b);
       }
     }
