@@ -67,23 +67,23 @@ async function run(lang, browserLang) {
   // a dialog counts as scanned only once it has actually opened (natural() asserts exactly one is showing)
   const scanned = new Set();
   // dialogs opened the way the user opens them, so their dynamic text is filled in
-  const natural = async (label, open) => { await open(); await p.waitForTimeout(250); const ids = await shown(); ok(ids.length === 1, lang + ': ' + label + ' opened (' + ids + ')'); if (ids.length === 1) scanned.add(ids[0]); await scan(label); await closeAll(); };
+  const natural = async (label, expectedId, open) => { await open(); await p.waitForTimeout(250); const ids = await shown(); const hit = ids.length === 1 && ids[0] === expectedId; ok(hit, lang + ': ' + label + ' opened ' + expectedId + ' (' + ids + ')'); if (hit) scanned.add(ids[0]); await scan(label); await closeAll(); };
   await p.evaluate(() => showPage('library'));
-  await natural('modal/library', () => p.click('#lib-add-btn'));
+  await natural('modal/library', 'mo-library', () => p.click('#lib-add-btn'));
   await p.evaluate(() => showPage('notes'));
-  await natural('modal/new-notebook', () => p.click('#new-note-btn'));
-  await natural('modal/subject', () => p.click('#new-subject-btn'));
+  await natural('modal/new-notebook', 'mo-new-notebook', () => p.click('#new-note-btn'));
+  await natural('modal/subject', 'mo-subject', () => p.click('#new-subject-btn'));
   await p.evaluate(() => showPage('cards'));
-  await natural('modal/card', () => p.click('#add-card-btn'));
+  await natural('modal/card', 'mo-card', () => p.click('#add-card-btn'));
   await p.evaluate(() => showPage('settings')); await p.click('.stab[data-stab=lists]');
-  await natural('modal/list-edit', () => p.click('#lists-add-subject'));
-  await natural('modal/subject-delete', () => p.click('#lists-subjects .lrow:first-child [data-act="delete-subject"]'));
+  await natural('modal/list-edit', 'mo-list-edit', () => p.click('#lists-add-subject'));
+  await natural('modal/subject-delete', 'mo-subject-delete', () => p.click('#lists-subjects .lrow:first-child [data-act="delete-subject"]'));
   const sdt = await p.textContent('#subject-delete-text');   // holds a subject name (user data), so checked on its own
   ok(lang === 'ko' ? /쓰고 있습니다/.test(sdt) && /노트북 \d+개/.test(sdt) : /is used by/.test(sdt) && /notebook/.test(sdt), lang + ': subject-delete message in ' + lang + ': "' + sdt + '"');
   await p.evaluate(() => showPage('notes'));
-  await natural('modal/page-list', () => p.click('#page-indicator'));
+  await natural('modal/page-list', 'mo-page-list', () => p.click('#page-indicator'));
   await p.evaluate(() => showPage('schedule')); await p.waitForTimeout(200);
-  await natural('modal/day-events', () => p.click('.cal-more-btn'));
+  await natural('modal/day-events', 'mo-day-events', () => p.click('.cal-more-btn'));
   // every other dialog: shown directly so its static text is scanned too
   const rest = await p.evaluate(s => Array.from(document.querySelectorAll('.mo')).map(m => m.id).filter(id => !s.includes(id)), [...scanned]);
   for (const id of rest) { await p.evaluate(i => document.getElementById(i).classList.add('show'), id); await p.waitForTimeout(100); scanned.add(id); await scan('modal/' + id.replace(/^mo-/, '') + ' (static)'); await closeAll(); }
@@ -156,8 +156,10 @@ async function switchTest() {
   await setLang('en');
   ok((await lbl('#review-mode-btn')) === 'show notes', 'switch: "show notes" state follows the switch ("' + (await lbl('#review-mode-btn')) + '")');
   await p.click('#review-mode-btn');
-  await p.click('#save-note-btn'); await setLang('ko'); await p.waitForTimeout(1300);   // switch during the flash
-  ok((await lbl('#save-note-btn')) === '저장', 'switch: save label after a switch during the flash ("' + (await lbl('#save-note-btn')) + '")');
+  await p.click('#save-note-btn'); await setLang('ko');                  // switch during the flash (well inside its 1.2s)
+  ok((await lbl('#save-note-btn')) === '저장됨', 'switch: the flash itself follows a switch ("' + (await lbl('#save-note-btn')) + '")');
+  await p.waitForTimeout(1300);
+  ok((await lbl('#save-note-btn')) === '저장', 'switch: save label after the flash ends ("' + (await lbl('#save-note-btn')) + '")');
   ok(errs.length === 0, 'switch: no page errors ' + JSON.stringify(errs));
   await b.close();
 }
