@@ -81,7 +81,13 @@ async function run(lang, browserLang) {
   const sdt = await p.textContent('#subject-delete-text');   // holds a subject name (user data), so checked on its own
   ok(lang === 'ko' ? /쓰고 있습니다/.test(sdt) && /노트북 \d+개/.test(sdt) : /is used by/.test(sdt) && /notebook/.test(sdt), lang + ': subject-delete message in ' + lang + ': "' + sdt + '"');
   await p.evaluate(() => showPage('notes'));
-  await natural('modal/page-list', 'mo-page-list', () => p.click('#page-indicator'));
+  // a written page with an empty SUMMARY: the list shows its "no summary" tag and the count/filter row
+  await p.fill('#summary', ''); await p.waitForTimeout(500);
+  await natural('modal/page-list', 'mo-page-list', async () => {
+    await p.click('#page-indicator'); await p.waitForTimeout(150);
+    const row = await p.evaluate(() => ({ tools: !document.getElementById('page-list-tools').hidden, count: document.getElementById('page-list-missing').textContent, filter: document.getElementById('page-list-filter').textContent, tag: (document.querySelector('.pli-flag-tag') || {}).textContent || '' }));
+    ok(row.tools && (lang === 'ko' ? row.count === '요약 없는 페이지 1개' && row.filter === '이것만 보기' && row.tag === '요약 없음' : row.count === '1 page without a summary' && row.filter === 'only these' && row.tag === 'no summary'), lang + ': page list flags the page without a summary ' + JSON.stringify(row));
+  });
   await p.evaluate(() => showPage('schedule')); await p.waitForTimeout(200);
   await natural('modal/day-events', 'mo-day-events', () => p.click('.cal-more-btn'));
   // every other dialog: shown directly so its static text is scanned too
