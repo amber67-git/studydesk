@@ -71,7 +71,7 @@
       // stats / today
       'stats.totalNotebooks': 'Total notebooks', 'stats.subjects': 'Subjects', 'stats.todaysTasks': "Today's tasks",
       'today.title': "today's study list", 'today.placeholder': 'add a one-off task for today', 'today.add': 'add',
-      'today.empty': 'Nothing scheduled today.', 'sched.noRecurring': 'no recurring tasks yet.', 'sched.noOneoff': 'no one-off tasks yet.', 'cal.dayEmpty': 'No tasks this day.', 'notes.saved': 'saved', 'lib.coverAlt': 'cover', 'today.badge': 'today {n}', 'today.badgeDone': 'today ✓', 'today.badgeTitle': "go to today's study list",
+      'today.empty': 'Nothing scheduled today.', 'sched.noRecurring': 'no recurring tasks yet.', 'sched.noOneoff': 'no one-off tasks yet.', 'cal.dayEmpty': 'No tasks this day.', 'notes.saved': 'saved', 'save.saving': 'saving...', 'lib.coverAlt': 'cover', 'today.badge': 'today {n}', 'today.badgeDone': 'today ✓', 'today.badgeTitle': "go to today's study list",
       'sched.kind.recurring': 'recurring', 'sched.kind.oneoff': 'one-off', 'go.toNote': 'go to note',
       // notebook types
       'type.lecture': 'lecture', 'type.book': 'book', 'type.movie': 'movie', 'type.project': 'project',
@@ -255,7 +255,7 @@
       'banner.lastBackup': '마지막 백업이 {n}일 전입니다.',
       'stats.totalNotebooks': '전체 노트북', 'stats.subjects': '과목', 'stats.todaysTasks': '오늘 할 일',
       'today.title': '오늘의 공부 목록', 'today.placeholder': '오늘 할 일 추가', 'today.add': '추가',
-      'today.empty': '오늘은 일정이 없습니다.', 'sched.noRecurring': '아직 반복 일정이 없습니다.', 'sched.noOneoff': '아직 단발 일정이 없습니다.', 'cal.dayEmpty': '이날은 일정이 없습니다.', 'notes.saved': '저장됨', 'lib.coverAlt': '표지', 'today.badge': '오늘 {n}개', 'today.badgeDone': '오늘 ✓', 'today.badgeTitle': '오늘의 공부 목록으로',
+      'today.empty': '오늘은 일정이 없습니다.', 'sched.noRecurring': '아직 반복 일정이 없습니다.', 'sched.noOneoff': '아직 단발 일정이 없습니다.', 'cal.dayEmpty': '이날은 일정이 없습니다.', 'notes.saved': '저장됨', 'save.saving': '저장 중...', 'lib.coverAlt': '표지', 'today.badge': '오늘 {n}개', 'today.badgeDone': '오늘 ✓', 'today.badgeTitle': '오늘의 공부 목록으로',
       'sched.kind.recurring': '반복', 'sched.kind.oneoff': '단발', 'go.toNote': '노트 열기',
       'type.lecture': '강의', 'type.book': '책', 'type.movie': '영화', 'type.project': '프로젝트',
       'type.self-study': '자습', 'type.other': '기타',
@@ -1158,7 +1158,7 @@
     function save() {
       var status = Utils.$('save-status');
       if (!storageAvailable()) { warnBlockedOnce(); return; }
-      if (status) status.textContent = 'saving...';
+      if (status) status.textContent = tx('save.saving');
       // cloud sync: stamp changed entities first so the timestamp lands in this write too
       var pending = (typeof Sync !== 'undefined' && Sync.collectChanges) ? Sync.collectChanges() : null;
       try {
@@ -1176,7 +1176,7 @@
         updateUsageDisplay();
         if (pending) Sync.push(pending);
         if (status) {
-          status.textContent = 'saved';
+          status.textContent = tx('notes.saved');
           setTimeout(function () {
             if (Utils.$('save-status')) Utils.$('save-status').textContent = '';
           }, 1200);
