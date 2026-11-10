@@ -668,6 +668,8 @@
       document.documentElement.lang = lang();
       appliedLang = lang();
       applyGuide();
+      // dynamic banner lines are not static markup: rewrite the visible ones
+      if (typeof Settings !== 'undefined' && Settings && Settings.retranslateBanners) Settings.retranslateBanners();
     }
 
     /** Settings can change under the page (backup import, cloud sync): re-translate
@@ -3739,14 +3741,31 @@
       var onOld = host === OLD_HOST;
       var onNewFirstVisit = host === new URL(APP_HOME).hostname && AppState.seededThisSession;
       if (!onOld && !onNewFirstVisit) return;
-      Utils.$('move-banner-text').textContent = onOld
-        ? tx('banner.moveOld')
-        : tx('banner.moveNew');
+      this.fillMoveBannerText();
       Utils.$('move-banner-backup').style.display = onOld ? '' : 'none';
       Utils.$('move-banner-open').style.display = onOld ? '' : 'none';
       Utils.$('move-banner-load').style.display = onOld ? 'none' : '';
       b.style.display = 'flex';
       Settings.updateBannerDock();
+    },
+
+    fillMoveBannerText: function () {
+      Utils.$('move-banner-text').textContent = location.hostname === OLD_HOST
+        ? tx('banner.moveOld')
+        : tx('banner.moveNew');
+    },
+
+    /** Banner texts are written with tx() when shown, so a language switch
+        must rewrite the ones on screen (I18n.apply only covers static text).
+        Hidden banners stay hidden ("later" holds for the session). */
+    retranslateBanners: function () {
+      var mb = Utils.$('move-banner'), bb = Utils.$('backup-banner');
+      if (mb && mb.style.display !== 'none') this.fillMoveBannerText();
+      if (bb && bb.style.display !== 'none') {
+        var t = this.backupReminderText();
+        if (t) Utils.$('backup-banner-text').textContent = t;
+      }
+      Settings.updateBannerDock();   // the other language can wrap to another height
     },
 
     hideBackupBanner: function () {
@@ -3777,18 +3796,21 @@
       // address the move banner already offers "load backup" in the same spot)
       if (AppState.seededThisSession) return;
 
-      var last = AppState.settings.lastBackupAt;
-      var text;
-      if (!last) {
-        text = tx('banner.noBackup');
-      } else {
-        var elapsedDays = Math.floor((Date.now() - new Date(last).getTime()) / 86400000);
-        if (elapsedDays < days) return;
-        text = I18n.tn('banner.lastBackup', elapsedDays);
-      }
+      var text = this.backupReminderText();
+      if (!text) return;
       Utils.$('backup-banner-text').textContent = text;
       Utils.$('backup-banner').style.display = 'flex';
       Settings.updateBannerDock();
+    },
+
+    /** The reminder line, or null while the last backup is recent enough. */
+    backupReminderText: function () {
+      var days = AppState.settings.backupReminderDays;
+      var last = AppState.settings.lastBackupAt;
+      if (!last) return tx('banner.noBackup');
+      var elapsedDays = Math.floor((Date.now() - new Date(last).getTime()) / 86400000);
+      if (elapsedDays < days) return null;
+      return I18n.tn('banner.lastBackup', elapsedDays);
     },
 
     applyFontSize: function () {
