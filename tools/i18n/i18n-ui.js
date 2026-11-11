@@ -81,7 +81,24 @@ async function run(lang, browserLang) {
   const sdt = await p.textContent('#subject-delete-text');   // holds a subject name (user data), so checked on its own
   ok(lang === 'ko' ? /쓰고 있습니다/.test(sdt) && /노트북 \d+개/.test(sdt) : /is used by/.test(sdt) && /notebook/.test(sdt), lang + ': subject-delete message in ' + lang + ': "' + sdt + '"');
   await p.evaluate(() => showPage('notes'));
-  await natural('modal/page-list', 'mo-page-list', () => p.click('#page-indicator'));
+  // a written page with an empty SUMMARY: the list shows its "no summary" tag and the count/filter row
+  await p.fill('#summary', ''); await p.waitForTimeout(500);
+  await natural('modal/page-list', 'mo-page-list', async () => {
+    await p.click('#page-indicator'); await p.waitForTimeout(150);
+    const row = await p.evaluate(() => ({ tools: !document.getElementById('page-list-tools').hidden, count: document.getElementById('page-list-missing').textContent, filter: document.getElementById('page-list-filter').textContent, tag: (document.querySelector('.pli-flag-tag') || {}).textContent || '' }));
+    ok(row.tools && (lang === 'ko' ? row.count === '요약 없는 페이지 1개' && row.filter === '이것만 보기' && row.tag === '요약 없음' : row.count === '1 page without a summary' && row.filter === 'only these' && row.tag === 'no summary'), lang + ': page list flags the page without a summary ' + JSON.stringify(row));
+    // the label after filtering, then the open list follows a language switch made behind it
+    const filt = () => p.evaluate(() => { const b = document.getElementById('page-list-filter'); return { text: b.textContent, pressed: b.getAttribute('aria-pressed'), count: document.getElementById('page-list-missing').textContent, tag: (document.querySelector('.pli-flag-tag') || {}).textContent || '' }; });
+    await p.click('#page-list-filter'); await p.waitForTimeout(150);
+    let f = await filt();
+    ok(f.pressed === 'true' && f.text === (lang === 'ko' ? '전체 보기' : 'show all'), lang + ': filter on -> ' + JSON.stringify(f));
+    const other = lang === 'ko' ? 'en' : 'ko';
+    const setLang = l => p.evaluate(v => { const el = document.getElementById('lang-select'); el.value = v; el.dispatchEvent(new Event('change', { bubbles: true })); }, l);
+    await setLang(other); await p.waitForTimeout(150);
+    f = await filt();
+    ok(other === 'ko' ? f.text === '전체 보기' && f.count === '요약 없는 페이지 1개' && f.tag === '요약 없음' : f.text === 'show all' && f.count === '1 page without a summary' && f.tag === 'no summary', lang + ': open page list re-translated after switching to ' + other + ' ' + JSON.stringify(f));
+    await setLang(lang); await p.waitForTimeout(150);
+  });
   await p.evaluate(() => showPage('schedule')); await p.waitForTimeout(200);
   await natural('modal/day-events', 'mo-day-events', () => p.click('.cal-more-btn'));
   // every other dialog: shown directly so its static text is scanned too

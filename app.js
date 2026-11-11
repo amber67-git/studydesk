@@ -44,7 +44,7 @@
   var APP_HOME = 'https://amber-studydesk.netlify.app/';
   // Shown bottom-left in the sidebar. Bump both in the same PR that adds a
   // line to the guide's 변경 이력 (version = number of entries there).
-  var APP_VERSION = 'v15';
+  var APP_VERSION = 'v16';
   var APP_UPDATED = '2026-11-11';
 
   /* ===========================================================
@@ -89,7 +89,7 @@
       'notes.deleteNotebook': 'delete notebook', 'notes.selfTest': 'self-test', 'notes.showNotes': 'show notes',
       'notes.selfTestTitle': 'hide MAIN NOTES and recall from cues', 'notes.save': 'save',
       'page.prev': 'previous page', 'page.next': 'next page', 'page.nextAdds': 'next page (adds a page at the end)',
-      'page.jump': 'jump to a page', 'pages.title': 'Pages in this notebook', 'pages.noChapter': '(no chapter)',
+      'page.jump': 'jump to a page', 'pages.title': 'Pages in this notebook', 'pages.noChapter': '(no chapter)', 'pages.noSummary': 'no summary', 'pages.missing': '{n} page(s) without a summary', 'pages.onlyMissing': 'only these', 'pages.showAll': 'show all',
       'cornell.subject': 'SUBJECT', 'cornell.type': 'TYPE', 'cornell.topic': 'TOPIC', 'cornell.cue': 'CUE',
       'cornell.main': 'MAIN NOTES', 'cornell.summary': 'SUMMARY',
       'cornell.topicPh': 'name, topic, class', 'cornell.chapterPh': 'chapter / subtitle (this page)',
@@ -271,7 +271,7 @@
       'notes.deleteNotebook': '노트북 삭제', 'notes.selfTest': '셀프 테스트', 'notes.showNotes': '노트 보기',
       'notes.selfTestTitle': 'MAIN NOTES를 가리고 CUE만 보고 떠올리기', 'notes.save': '저장',
       'page.prev': '이전 페이지', 'page.next': '다음 페이지', 'page.nextAdds': '다음 페이지(마지막이면 새 페이지)',
-      'page.jump': '페이지로 바로 이동', 'pages.title': '이 노트북의 페이지', 'pages.noChapter': '(챕터 없음)',
+      'page.jump': '페이지로 바로 이동', 'pages.title': '이 노트북의 페이지', 'pages.noChapter': '(챕터 없음)', 'pages.noSummary': '요약 없음', 'pages.missing': '요약 없는 페이지 {n}개', 'pages.onlyMissing': '이것만 보기', 'pages.showAll': '전체 보기',
       'cornell.subject': '과목', 'cornell.type': '종류', 'cornell.topic': '주제', 'cornell.cue': 'CUE',
       'cornell.main': 'MAIN NOTES', 'cornell.summary': 'SUMMARY',
       'cornell.topicPh': '이름, 주제, 수업명', 'cornell.chapterPh': '챕터 / 소제목 (이 페이지)',
@@ -575,7 +575,7 @@
       'lib-status-filter': 1, 'bulk-category': 1, 'bulk-genre': 1, 'bulk-status': 1, 'lists-subjects': 1,
       'lists-categories': 1, 'lists-genres': 1, 'sb-foot-status': 1, 'sync-status': 1, 'sync-oversized': 1,
       'backup-status': 1, 'save-status': 1, 'storage-usage': 1, 'lib-status': 1, 'lib-notebook-link': 1,
-      'font-size-value': 1, 'move-banner-text': 1, 'backup-banner-text': 1, 'tb-today-count': 1
+      'font-size-value': 1, 'page-list-tools': 1, 'move-banner-text': 1, 'backup-banner-text': 1, 'tb-today-count': 1
     };
     var ATTRS = ['placeholder', 'data-placeholder', 'title', 'aria-label'];   // data-placeholder: the contenteditable editor's hint
 
@@ -2067,6 +2067,10 @@
 
       // ------ page jump: click the "N / M" indicator to open the page list ------
       Utils.$('page-indicator').addEventListener('click', openPageListModal);
+      Utils.$('page-list-filter').addEventListener('click', function () {
+        pageListOnlyMissing = !pageListOnlyMissing;
+        renderPageList();
+      });
       Utils.$('page-list-modal-close').addEventListener('click', function () { Modal.close('mo-page-list'); });
     }
 
@@ -2085,18 +2089,53 @@
       return (html || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
     }
 
+    /** Cornell review: a written page whose SUMMARY is still empty is the one
+        to come back to. Blank pages are not flagged (nothing to sum up yet),
+        nor are pages still downloading from the cloud (placeholder). */
+    function needsSummary(p) {
+      return !!p && !p.placeholder && !isBlankPage(p) && !String(p.summary || '').trim();
+    }
+
+    var pageListOnlyMissing = false;   // "only these" toggle, kept while the app is open
+
     function openPageListModal() {
+      if (renderPageList()) Modal.open('mo-page-list');
+    }
+
+    /** While the page list is open, keep it current: a language switch, a
+        backup import or a synced change re-renders it in place (renderAll). */
+    function refreshPageList() {
+      var m = Utils.$('mo-page-list');
+      if (!m || !m.classList.contains('show')) return;
+      if (!renderPageList()) Modal.close('mo-page-list');
+    }
+
+    function renderPageList() {
       var n = AppState.currentNote();
-      if (!n) return;
+      if (!n) return false;
       AppState.ensurePages(n);
+      var missing = n.pages.filter(needsSummary).length;
+      if (!missing) pageListOnlyMissing = false;
+      var tools = Utils.$('page-list-tools');
+      tools.hidden = !missing;
+      if (missing) {
+        Utils.$('page-list-missing').textContent = I18n.tn('pages.missing', missing);
+        var fb = Utils.$('page-list-filter');
+        fb.textContent = pageListOnlyMissing ? tx('pages.showAll') : tx('pages.onlyMissing');
+        fb.setAttribute('aria-pressed', pageListOnlyMissing ? 'true' : 'false');
+      }
       Utils.$('page-list-body').innerHTML = n.pages.map(function (p, i) {
+        var flag = needsSummary(p);
+        if (pageListOnlyMissing && !flag) return '';
         var current = (i === AppState.activePageIndex) ? ' current' : '';
         var chapter = (p.chapter || '').trim() || tx('pages.noChapter');
         var preview = htmlToText(p.body).slice(0, 60);
-        return '<button type="button" class="page-list-item' + current + '" data-idx="' + i + '">' +
+        return '<button type="button" class="page-list-item' + current + (flag ? ' no-summary' : '') + '" data-idx="' + i + '">' +
           '<span class="pli-num">' + (i + 1) + '</span>' +
           '<span class="pli-main"><span class="pli-chapter">' + Utils.escapeHtml(chapter) + '</span>' +
           (preview ? '<span class="pli-preview">' + Utils.escapeHtml(preview) + '</span>' : '') + '</span>' +
+          // fixed-width column so dates stay aligned whether or not a row is flagged
+          '<span class="pli-flag">' + (flag ? '<span class="pli-flag-tag">' + Utils.escapeHtml(tx('pages.noSummary')) + '</span>' : '') + '</span>' +
           '<span class="pli-date">' + (p.date || '') + '</span>' +
           '</button>';
       }).join('');
@@ -2107,7 +2146,7 @@
           Modal.close('mo-page-list');
         });
       });
-      Modal.open('mo-page-list');
+      return true;
     }
 
     function openNewNotebookModal() {
@@ -2222,7 +2261,7 @@
     return {
       renderList: renderList,
       selectNote: selectNote,
-      refreshEditor: refreshEditor,
+      refreshEditor: refreshEditor, refreshPageList: refreshPageList,
       restoreLastPosition: restoreLastPosition,
       focusBodyIfDesktop: focusBodyIfDesktop, isBlankPage: isBlankPage, touchPage: touchPage, showPaper: showPaper,
       setupEditor: setupEditor,
@@ -5159,6 +5198,7 @@
       Nav.renderHeaderDate();
       Subjects.renderSelects();
       NotesModule.renderList();
+      NotesModule.refreshPageList();
       Library.renderList();
       Schedule.renderDayPicker();
       Schedule.renderRecurringList();
