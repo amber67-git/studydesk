@@ -77,7 +77,7 @@ Icons(인라인 SVG, CDN 금지 — 아이콘 폰트 차단으로 빈 네모 버
 - **백업 import와의 관계**: import로 바뀐 내용도 diff를 통해 그대로 클라우드에 반영된다(없어진 id는 톰스톤). 즉 백업 복원은 모든 기기에 전파된다.
 - **검증**: `SyncCore`는 window에 노출돼 Node 시뮬레이션(scratch의 sync-core.test.js)으로 diff/merge/톰스톤/용량 케이스를 돌린다. 실제 Firebase 왕복은 콘솔 프로젝트가 있는 기기에서 수동 확인.
 
-외부 API (Library 자동채우기): Google Books(intitle:, 키 선택 — settings.googleBooksKey가 있으면 `&key=`. 키가 없을 때 429·403은 공용 익명 한도라 "설정 → 연동에 키를 넣으라"는 `lib.quotaBooks`, 키가 있을 때 400(구글은 잘못된 키에 400을 준다)·401·403은 `lib.authFail`. `fetchJson(url, cb, opts)`의 `quotaMsg`/`badRequestIsAuth`/`forbiddenIsQuota`), MusicBrainz, Crossref, TMDB(선택 — settings.tmdbKey, 없으면 영화 검색만 비활성·수동입력 가능). 모든 fetch: navigator.onLine 체크 + AbortController 15초 + 429/401·403 친절 메시지.
+외부 API (Library 자동채우기): Google Books(intitle:, 키 선택 — settings.googleBooksKey가 있으면 `&key=`. 키가 없을 때 429·403은 공용 익명 한도라 "설정 → 연동에 키를 넣으라"는 `lib.quotaBooks`, 키가 있을 때 400(구글은 잘못된 키에 400을 준다)·401·403은 `lib.authFail`, 429는 그 키 자신의 한도라 `lib.quotaBooksKey`(하루 한도는 태평양 시간 자정 초기화). 키 입력칸은 `Settings.refreshKeyInputs()`가 renderAll마다(포커스 중인 칸 제외)·blur 때 저장값으로 다시 채운다(백업·동기화로 바뀐 키가 보이게, 입력 중인 값은 change가 blur보다 먼저 저장). `fetchJson(url, cb, opts)`의 `quotaMsg`/`badRequestIsAuth`/`forbiddenIsQuota`), MusicBrainz, Crossref, TMDB(선택 — settings.tmdbKey, 없으면 영화 검색만 비활성·수동입력 가능). 모든 fetch: navigator.onLine 체크 + AbortController 15초 + 429/401·403 친절 메시지.
 
 ## 검증 워크플로우 (변경마다 돌리던 것 — 유지 권장)
 1. `node -c app.js` (문법)

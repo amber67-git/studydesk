@@ -147,6 +147,7 @@
       'lib.quota': 'search limit reached for now. Wait a few minutes, or enter the details manually.',
       'lib.quotaBooks': 'Google Books search limit reached. Try later, add a free Google Books key in Settings → Integrations, or enter the details manually.',
       'lib.searching': 'searching…',
+      'lib.quotaBooksKey': 'your Google Books key has used up its quota. Try again later (the daily quota resets at midnight Pacific time), or enter the details manually.',
       'lib.authFail': 'the API key was rejected. Check it in Settings, or enter the details manually.',
       'lib.searchFailed': 'search failed. You can still fill the form in by hand.',
       'lib.noLookup': "automatic lookup isn't available for this type — fill the form in by hand.",
@@ -329,6 +330,7 @@
       'lib.quota': '검색 한도에 도달했습니다. 몇 분 뒤 다시 시도하거나 직접 입력하세요.',
       'lib.quotaBooks': 'Google Books 검색 한도에 도달했습니다. 나중에 다시 하거나, 설정 → 연동에 무료 Google Books 키를 넣거나, 직접 입력하세요.',
       'lib.searching': '검색 중…',
+      'lib.quotaBooksKey': 'Google Books 키의 한도를 다 썼습니다. 나중에 다시 시도하거나(하루 한도는 미국 태평양 시간 자정에 초기화) 직접 입력하세요.',
       'lib.authFail': 'API 키가 거부됐습니다. 설정에서 키를 확인하거나 직접 입력하세요.',
       'lib.searchFailed': '검색에 실패했습니다. 직접 입력할 수 있습니다.',
       'lib.noLookup': '이 종류는 자동 검색을 지원하지 않습니다. 직접 입력하세요.',
@@ -3044,7 +3046,9 @@
       var key = (AppState.settings.googleBooksKey || '').trim();
       var url = 'https://www.googleapis.com/books/v1/volumes?q=intitle:' + encodeURIComponent(q) + '&maxResults=8' +
         (key ? '&key=' + encodeURIComponent(key) : '');
-      var opts = key ? { badRequestIsAuth: true } : { quotaMsg: function () { return tx('lib.quotaBooks'); }, forbiddenIsQuota: true };
+      // with a key, a 429 is that key's own quota (per minute or per day), not the shared one
+      var opts = key ? { badRequestIsAuth: true, quotaMsg: function () { return tx('lib.quotaBooksKey'); } }
+                     : { quotaMsg: function () { return tx('lib.quotaBooks'); }, forbiddenIsQuota: true };
       fetchJson(url, function (data) {
         var rows = (data.items || []).map(function (it) {
           var v = it.volumeInfo || {};
