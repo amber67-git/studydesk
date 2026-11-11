@@ -3984,6 +3984,16 @@
       return I18n.tn('banner.lastBackup', elapsedDays);
     },
 
+    /** Show the saved auto-fill keys. Called on every render, so a key that
+        arrives with a backup import or a cloud settings change shows up too;
+        a field the user is typing in (focused) is left alone. */
+    refreshKeyInputs: function () {
+      [['tmdb-key-input', 'tmdbKey'], ['gbooks-key-input', 'googleBooksKey']].forEach(function (pair) {
+        var el = Utils.$(pair[0]);
+        if (el && document.activeElement !== el) el.value = AppState.settings[pair[1]] || '';
+      });
+    },
+
     applyFontSize: function () {
       document.documentElement.style.setProperty('--note-font-size',
         AppState.settings.noteFontSize + 'px');
@@ -4079,14 +4089,12 @@
 
       // ------ optional TMDB key for Library film & TV auto-fill ------
       var tmdbInput = Utils.$('tmdb-key-input');
-      tmdbInput.value = AppState.settings.tmdbKey || '';
       tmdbInput.addEventListener('change', function () {
         AppState.settings.tmdbKey = this.value.trim();
         Storage.scheduleSave();
       });
       // ------ optional Google Books key (only when the anonymous quota runs out) ------
       var gbInput = Utils.$('gbooks-key-input');
-      gbInput.value = AppState.settings.googleBooksKey || '';
       gbInput.addEventListener('change', function () {
         AppState.settings.googleBooksKey = this.value.trim();
         Storage.scheduleSave();
@@ -5222,6 +5230,7 @@
       if (I18n.syncLanguage()) { Nav.refreshTitle(); if (Sync.refreshStatus) Sync.refreshStatus(); }
       Settings.applyFontMode();
       Settings.applyFontSize();
+      Settings.refreshKeyInputs();
       Nav.renderHeaderDate();
       Subjects.renderSelects();
       NotesModule.renderList();
