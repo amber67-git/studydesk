@@ -164,7 +164,7 @@
       'gcal.done': 'imported: {added} new, {updated} updated, {removed} removed.', 'gcal.last': 'last import: {when}',
       'gcal.untitled': '(untitled)', 'gcal.offline': 'you appear to be offline. Connect and try again.',
       'gcal.timeout': 'Google did not answer in time. Try again.', 'gcal.denied': 'sign-in was cancelled or access was not allowed.',
-      'gcal.gisFailed': 'the Google sign-in script could not load (blocked or offline).', 'gcal.expired': 'Google sign-in expired. Press the button again.', 'gcal.changed': 'the calendar changed during the import. Press import now again.',
+      'gcal.gisFailed': 'the Google sign-in script could not load (blocked or offline).', 'gcal.expired': 'Google sign-in expired. Press the button again.', 'gcal.changed': 'the calendar changed during the import. Press import now again.', 'gcal.loading': 'Google sign-in is still loading. Press the button again in a moment.',
       'gcal.forbidden': 'Google refused access to this calendar.', 'gcal.notFound': 'that calendar no longer exists. Choose another one.',
       'gcal.quota': 'Google\'s request limit was reached. Try again later.', 'gcal.failed': 'import failed. Try again later.',
       'pending.note': 'this page is still downloading from the cloud', 'pending.edit': 'edit anyway',
@@ -361,7 +361,7 @@
       'gcal.done': '가져옴: 새 일정 {added}개, 바뀐 일정 {updated}개, 지운 일정 {removed}개.', 'gcal.last': '마지막 가져오기: {when}',
       'gcal.untitled': '(제목 없음)', 'gcal.offline': '오프라인인 것 같습니다. 연결한 뒤 다시 시도하세요.',
       'gcal.timeout': 'Google이 제때 응답하지 않았습니다. 다시 시도하세요.', 'gcal.denied': '로그인이 취소됐거나 접근이 허용되지 않았습니다.',
-      'gcal.gisFailed': 'Google 로그인 스크립트를 불러오지 못했습니다(차단됐거나 오프라인).', 'gcal.expired': 'Google 로그인이 만료됐습니다. 버튼을 다시 누르세요.', 'gcal.changed': '가져오는 동안 캘린더가 바뀌었습니다. 지금 가져오기를 다시 누르세요.',
+      'gcal.gisFailed': 'Google 로그인 스크립트를 불러오지 못했습니다(차단됐거나 오프라인).', 'gcal.expired': 'Google 로그인이 만료됐습니다. 버튼을 다시 누르세요.', 'gcal.changed': '가져오는 동안 캘린더가 바뀌었습니다. 지금 가져오기를 다시 누르세요.', 'gcal.loading': 'Google 로그인을 준비하는 중입니다. 잠시 뒤 다시 누르세요.',
       'gcal.forbidden': 'Google이 이 캘린더 접근을 거부했습니다.', 'gcal.notFound': '그 캘린더가 더 이상 없습니다. 다른 캘린더를 고르세요.',
       'gcal.quota': 'Google 요청 한도에 도달했습니다. 나중에 다시 시도하세요.', 'gcal.failed': '가져오지 못했습니다. 나중에 다시 시도하세요.',
       'pending.note': '이 페이지는 아직 클라우드에서 받는 중입니다', 'pending.edit': '그래도 쓰기',
@@ -4606,7 +4606,7 @@
     var API = 'https://www.googleapis.com/calendar/v3';
     var DAYS = 14;                      // today + the next two weeks
     var token = null, tokenUntil = 0;   // memory only: never stored or synced
-    var tokenClient = null, gisLoading = null, tokenWait = null;
+    var tokenClient = null, gisLoading = null, gisFailed = false, tokenWait = null;
 
     // ---------- pure part (no network) ----------
 
@@ -4734,7 +4734,7 @@
         sc.src = 'https://accounts.google.com/gsi/client';
         sc.async = true;
         sc.onload = function () { resolve(); };
-        sc.onerror = function () { gisLoading = null; reject(new Error('gis')); };
+        sc.onerror = function () { gisLoading = null; gisFailed = true; reject(new Error('gis')); };
         document.head.appendChild(sc);
       });
       return gisLoading;
@@ -4769,9 +4769,14 @@
 
     /** An access token. Without one this asks Google (a popup on the first use in
         a session) synchronously, so it must be called from the click handler's
-        own call stack - connect/importNow reach here without any await before it. */
-    function getToken() {
+        own call stack - connect/importNow reach here without any await before it
+        (interactive). A popup is never requested anywhere else: a later page of a
+        paged request (after a network response) whose token ran out gets
+        'expired', and a click before the preloaded script arrived gets 'loading' -
+        both ask the user to press again, which is a fresh click. */
+    function getToken(interactive) {
       if (token && Date.now() < tokenUntil) return Promise.resolve(token);
+      if (!interactive) return Promise.reject(new Error('expired'));
       function ask() {
         initClient();
         if (tokenWait) tokenWait.reject(new Error('denied'));   // an older unanswered popup
@@ -4781,7 +4786,11 @@
         });
       }
       if (window.google && window.google.accounts && window.google.accounts.oauth2) return ask();
-      return loadGis().then(ask);   // not preloaded (e.g. very fast click): may still be inside the click's activation
+      // not loaded yet: start (or retry) the download and ask for another press.
+      // 'gis' when the last attempt already failed (blocked or offline), else 'loading'
+      var failed = gisFailed; gisFailed = false;
+      loadGis().then(initClient).catch(function () { /* reported on the next press */ });
+      return Promise.reject(new Error(failed ? 'gis' : 'loading'));
     }
 
     var QUOTA_REASONS = /^(rateLimitExceeded|userRateLimitExceeded|quotaExceeded|dailyLimitExceeded)$/;
@@ -4791,9 +4800,9 @@
         drops the token and asks the user to press the button again - a new
         popup outside a click would be blocked. A 403 is a quota error when
         Google's reason says so, otherwise access was refused. */
-    function api(path) {
+    function api(path, interactive) {
       if (!navigator.onLine) return Promise.reject(new Error('offline'));
-      return getToken().then(function (tok) {
+      return getToken(interactive).then(function (tok) {
         var ctl = new AbortController();
         var timer = setTimeout(function () { ctl.abort(); }, 15000);
         return fetch(API + path, { headers: { Authorization: 'Bearer ' + tok }, signal: ctl.signal }).then(function (res) {
@@ -4821,6 +4830,7 @@
       else if (m === 'timeout') setStatus('gcal.timeout', null, true);
       else if (m === 'denied') setStatus('gcal.denied', null, true);
       else if (m === 'gis') setStatus('gcal.gisFailed', null, true);
+      else if (m === 'loading') setStatus('gcal.loading', null, true);
       else if (m === 'expired') setStatus('gcal.expired', null, true);
       else if (m === 'forbidden') setStatus('gcal.forbidden', null, true);
       else if (m === 'notfound') setStatus('gcal.notFound', null, true);
@@ -4835,7 +4845,7 @@
         var q = '?singleEvents=true&orderBy=startTime&maxResults=250' +
           '&timeMin=' + encodeURIComponent(w.timeMin) + '&timeMax=' + encodeURIComponent(w.timeMax) +
           (tokenParam ? '&pageToken=' + encodeURIComponent(tokenParam) : '');
-        return api('/calendars/' + encodeURIComponent(calId) + '/events' + q).then(function (data) {
+        return api('/calendars/' + encodeURIComponent(calId) + '/events' + q, !tokenParam).then(function (data) {
           all = all.concat(data.items || []);
           return data.nextPageToken ? page(data.nextPageToken) : all;
         });
@@ -4848,7 +4858,7 @@
       var all = [];
       function page(tokenParam) {
         return api('/users/me/calendarList?minAccessRole=reader&maxResults=250' +
-          (tokenParam ? '&pageToken=' + encodeURIComponent(tokenParam) : '')).then(function (data) {
+          (tokenParam ? '&pageToken=' + encodeURIComponent(tokenParam) : ''), !tokenParam).then(function (data) {
           all = all.concat(data.items || []);
           return data.nextPageToken ? page(data.nextPageToken) : all;
         });
