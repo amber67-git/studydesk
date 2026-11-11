@@ -3986,7 +3986,9 @@
 
     /** Show the saved auto-fill keys. Called on every render, so a key that
         arrives with a backup import or a cloud settings change shows up too;
-        a field the user is typing in (focused) is left alone. */
+        a field the user is typing in (focused) is left alone, and catches up
+        on blur (see setup: an edit has already been saved by 'change', which
+        fires before 'blur', so the refresh never drops what was typed). */
     refreshKeyInputs: function () {
       [['tmdb-key-input', 'tmdbKey'], ['gbooks-key-input', 'googleBooksKey']].forEach(function (pair) {
         var el = Utils.$(pair[0]);
@@ -4098,6 +4100,10 @@
       gbInput.addEventListener('change', function () {
         AppState.settings.googleBooksKey = this.value.trim();
         Storage.scheduleSave();
+      });
+      // a key synced in while the field had focus was skipped: show it on leaving
+      [tmdbInput, gbInput].forEach(function (el) {
+        el.addEventListener('blur', function () { Settings.refreshKeyInputs(); });
       });
 
       // ------ backup: export ------
