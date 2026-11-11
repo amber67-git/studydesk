@@ -44,7 +44,7 @@
   var APP_HOME = 'https://amber-studydesk.netlify.app/';
   // Shown bottom-left in the sidebar. Bump both in the same PR that adds a
   // line to the guide's 변경 이력 (version = number of entries there).
-  var APP_VERSION = 'v17';
+  var APP_VERSION = 'v18';
   var APP_UPDATED = '2026-11-11';
 
   /* ===========================================================
@@ -148,6 +148,8 @@
       'lib.quotaBooks': 'Google Books search limit reached. Try later, add a free Google Books key in Settings → Integrations, or enter the details manually.',
       'lib.searching': 'searching…',
       'lib.quotaBooksKey': 'your Google Books key has used up its quota. Try again later (the daily quota resets at midnight Pacific time), or enter the details manually.',
+      'pending.note': 'this page is still downloading from the cloud', 'pending.edit': 'edit anyway',
+      'pending.confirm': 'Write on this page before it arrives? What you write here will replace the version from your other device.',
       'lib.authFail': 'the API key was rejected. Check it in Settings, or enter the details manually.',
       'lib.searchFailed': 'search failed. You can still fill the form in by hand.',
       'lib.noLookup': "automatic lookup isn't available for this type — fill the form in by hand.",
@@ -331,6 +333,8 @@
       'lib.quotaBooks': 'Google Books 검색 한도에 도달했습니다. 나중에 다시 하거나, 설정 → 연동에 무료 Google Books 키를 넣거나, 직접 입력하세요.',
       'lib.searching': '검색 중…',
       'lib.quotaBooksKey': 'Google Books 키의 한도를 다 썼습니다. 나중에 다시 시도하거나(하루 한도는 미국 태평양 시간 자정에 초기화) 직접 입력하세요.',
+      'pending.note': '이 페이지는 아직 클라우드에서 받는 중입니다', 'pending.edit': '그래도 쓰기',
+      'pending.confirm': '받기 전에 이 페이지에 쓸까요? 여기 쓴 내용이 다른 기기에서 쓴 내용을 대신하게 됩니다.',
       'lib.authFail': 'API 키가 거부됐습니다. 설정에서 키를 확인하거나 직접 입력하세요.',
       'lib.searchFailed': '검색에 실패했습니다. 직접 입력할 수 있습니다.',
       'lib.noLookup': '이 종류는 자동 검색을 지원하지 않습니다. 직접 입력하세요.',
@@ -1558,9 +1562,47 @@
       Utils.$('cues').value = page.cues || '';
       Utils.$('summary').value = page.summary || '';
       Utils.$('notes-body').innerHTML = page.body || '';
+      setPendingLock(isPending(page));
       renderPageIndicator();
       rememberPosition();
       rememberFit();   // images in the page re-check when they load (see setup)
+    }
+
+    /* Cloud sync: a page whose content is still downloading is shown read-only
+       with a notice (see SyncCore.isPendingPage). It unlocks by itself when the
+       page arrives (the sync refresh re-renders it), or on "edit anyway". */
+    // pages the user chose to write on anyway: unlocked for this session only. The
+    // placeholder flag stays, so an untouched page is still never uploaded (an empty
+    // page with a fresh syncAt would replace the real one); the first real edit, of
+    // any field, drops the flag in saveCurrentFields and makes it an ordinary page.
+    var unlockedPages = (typeof WeakSet !== 'undefined') ? new WeakSet() : null;
+
+    function isPending(page) {
+      return typeof SyncCore !== 'undefined' && SyncCore.isPendingPage(page) &&
+        !(unlockedPages && unlockedPages.has(page));
+    }
+
+    var PAGE_FIELDS = ['note-chapter', 'note-tags', 'note-date', 'cues', 'summary'];
+
+    function setPendingLock(on) {
+      PAGE_FIELDS.forEach(function (id) { Utils.$(id).readOnly = on; });
+      Utils.$('notes-body').setAttribute('contenteditable', on ? 'false' : 'true');
+      Utils.$('notes-body').setAttribute('aria-readonly', on ? 'true' : 'false');
+      document.querySelectorAll('.notes-body-toolbar button:not(#fmt-more-btn)').forEach(function (b) { b.disabled = on; });
+      var cornell = document.querySelector('.cornell');
+      if (cornell) cornell.classList.toggle('page-pending', on);
+      Utils.$('page-pending').hidden = !on;
+    }
+
+    /** "edit anyway": the page becomes an ordinary page. Whatever is written
+        then wins over the cloud copy when it arrives (asked first). */
+    function editPendingAnyway() {
+      var page = AppState.currentPage();
+      if (!isPending(page)) return;
+      if (!window.confirm(tx('pending.confirm'))) return;
+      if (unlockedPages) unlockedPages.add(page); else delete page.placeholder;
+      renderActivePage();
+      Utils.$('notes-body').focus();
     }
 
     /** Open a note and jump straight to its most recent page (the "go to note"
@@ -1692,12 +1734,16 @@
       Object.keys(head).forEach(function (k) { if (n[k] !== head[k]) { n[k] = head[k]; headChanged = true; } });
       AppState.ensurePages(n);
       var page = AppState.currentPage();
-      if (page) {
+      if (page && !isPending(page)) {   // a page still downloading is never written into
         var fields = {
           chapter: Utils.$('note-chapter').value, tags: Utils.$('note-tags').value, date: Utils.$('note-date').value,
           cues: Utils.$('cues').value, summary: Utils.$('summary').value, body: Utils.$('notes-body').innerHTML
         };
         Object.keys(fields).forEach(function (k) { if (page[k] !== fields[k]) { page[k] = fields[k]; pageChanged = true; } });
+        // first real edit on a page unlocked with "edit anyway": from now on it is an
+        // ordinary page. Kept as a placeholder it would be stamped but not uploaded
+        // (a date-only edit), or turn into a tombstone once cleared again.
+        if (pageChanged && page.placeholder && unlockedPages && unlockedPages.has(page)) delete page.placeholder;
       }
       // cloud sync: stamp the edit right away. The debounced save stamps too, but while
       // the user keeps typing it never fires, and a remote copy with an older stamp must
@@ -1740,6 +1786,10 @@
 
     function readImageFile(file) {
       if (!file) return;
+      // the image goes to the page it was added on: reading and compressing are
+      // async, and by then the user may have turned to another (possibly pending) page
+      var target = AppState.currentPage();
+      if (isPending(target)) return;
       // guard against non-images (a dragged PDF, a renamed file) and against
       // huge originals that would stall the browser before compression runs
       if (!/^image\//.test(file.type || '')) {
@@ -1753,6 +1803,7 @@
       var reader = new FileReader();
       reader.onload = function (e) {
         compressImage(e.target.result, function (finalUrl) {
+          if (AppState.currentPage() !== target || isPending(target)) return;
           insertImageAtCursor(finalUrl);
           saveCurrentFields();
           Storage.scheduleSave();
@@ -2076,6 +2127,7 @@
 
       // ------ page jump: click the "N / M" indicator to open the page list ------
       Utils.$('page-indicator').addEventListener('click', openPageListModal);
+      Utils.$('page-pending-edit').addEventListener('click', editPendingAnyway);
       Utils.$('page-list-filter').addEventListener('click', function () {
         pageListOnlyMissing = !pageListOnlyMissing;
         renderPageList();
@@ -4560,6 +4612,13 @@
       return !(p.body || p.cues || p.summary || p.chapter || p.tags);
     }
 
+    /** A blank stand-in for a cloud page whose content has not arrived yet.
+        Writing into it would stamp it newer than the real page, which then
+        loses last-write-wins and is gone, so the editor keeps it read-only. */
+    function isPendingPage(p) {
+      return !!p && !!p.placeholder && isEmptyPage(p);
+    }
+
     /** Content fingerprint of the notes/tasks/cards/library (settings excluded):
         used to tell "still just the sample data" from "the user wrote something". */
     function fingerprint(state) {
@@ -4793,6 +4852,7 @@
       ENTITY_COLLECTIONS: ENTITY_COLLECTIONS,
       ALL_COLLECTIONS: ALL_COLLECTIONS,
       MAX_DOC_BYTES: MAX_DOC_BYTES,
+      isPendingPage: isPendingPage,
       byteLength: byteLength,
       flatten: flatten,
       diff: diff,

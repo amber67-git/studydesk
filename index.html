@@ -197,6 +197,7 @@ Key words / Questions / Vocabulary" data-i18n-placeholder="cornell.cuesPh"></tex
                     <div id="notes-body" class="lined notes-body-editable" contenteditable="true" role="textbox" aria-multiline="true" aria-label="main notes" data-placeholder="Take notes here.
 
 Use short sentences, bullet points, symbols, and diagrams." data-i18n-data-placeholder="cornell.bodyPh"></div>
+                    <div class="page-pending-note" id="page-pending" role="status" hidden><span>this page is still downloading from the cloud</span><button type="button" class="btn" id="page-pending-edit">edit anyway</button></div>
                     <input type="file" id="image-file-input" accept="image/*" style="display:none;" />
                   </div>
                 </div>
@@ -610,6 +611,7 @@ Write the main idea in your own words." data-i18n-placeholder="cornell.summaryPh
                   <li><b>오프라인</b>: 인터넷이 없어도 평소처럼 쓸 수 있고, 변경은 기기에 쌓였다가 연결되면 자동으로 올라갑니다. 사이드바 맨 아래 상태 표시가 <b>동기화됨</b>면 최신, <b>오프라인 · 연결되면 동기화</b>면 대기 중입니다.</li>
                   <li><b>처음 로그인할 때</b>: 노트가 하나도 없던 새 기기는 클라우드의 노트를 그대로 받습니다(샘플 노트는 버립니다). 이미 노트가 있던 기기는 클라우드와 합쳐지고, 양쪽에 같은 노트가 있으면 더 최근에 고친 쪽이 남습니다.</li>
                   <li><b>용량 제한</b>: 한 페이지에 큰 이미지가 여러 장 들어가 약 900KB를 넘으면 그 페이지만 동기화되지 않고 이 기기에만 남습니다. 설정의 클라우드 동기화 카드에 빨간 글씨로 어떤 페이지인지 표시되니 이미지를 하나 줄이면 됩니다.</li>
+                  <li><b>받는 중인 페이지</b>: 다른 기기에서 쓴 페이지의 내용이 아직 도착하지 않았으면 그 페이지에 "이 페이지는 아직 클라우드에서 받는 중입니다"가 뜨고 쓸 수 없습니다. 보통 몇 초 뒤 내용이 오면 저절로 풀립니다. 빈 자리에 먼저 쓰면 나중에 도착하는 원래 내용이 밀려 사라지기 때문입니다. 계속 풀리지 않으면(그 페이지가 위 용량 제한에 걸린 경우 등) <b>그래도 쓰기</b>로 풀 수 있지만, 그때 쓴 내용이 다른 기기의 내용을 대신합니다.</li>
                   <li><b>다른 계정으로 로그인하면</b>: 이 브라우저의 노트가 전에 다른 Google 계정과 동기화된 것이면 "다른 계정의 노트가 있다"고 묻습니다. 확인하면 로컬 사본을 버리고 새 계정의 노트를 내려받고, 취소하면 로그아웃된 채 로컬 노트가 그대로 남습니다. 두 계정의 노트가 섞여 올라가는 일을 막기 위한 장치입니다.</li>
                   <li><b>로그아웃</b>해도 이 기기의 노트는 지워지지 않습니다. <b>전체 데이터 삭제</b>는 로그인 중이면 이 기기의 사본만 지우고 새로고침 뒤 클라우드에서 다시 받아옵니다. 어디서나 지우려면 앱 안에서 노트북을 삭제하세요(삭제도 동기화됩니다).</li>
                 </ul>
@@ -659,6 +661,7 @@ Write the main idea in your own words." data-i18n-placeholder="cornell.summaryPh
                 <h3>변경 이력</h3>
                 <p>사용자가 체감하는 주요 변경만 적습니다. 최신이 위입니다. 사이드바 왼쪽 아래의 <b>버전 번호</b>는 이 목록의 항목 수이고, 옆의 날짜가 마지막 갱신일입니다.</p>
                 <ul>
+                  <li><b>2026-11-11</b> — <b>받는 중인 페이지 보호</b>: 클라우드 동기화 중 다른 기기의 페이지 내용이 아직 도착하지 않았으면 그 페이지는 잠시 쓸 수 없고 안내가 뜹니다(빈 자리에 쓰면 원래 내용이 사라지던 위험을 막음).</li>
                   <li><b>2026-11-11</b> — <b>Google Books 키</b>: 책 검색이 한도에 걸릴 때 설정 → 연동에 내 Google Books API 키를 넣을 수 있고, 한도 안내가 그 방법을 알려 줍니다. "검색 중…" 문구도 한국어로 나옵니다.</li>
                   <li><b>2026-11-11</b> — <b>요약 없는 페이지 표시</b>: 페이지 목록(N / M)에서 내용은 있는데 SUMMARY가 빈 페이지에 "요약 없음"이 붙고, "이것만 보기"로 그 페이지들만 볼 수 있습니다.</li>
                   <li><b>2026-11-11</b> — <b>오늘 할 공부 → 종이로 한 번에</b>: 일정의 노트 열기가 그 노트북의 오늘 페이지(없으면 마지막 페이지 뒤 새 페이지)를 열고, 폰 상단에 남은 오늘 일정 수(<b>오늘 N개</b>)가 보이며 누르면 목록으로 갑니다.</li>
@@ -808,6 +811,7 @@ Write the main idea in your own words." data-i18n-placeholder="cornell.summaryPh
                   <li><b>Offline</b>: everything works as usual without internet; changes queue on the device and upload when the connection returns. The status at the bottom of the sidebar reads <b>synced</b> when up to date and <b>offline · will sync</b> while waiting.</li>
                   <li><b>First sign-in</b>: a new device with no notes takes the cloud notes as they are (sample notes are dropped). A device that already has notes is merged with the cloud; where both have the same note, the more recently edited copy stays.</li>
                   <li><b>Size limit</b>: a page with several large images above about 900 KB is not synced and stays on this device only. The cloud sync card in Settings names the page in red; remove one image and it syncs.</li>
+                  <li><b>Pages still arriving</b>: when the content of a page written on another device has not arrived yet, that page shows "this page is still downloading from the cloud" and cannot be written on. It unlocks by itself when the content arrives, usually within seconds. Writing into the empty spot first would push the real content out when it lands. If it never unlocks (for example the page is over the size limit above), <b>edit anyway</b> unlocks it, but what you write then replaces the other device's version.</li>
                   <li><b>Signing in with another account</b>: if this browser's notes were synced with a different Google account, the app asks about it. OK discards the local copy and downloads the new account's notes; Cancel signs out and leaves the local notes alone. This prevents two accounts' notes from being mixed.</li>
                   <li><b>Signing out</b> does not delete the notes on this device. <b>clear all data</b> while signed in clears only this device's copy and downloads from the cloud again after the reload. To delete everywhere, delete the notebook inside the app (deletions sync too).</li>
                 </ul>
@@ -857,6 +861,7 @@ Write the main idea in your own words." data-i18n-placeholder="cornell.summaryPh
                 <h3>Change log</h3>
                 <p>Only changes you can notice are listed, newest first. The <b>version number</b> at the bottom left of the sidebar is the number of entries here, and the date next to it is the last update.</p>
                 <ul>
+                  <li><b>2026-11-11</b> — <b>Pages still arriving are protected</b>: with cloud sync, a page whose content from another device has not arrived yet is read-only for the moment, with a notice (writing into the empty spot could lose the original).</li>
                   <li><b>2026-11-11</b> — <b>Google Books key</b>: when book search hits its limit, your own Google Books API key can be added under Settings → Integrations, and the limit message says how.</li>
                   <li><b>2026-11-11</b> — <b>Pages without a summary are marked</b>: in the page list (N / M), pages with notes but an empty SUMMARY are tagged "no summary", and "only these" shows just those.</li>
                   <li><b>2026-11-11</b> — <b>From today's task to the paper in one tap</b>: go to note opens today's page of that notebook (a new page after the last one if needed), and on phones the top bar shows how many of today's tasks are left (<b>today N</b>); tapping it goes to the list.</li>
