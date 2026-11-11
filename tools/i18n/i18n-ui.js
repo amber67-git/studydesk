@@ -95,6 +95,11 @@ async function run(lang, browserLang) {
   await p.click('#review-mode-btn'); ok((await label('#review-mode-btn')) === want('self-test', '셀프 테스트'), lang + ': self-test off -> "' + (await label('#review-mode-btn')) + '"');
   await p.click('#save-note-btn'); ok((await label('#save-note-btn')) === want('saved', '저장됨'), lang + ': save pressed -> "' + (await label('#save-note-btn')) + '"');
   await p.waitForTimeout(1300);
+  // the autosave status line under the paper (shown for ~1.2s after each save)
+  await p.fill('#cues', 'status check'); await p.waitForTimeout(700);
+  const saveSt = (await p.textContent('#save-status')).trim();
+  ok(saveSt === want('saved', '저장됨'), lang + ': autosave status after typing -> "' + saveSt + '"');
+  await p.waitForTimeout(1300);
   // empty states: no tasks at all
   await p.evaluate(k => { const d = JSON.parse(localStorage.getItem(k)); d.recurring = []; d.adhocTasks = []; localStorage.setItem(k, JSON.stringify(d)); }, K);
   await p.reload(); await p.waitForTimeout(500);

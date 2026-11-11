@@ -56,6 +56,7 @@
       <button class="mob-menu-btn" onclick="toggleMobileSidebar()" aria-label="menu"><span class="icon" data-icon="menu-2" aria-hidden="true"></span></button>
       <div class="tb-title" id="tb-title">Notebooks</div>
       <div class="tb-actions" id="tb-actions">
+        <button type="button" class="btn btn-sm tb-today-btn" id="tb-today-btn" title="go to today's study list"><span class="icon" data-icon="calendar" aria-hidden="true"></span> <span id="tb-today-count"></span></button>
         <button type="button" class="btn btn-sm tb-nb-btn" id="tb-notebooks-btn" title="go to the notebook list"><span class="icon" data-icon="notes" aria-hidden="true"></span> notebooks</button>
       </div>
     </div>
@@ -485,7 +486,7 @@ Write the main idea in your own words." data-i18n-placeholder="cornell.summaryPh
                 <p><b>열자마자, 공부한 내용을 바로 적는다.</b> StudyDesk의 모든 화면과 기능은 이 한 문장을 기준으로 만들고 판단합니다. 새 기능이나 디자인 변경은 "첫 글자를 쓰기까지의 탭 수가 줄어드는가"로 가치를 재며, 그렇지 않은 변경(장식, 색상 테마 등)은 뒤로 미룹니다.</p>
                 <ul>
                   <li><b>첫 화면은 종이</b> — 앱을 열면 마지막에 쓰던 노트북의 그 페이지가 다시 열립니다(기기별로 기억). PC에서는 커서가 이미 MAIN NOTES에 있어 바로 타이핑하면 되고, 폰에서는 종이가 맨 위에 오고 노트북 목록·오늘 목록·통계는 그 아래에 있습니다(상단 <b>노트북 목록</b> 버튼으로 목록까지 내려갑니다). 백업·주소 안내 띠는 화면 아래에 붙어 종이를 밀어내지 않습니다.</li>
-                  <li><b>손이 덜 가게</b> — 입력 즉시 자동 저장, 새 페이지의 날짜 자동 입력, 글이 넘치면 자동으로 다음 페이지, 일정에서 <b>노트 열기</b> 한 번으로 해당 노트북.</li>
+                  <li><b>손이 덜 가게</b> — 입력 즉시 자동 저장, 새 페이지의 날짜 자동 입력, 글이 넘치면 자동으로 다음 페이지, 일정에서 <b>노트 열기</b> 한 번으로 해당 노트북의 오늘 페이지.</li>
                   <li><b>코넬 노트 그대로</b> — CUE(핵심 질문) | MAIN NOTES(본문) | SUMMARY(요약) 구조와 셀프 테스트(본문 가리고 회상) 복습 단계를 종이와 같은 형태로 둡니다.</li>
                   <li><b>내 데이터는 내 것</b> — 기본은 이 브라우저에만 저장, 백업 파일은 열린 JSON, 기기 간 동기화는 선택이며 본인 계정 공간에만 저장됩니다.</li>
                 </ul>
@@ -495,7 +496,7 @@ Write the main idea in your own words." data-i18n-placeholder="cornell.summaryPh
                 <ul>
                   <li><b>설치 없음</b> — 브라우저에서 바로 실행됩니다. 별도 프로그램 설치나 회원 가입이 필요 없습니다.</li>
                   <li><b>데이터는 기본적으로 내 브라우저에만</b> — 로그인하지 않으면 모든 노트는 이 브라우저 안(localStorage)에만 저장되고 어디로도 전송되지 않습니다. 설정 → 계정 탭(클라우드 동기화)에서 Google 계정으로 로그인하면 본인만 접근할 수 있는 클라우드 공간(Firebase)에 복사되어 다른 기기와 동기화됩니다.</li>
-                  <li><b>필기 흐름 자동화</b> — 새 페이지를 만들면 날짜가 자동 입력되고, 필기가 페이지를 넘치면 다음 페이지가 자동으로 생성되며, 일정의 <b>노트 열기</b> 버튼으로 해당 노트북의 마지막 페이지가 바로 열립니다.</li>
+                  <li><b>필기 흐름 자동화</b> — 새 페이지를 만들면 날짜가 자동 입력되고, 필기가 페이지를 넘치면 다음 페이지가 자동으로 생성되며, 일정의 <b>노트 열기</b> 버튼으로 해당 노트북의 오늘 쓸 페이지가 바로 열립니다.</li>
                 </ul>
 
                 <h3>페이지별 기능</h3>
@@ -537,7 +538,7 @@ Write the main idea in your own words." data-i18n-placeholder="cornell.summaryPh
                 <ol>
                   <li><b>일정 관리</b>에서 반복 일정을 등록합니다. 예: 제목 "economics 101 lecture", 과목 economics, 유형 lecture, 요일 월·수·금.</li>
                   <li>해당 요일이 되면 <b>노트북</b> 페이지의 <b>오늘의 공부 목록</b>에 그 일정이 자동으로 나타납니다.</li>
-                  <li>공부를 시작할 때 일정 옆의 <b>노트 열기</b> 버튼을 누릅니다. 그 과목·유형의 노트북이 <b>마지막 페이지</b>(지난 필기)로 열립니다. 노트북이 없으면 자동으로 만들어집니다.</li>
+                  <li>공부를 시작할 때 일정 옆의 <b>노트 열기</b> 버튼을 누릅니다. 그 과목·유형의 노트북이 <b>오늘 쓸 페이지</b>로 열립니다: 마지막 페이지가 이미 오늘 날짜이거나 비어 있으면 그 페이지, 아니면 그 뒤에 오늘 날짜의 새 페이지(챕터·태그는 앞 페이지에서 이어받음)가 생깁니다. 지난 필기는 ◀로 볼 수 있고, 여러 번 눌러도 빈 페이지가 쌓이지 않습니다. 노트북이 없으면 자동으로 만들어집니다. 폰에서는 상단의 <b>오늘 N개</b>(아직 체크하지 않은 오늘 일정 수, 다 하면 <b>오늘 ✓</b>)를 누르면 종이 아래의 오늘의 공부 목록으로 내려갑니다.</li>
                   <li>지난 내용을 훑어본 뒤 ▶ 화살표로 새 페이지를 만들고, 챕터 칸에 오늘 진도를 적고 필기를 시작합니다.</li>
                   <li>공부가 끝나면 목록의 체크박스를 눌러 완료 표시합니다.</li>
                 </ol>
@@ -654,6 +655,7 @@ Write the main idea in your own words." data-i18n-placeholder="cornell.summaryPh
                 <h3>변경 이력</h3>
                 <p>사용자가 체감하는 주요 변경만 적습니다. 최신이 위입니다. 사이드바 왼쪽 아래의 <b>버전 번호</b>는 이 목록의 항목 수이고, 옆의 날짜가 마지막 갱신일입니다.</p>
                 <ul>
+                  <li><b>2026-11-11</b> — <b>오늘 할 공부 → 종이로 한 번에</b>: 일정의 노트 열기가 그 노트북의 오늘 페이지(없으면 마지막 페이지 뒤 새 페이지)를 열고, 폰 상단에 남은 오늘 일정 수(<b>오늘 N개</b>)가 보이며 누르면 목록으로 갑니다.</li>
                   <li><b>2026-11-10</b> — <b>쓰는 중에 손이 덜 가게</b>: 이어지는 새 페이지가 앞 페이지의 챕터·태그를 물려받고, 폰 서식 도구줄은 자주 쓰는 네 개만 한 줄로 두고 ⋯으로 나머지를 펼치며, 종이 하단 바(◀ 쪽수 ▶ · 저장)가 화면 아래에 붙어 키보드가 떠 있어도 바로 넘길 수 있습니다.</li>
                   <li><b>2026-11-10</b> — <b>영어·한국어</b>: 화면 전체와 이 설명서를 두 언어로 볼 수 있습니다. 처음에는 브라우저 언어를 따르고, 설정 → 화면 → 언어에서 바꿉니다. 노트 내용은 번역하지 않습니다.</li>
                   <li><b>2026-11-09</b> — <b>열면 바로 종이</b>: 마지막에 쓰던 노트북·페이지를 기억해 그 자리로 열리고, PC에서는 커서가 MAIN NOTES에 놓입니다. 폰에서는 종이가 맨 위로 오고 노트북 목록·오늘 목록·통계가 아래로 내려갔으며(상단 노트북 목록 버튼), 백업·주소 안내 띠는 화면 아래 한 줄로 붙습니다. 설명서 맨 앞에 "이 앱의 목적"을 적고, 사이드바 왼쪽 아래에 앱 버전과 갱신일을 표시합니다.</li>
@@ -669,7 +671,7 @@ Write the main idea in your own words." data-i18n-placeholder="cornell.summaryPh
                   <li><b>2026-11-02</b> — 기기 간 동기화(Google 로그인 + 클라우드) 기능을 넣었습니다. Firebase 설정 전이라 아직 꺼져 있고, 켜지면 설정 → 계정 → 클라우드 동기화에 로그인 버튼이 보입니다.</li>
                   <li><b>2026-11-01</b> — 설치형 앱(PWA): 홈 화면 설치와 오프라인 실행. 화면 크기 대응 1차 수정, 접근성 보완, 라틴 글꼴 자체 호스팅(폰과 PC의 글씨체 불일치 해결). StudyDesk v1 공개.</li>
                 </ul>
-                <p class="guide-foot">설명서 기준일: <b>2026-11-10</b>. 다음 갱신 때는 이 날짜 이후의 변경만 살펴 변경 이력과 FAQ에 더하면 됩니다.</p>
+                <p class="guide-foot">설명서 기준일: <b>2026-11-11</b>. 다음 갱신 때는 이 날짜 이후의 변경만 살펴 변경 이력과 FAQ에 더하면 됩니다.</p>
 
               </div>
               <div class="guide-body" lang="en" hidden>
@@ -678,7 +680,7 @@ Write the main idea in your own words." data-i18n-placeholder="cornell.summaryPh
                 <p><b>Open it and start writing down what you just studied.</b> Every screen and feature of StudyDesk is built and judged against that one sentence. A new feature or design change is measured by "does it cut the number of taps before the first letter?", and anything that does not (decoration, colour themes, and so on) waits.</p>
                 <ul>
                   <li><b>The first screen is the paper</b> — the app reopens on the page of the notebook you were last writing in (remembered per device). On a PC the caret is already in MAIN NOTES, so you just type; on a phone the paper comes first and the notebook list, today's list and the stat cards sit below it (the <b>notebooks</b> button in the top bar jumps down to the list). Backup and address notices dock at the bottom of the screen and never push the paper down.</li>
-                  <li><b>Fewer hands</b> — every keystroke is saved automatically, a new page gets today's date, text that overflows a page flows onto the next one, and <b>go to note</b> on a task opens its notebook in one tap.</li>
+                  <li><b>Fewer hands</b> — every keystroke is saved automatically, a new page gets today's date, text that overflows a page flows onto the next one, and <b>go to note</b> on a task opens today's page of its notebook in one tap.</li>
                   <li><b>Cornell notes as on paper</b> — CUE (key questions) | MAIN NOTES (body) | SUMMARY, plus the self-test review step (hide the body, recall from the cues), laid out like the paper version.</li>
                   <li><b>Your data is yours</b> — stored only in this browser by default, backups are plain JSON files, and cross-device sync is optional and goes only to your own account's space.</li>
                 </ul>
@@ -688,7 +690,7 @@ Write the main idea in your own words." data-i18n-placeholder="cornell.summaryPh
                 <ul>
                   <li><b>Nothing to install</b> — it runs in the browser. No program to install, no account to create.</li>
                   <li><b>Data stays in your browser by default</b> — unless you sign in, every note lives only in this browser (localStorage) and is sent nowhere. Signing in with a Google account under Settings → Account (cloud sync) copies them to a cloud space only you can read (Firebase) and keeps your devices in sync.</li>
-                  <li><b>The writing flow is automated</b> — a new page gets today's date, a page that overflows creates the next one, and the <b>go to note</b> button on a task opens the last page of that notebook.</li>
+                  <li><b>The writing flow is automated</b> — a new page gets today's date, a page that overflows creates the next one, and the <b>go to note</b> button on a task opens that notebook on a page for today.</li>
                 </ul>
 
                 <h3>The pages</h3>
@@ -730,7 +732,7 @@ Write the main idea in your own words." data-i18n-placeholder="cornell.summaryPh
                 <ol>
                   <li>Add a recurring task in <b>Schedule manager</b>, e.g. title "economics 101 lecture", subject economics, type lecture, Mon · Wed · Fri.</li>
                   <li>On those days the task appears in <b>today's study list</b> on the <b>Notebooks</b> page.</li>
-                  <li>When you start studying, press <b>go to note</b> next to the task. The notebook for that subject and type opens on its <b>last page</b> (your previous notes). If there is no notebook yet, one is created.</li>
+                  <li>When you start studying, press <b>go to note</b> next to the task. The notebook for that subject and type opens on <b>a page for today</b>: the last page if it is already dated today or still blank, otherwise a new page after it dated today (chapter and tags carry over from the page before). Earlier notes are one ◀ away, and pressing it again never piles up empty pages. If there is no notebook yet, one is created. On a phone, <b>today N</b> at the top (today's tasks not yet checked off, <b>today ✓</b> when all are done) scrolls down to today's study list below the paper.</li>
                   <li>Skim the previous notes, create a new page with ▶, write today's chapter in the chapter field and start taking notes.</li>
                   <li>When you are done, tick the checkbox in the list.</li>
                 </ol>
@@ -847,6 +849,7 @@ Write the main idea in your own words." data-i18n-placeholder="cornell.summaryPh
                 <h3>Change log</h3>
                 <p>Only changes you can notice are listed, newest first. The <b>version number</b> at the bottom left of the sidebar is the number of entries here, and the date next to it is the last update.</p>
                 <ul>
+                  <li><b>2026-11-11</b> — <b>From today's task to the paper in one tap</b>: go to note opens today's page of that notebook (a new page after the last one if needed), and on phones the top bar shows how many of today's tasks are left (<b>today N</b>); tapping it goes to the list.</li>
                   <li><b>2026-11-10</b> — <b>Fewer hands while writing</b>: a page that continues the previous one inherits its chapter and tags, the phone toolbar keeps the frequent four buttons in one row with ⋯ for the rest, and the bar under the paper (◀ page ▶ · save) sticks to the bottom of the screen so you can turn pages while the keyboard is up.</li>
                   <li><b>2026-11-10</b> — <b>English and Korean</b>: the whole interface and this guide are available in both languages. The first run follows the browser language; switch under Settings → Display → language. Note content is never translated.</li>
                   <li><b>2026-11-09</b> — <b>Open on the paper</b>: the notebook and page you last wrote in are remembered and reopened, and on a PC the caret sits in MAIN NOTES. On phones the paper comes first and the notebook list, today's list and stats moved below it (notebooks button in the top bar); backup and address notices dock at the bottom of the screen in one line. "What this app is for" was added at the top of the guide, and the app version and update date show at the bottom left of the sidebar.</li>
@@ -862,7 +865,7 @@ Write the main idea in your own words." data-i18n-placeholder="cornell.summaryPh
                   <li><b>2026-11-02</b> — Cross-device sync (Google sign-in + cloud) was added. It is off until Firebase is configured; once on, a sign-in button appears under Settings → Account → cloud sync.</li>
                   <li><b>2026-11-01</b> — Installable app (PWA): home-screen install and offline use. First round of screen-size fixes, accessibility improvements, self-hosted Latin fonts (fixes the phone/PC font mismatch). StudyDesk v1 released.</li>
                 </ul>
-                <p class="guide-foot">Guide current as of <b>2026-11-10</b>. On the next update, only changes after this date need to be added to the change log and FAQ.</p>
+                <p class="guide-foot">Guide current as of <b>2026-11-11</b>. On the next update, only changes after this date need to be added to the change log and FAQ.</p>
               </div>
           </div>
         </div>

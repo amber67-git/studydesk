@@ -44,8 +44,8 @@
   var APP_HOME = 'https://amber-studydesk.netlify.app/';
   // Shown bottom-left in the sidebar. Bump both in the same PR that adds a
   // line to the guide's 변경 이력 (version = number of entries there).
-  var APP_VERSION = 'v14';
-  var APP_UPDATED = '2026-11-10';
+  var APP_VERSION = 'v15';
+  var APP_UPDATED = '2026-11-11';
 
   /* ===========================================================
    * I18N - every user-facing string, English and Korean. Static HTML text
@@ -71,7 +71,7 @@
       // stats / today
       'stats.totalNotebooks': 'Total notebooks', 'stats.subjects': 'Subjects', 'stats.todaysTasks': "Today's tasks",
       'today.title': "today's study list", 'today.placeholder': 'add a one-off task for today', 'today.add': 'add',
-      'today.empty': 'Nothing scheduled today.', 'sched.noRecurring': 'no recurring tasks yet.', 'sched.noOneoff': 'no one-off tasks yet.', 'cal.dayEmpty': 'No tasks this day.', 'notes.saved': 'saved', 'lib.coverAlt': 'cover',
+      'today.empty': 'Nothing scheduled today.', 'sched.noRecurring': 'no recurring tasks yet.', 'sched.noOneoff': 'no one-off tasks yet.', 'cal.dayEmpty': 'No tasks this day.', 'notes.saved': 'saved', 'save.saving': 'saving...', 'lib.coverAlt': 'cover', 'today.badge': 'today {n}', 'today.badgeDone': 'today ✓', 'today.badgeTitle': "go to today's study list",
       'sched.kind.recurring': 'recurring', 'sched.kind.oneoff': 'one-off', 'go.toNote': 'go to note',
       // notebook types
       'type.lecture': 'lecture', 'type.book': 'book', 'type.movie': 'movie', 'type.project': 'project',
@@ -255,7 +255,7 @@
       'banner.lastBackup': '마지막 백업이 {n}일 전입니다.',
       'stats.totalNotebooks': '전체 노트북', 'stats.subjects': '과목', 'stats.todaysTasks': '오늘 할 일',
       'today.title': '오늘의 공부 목록', 'today.placeholder': '오늘 할 일 추가', 'today.add': '추가',
-      'today.empty': '오늘은 일정이 없습니다.', 'sched.noRecurring': '아직 반복 일정이 없습니다.', 'sched.noOneoff': '아직 단발 일정이 없습니다.', 'cal.dayEmpty': '이날은 일정이 없습니다.', 'notes.saved': '저장됨', 'lib.coverAlt': '표지',
+      'today.empty': '오늘은 일정이 없습니다.', 'sched.noRecurring': '아직 반복 일정이 없습니다.', 'sched.noOneoff': '아직 단발 일정이 없습니다.', 'cal.dayEmpty': '이날은 일정이 없습니다.', 'notes.saved': '저장됨', 'save.saving': '저장 중...', 'lib.coverAlt': '표지', 'today.badge': '오늘 {n}개', 'today.badgeDone': '오늘 ✓', 'today.badgeTitle': '오늘의 공부 목록으로',
       'sched.kind.recurring': '반복', 'sched.kind.oneoff': '단발', 'go.toNote': '노트 열기',
       'type.lecture': '강의', 'type.book': '책', 'type.movie': '영화', 'type.project': '프로젝트',
       'type.self-study': '자습', 'type.other': '기타',
@@ -575,7 +575,7 @@
       'lib-status-filter': 1, 'bulk-category': 1, 'bulk-genre': 1, 'bulk-status': 1, 'lists-subjects': 1,
       'lists-categories': 1, 'lists-genres': 1, 'sb-foot-status': 1, 'sync-status': 1, 'sync-oversized': 1,
       'backup-status': 1, 'save-status': 1, 'storage-usage': 1, 'lib-status': 1, 'lib-notebook-link': 1,
-      'font-size-value': 1, 'move-banner-text': 1, 'backup-banner-text': 1
+      'font-size-value': 1, 'move-banner-text': 1, 'backup-banner-text': 1, 'tb-today-count': 1
     };
     var ATTRS = ['placeholder', 'data-placeholder', 'title', 'aria-label'];   // data-placeholder: the contenteditable editor's hint
 
@@ -1158,7 +1158,7 @@
     function save() {
       var status = Utils.$('save-status');
       if (!storageAvailable()) { warnBlockedOnce(); return; }
-      if (status) status.textContent = 'saving...';
+      if (status) status.textContent = tx('save.saving');
       // cloud sync: stamp changed entities first so the timestamp lands in this write too
       var pending = (typeof Sync !== 'undefined' && Sync.collectChanges) ? Sync.collectChanges() : null;
       try {
@@ -1176,7 +1176,7 @@
         updateUsageDisplay();
         if (pending) Sync.push(pending);
         if (status) {
-          status.textContent = 'saved';
+          status.textContent = tx('notes.saved');
           setTimeout(function () {
             if (Utils.$('save-status')) Utils.$('save-status').textContent = '';
           }, 1200);
@@ -1264,6 +1264,7 @@
       currentPage = page;
       Utils.$('tb-title').textContent = PAGE_TITLES[page] ? tx(PAGE_TITLES[page]) : page;
       if (Utils.$('tb-notebooks-btn')) Utils.$('tb-notebooks-btn').hidden = (page !== 'notes');
+      if (Utils.$('tb-today-btn')) Utils.$('tb-today-btn').hidden = (page !== 'notes');
       closeMobile();
     }
 
@@ -1341,6 +1342,14 @@
       Utils.$('subject-name-input').addEventListener('keydown', function (e) {
         if (e.key === 'Enter') Utils.$('subject-modal-save').click();
       });
+
+      // phone: today's list sits below the paper, the badge jumps to it
+      if (Utils.$('tb-today-btn')) {
+        Utils.$('tb-today-btn').addEventListener('click', function () {
+          var card = document.querySelector('#page-notes .today-card');
+          if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      }
 
       // phone: the list sits below the paper, this jumps to it
       if (Utils.$('tb-notebooks-btn')) {
@@ -1574,9 +1583,6 @@
       return true;
     }
 
-    /** On a keyboard device put the caret at the end of MAIN NOTES so typing
-        can start at once. Not on touch screens (it would pop the keyboard
-        and scroll), and not while a modal is open. */
     /** Icon + label for a button whose text changes at runtime. The label span
         names its key, so I18n.apply() can re-translate it after a language switch
         (a plain text node set from tx() would only match the English column). */
@@ -1585,6 +1591,32 @@
         '<span' + (cls ? ' class="' + cls + '"' : '') + ' data-i18n="' + key + '"> ' + Utils.escapeHtml(tx(key)) + '</span>';
     }
 
+    /** A page with nothing written on it yet (chapter/tags/date alone don't
+        count - they are filled in automatically). */
+    function isBlankPage(p) {
+      if (!p) return true;
+      var body = String(p.body || '');
+      var text = body.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+      return !String(p.cues || '').trim() && !String(p.summary || '').trim() && !text && !/<img\b/i.test(body);
+    }
+
+    /** Pages changed outside the editor get a sync stamp right away, as the
+        editor does while typing. */
+    function touchPage(note, idx) {
+      if (typeof Sync !== 'undefined' && Sync.isSignedIn && Sync.isSignedIn() && note.pages[idx]) note.pages[idx].syncAt = Date.now();
+    }
+
+    /** After jumping to a page from elsewhere: bring the paper into view on
+        phones (it may be scrolled away below), caret in MAIN NOTES on desktop. */
+    function showPaper() {
+      var card = document.querySelector('#page-notes .notes-card');
+      if (card && window.matchMedia && window.matchMedia('(max-width: 760px)').matches) card.scrollIntoView({ block: 'start' });
+      focusBodyIfDesktop();
+    }
+
+    /** On a keyboard device put the caret at the end of MAIN NOTES so typing
+        can start at once. Not on touch screens (it would pop the keyboard
+        and scroll), and not while a modal is open. */
     function focusBodyIfDesktop() {
       if (!window.matchMedia || !window.matchMedia('(min-width: 761px) and (hover: hover)').matches) return;
       if (document.querySelector('.mo.show')) return;
@@ -2192,7 +2224,7 @@
       selectNote: selectNote,
       refreshEditor: refreshEditor,
       restoreLastPosition: restoreLastPosition,
-      focusBodyIfDesktop: focusBodyIfDesktop,
+      focusBodyIfDesktop: focusBodyIfDesktop, isBlankPage: isBlankPage, touchPage: touchPage, showPaper: showPaper,
       setupEditor: setupEditor,
       setupFormatModals: setupFormatModals,
       setupNewNotebookModal: setupNewNotebookModal
@@ -2317,10 +2349,14 @@
       });
     }
 
-    /** "Go to note": opens the subject+type notebook on its most recent page,
-        creating a blank notebook first if one doesn't exist yet. This never
-        silently creates a new page - it shows prior content and lets the
-        user decide whether to add a fresh page. */
+    /** "Go to note" from today's list / a calendar day: opens the subject+type
+        notebook (creating it if needed) on a page ready for today's study.
+        - last page already dated today, or still blank -> that page
+          (a blank page's auto date moves to today)
+        - otherwise -> a new page after it, dated today, carrying over the
+          last page's chapter/tags like ▶ does
+        So tapping go to note twice never leaves a trail of empty pages, and
+        yesterday's page is never written over. */
     function goToNoteForTask(subjectId, type, fallbackTitle) {
       if (!subjectId) { alert(tx('sched.noSubject')); return; }
       var subj = AppState.subjectById(subjectId);
@@ -2338,10 +2374,41 @@
           pages: [AppState.newBlankPage()]
         };
         AppState.notes.push(note);
-        Storage.scheduleSave();
       }
+      AppState.ensurePages(note);
+      var today = Utils.todayStr();
+      var last = note.pages[note.pages.length - 1];
+      // cloud sync: pages still downloading are blank stand-ins (placeholder:true).
+      // Re-dating or stamping one would make it look newer than the real page
+      // on its way, which would then be rejected - so leave the notebook as it
+      // is and just open it until every page has arrived.
+      var pending = note.pages.some(function (pg) { return pg && pg.placeholder; });
+      if (!pending) {
+        if (NotesModule.isBlankPage(last)) {
+          if (last.date !== today) { last.date = today; NotesModule.touchPage(note, note.pages.length - 1); }
+        } else if (last.date !== today) {
+          note.pages.push(AppState.newBlankPage(last));
+          NotesModule.touchPage(note, note.pages.length - 1);
+        }
+      }
+      Storage.scheduleSave();
       Nav.showPage('notes');
-      NotesModule.selectNote(note.id);
+      NotesModule.selectNote(note.id, note.pages.length - 1);
+      NotesModule.showPaper();
+    }
+
+    /** Phone top bar: "today 2" = tasks for today not yet checked off; tapping
+        it scrolls to the list (which sits below the paper on phones). */
+    function renderTodayBadge() {
+      var btn = Utils.$('tb-today-btn');
+      if (!btn) return;
+      var dayIdx = Utils.todayDayIndex(), today = Utils.todayStr();
+      var keys = AppState.recurring.filter(function (r) { return r.days.indexOf(dayIdx) !== -1; }).map(function (r) { return 'rec:' + r.id; })
+        .concat(AppState.adhocTasks.filter(function (t) { return t.date === today; }).map(function (t) { return 'adhoc:' + t.id; }));
+      var left = keys.filter(function (k) { return !isTaskDone(k); }).length;
+      btn.classList.toggle('none', keys.length === 0);
+      btn.classList.toggle('all-done', keys.length > 0 && left === 0);
+      Utils.$('tb-today-count').textContent = left ? tx('today.badge', { n: left }) : tx('today.badgeDone');
     }
 
     // ------ today's task list (Notes page sidebar widget) ------
@@ -2393,6 +2460,7 @@
         rows.push(taskRowHtml('adhoc:' + t.id, t.title, t.subjectId, t.type, tx('sched.kind.oneoff'), t.id));
       });
 
+      renderTodayBadge();
       if (rows.length === 0) {
         Utils.$('today-task-list').innerHTML =
           '<p class="empty-note">' + tx('today.empty') + '</p>';
@@ -2405,6 +2473,7 @@
           setTaskDone(cb.dataset.key, cb.checked);
           var label = cb.parentElement.querySelector('.task-label');
           if (label) label.classList.toggle('done', cb.checked);
+          renderTodayBadge();
         });
       });
       document.querySelectorAll('.del-adhoc').forEach(function (b) {
