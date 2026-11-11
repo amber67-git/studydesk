@@ -155,7 +155,7 @@
       'lib.quotaBooks': 'Google Books search limit reached. Try later, add a free Google Books key in Settings → Integrations, or enter the details manually.',
       'lib.searching': 'searching…',
       'lib.quotaBooksKey': 'your Google Books key has used up its quota. Try again later (the daily quota resets at midnight Pacific time), or enter the details manually.',
-      'gcal.title': 'google calendar', 'gcal.note': 'Brings the next two weeks into the schedule.',
+      'gcal.title': 'google calendar', 'gcal.note': 'Copies the next two weeks into the Calendar.',
       'gcal.calendarLabel': 'which calendar', 'gcal.subjectLabel': 'default subject',
       'gcal.connect': 'connect Google Calendar', 'gcal.import': 'import now', 'gcal.change': 'choose calendar',
       'gcal.unconfigured': 'calendar import is not set up yet: this build has no Google client ID.',
@@ -352,7 +352,7 @@
       'lib.quotaBooks': 'Google Books 검색 한도에 도달했습니다. 나중에 다시 하거나, 설정 → 연동에 무료 Google Books 키를 넣거나, 직접 입력하세요.',
       'lib.searching': '검색 중…',
       'lib.quotaBooksKey': 'Google Books 키의 한도를 다 썼습니다. 나중에 다시 시도하거나(하루 한도는 미국 태평양 시간 자정에 초기화) 직접 입력하세요.',
-      'gcal.title': '구글 캘린더', 'gcal.note': '앞으로 2주 일정을 일정 달력으로 가져옵니다.',
+      'gcal.title': '구글 캘린더', 'gcal.note': '앞으로 2주 일정을 이 앱의 달력으로 가져옵니다.',
       'gcal.calendarLabel': '가져올 캘린더', 'gcal.subjectLabel': '기본 과목',
       'gcal.connect': '구글 캘린더 연결', 'gcal.import': '지금 가져오기', 'gcal.change': '캘린더 다시 고르기',
       'gcal.unconfigured': '캘린더 가져오기가 아직 설정되지 않았습니다: 이 빌드에는 Google 로그인 설정이 없습니다.',
@@ -4659,8 +4659,25 @@
       return !!(day && day['adhoc:' + task.id]);
     }
 
+    /** Changed in the app since the last import (title, date, or subject - the
+        subject also changes when Settings → Lists moves a deleted subject's tasks):
+        such a task is never overwritten or removed by an import. */
     function edited(task) {
-      return !task.gcal || task.title !== task.gcal.title || task.date !== task.gcal.date;
+      return !task.gcal || task.title !== task.gcal.title || task.date !== task.gcal.date ||
+        (task.gcal.subjectId !== undefined && task.subjectId !== task.gcal.subjectId);
+    }
+
+    /** Same task id for the same event on every device (FNV-1a of calendar + event
+        id), so two devices importing one event converge on one synced task instead
+        of each adding its own copy. */
+    function taskIdFor(cal, evId) {
+      var str = String(cal) + '|' + String(evId), h1 = 0x811c9dc5, h2 = 0x01000193;
+      for (var i = 0; i < str.length; i++) {
+        var c = str.charCodeAt(i);
+        h1 = Math.imul(h1 ^ c, 16777619) >>> 0;
+        h2 = Math.imul(h2 ^ c, 2246822519) >>> 0;
+      }
+      return 'gc' + h1.toString(36) + h2.toString(36);
     }
 
     /** Merge fetched events into state.adhocTasks. from/to: YYYY-MM-DD window
@@ -4682,8 +4699,10 @@
         var title = m.title || opts.untitled || '(untitled)';
         var task = byId[ev.id];
         if (!task) {
-          task = { id: opts.uid(), title: title, subjectId: m.subjectId, type: typeFor(state, m.subjectId), date: date,
-                   gcal: { id: ev.id, cal: cal, title: title, date: date } };
+          var tid = taskIdFor(cal, ev.id);
+          if (state.adhocTasks.some(function (x) { return x.id === tid; })) tid = opts.uid();   // id already taken (not ours): never clobber it
+          task = { id: tid, title: title, subjectId: m.subjectId, type: typeFor(state, m.subjectId), date: date,
+                   gcal: { id: ev.id, cal: cal, title: title, date: date, subjectId: m.subjectId } };
           state.adhocTasks.push(task);
           res.added++;
           return;
@@ -4693,7 +4712,7 @@
         if (task.date !== date && isDone(state, task)) return;   // checked off on its old day: keep
         task.title = title; task.date = date;
         if (task.subjectId !== m.subjectId) { task.subjectId = m.subjectId; task.type = typeFor(state, m.subjectId); }
-        task.gcal = { id: ev.id, cal: cal, title: title, date: date };
+        task.gcal = { id: ev.id, cal: cal, title: title, date: date, subjectId: task.subjectId };
         if (opts.now) task.syncAt = opts.now;
         res.updated++;
       });
@@ -4807,7 +4826,7 @@
         var timer = setTimeout(function () { ctl.abort(); }, 15000);
         return fetch(API + path, { headers: { Authorization: 'Bearer ' + tok }, signal: ctl.signal }).then(function (res) {
           clearTimeout(timer);
-          if (res.status === 401) { token = null; throw new Error('expired'); }
+          if (res.status === 401) { if (token === tok) token = null; throw new Error('expired'); }   // a newer token stays
           if (res.status === 403) {
             return res.json().catch(function () { return null; }).then(function (body) {
               var err = body && body.error || {};
@@ -4923,7 +4942,10 @@
       Utils.$('gcal-setup').hidden = !on || !g.calendarId;
       if (!on) { setStatus('gcal.unconfigured'); return; }
       var calSel = Utils.$('gcal-calendar');
-      var list = calendars || (g.calendarId ? [{ id: g.calendarId, name: g.calendarName || g.calendarId }] : []);
+      var list = (calendars || []).slice();
+      // the saved calendar (maybe set by a backup or another device) is always an option,
+      // so the visible choice is the one import will use
+      if (g.calendarId && !list.some(function (c) { return c.id === g.calendarId; })) list.unshift({ id: g.calendarId, name: g.calendarName || g.calendarId });
       calSel.innerHTML = list.map(function (c) {
         return '<option value="' + Utils.escapeHtml(c.id) + '"' + (c.id === g.calendarId ? ' selected' : '') + '>' + Utils.escapeHtml(c.name) + '</option>';
       }).join('');
@@ -4955,7 +4977,7 @@
       });
     }
 
-    return { setup: setup, render: render, preload: preload, merge: merge, matchSubject: matchSubject, eventDate: eventDate, windowDates: windowDates };
+    return { setup: setup, render: render, preload: preload, merge: merge, taskIdFor: taskIdFor, matchSubject: matchSubject, eventDate: eventDate, windowDates: windowDates };
   })();
 
   var Stats = {
@@ -5802,7 +5824,7 @@
   // expose App.renderAll for Settings module's cross-call
   window.App = App;
   window.SyncCore = SyncCore;
-  window.GCalCore = { merge: GCal.merge, matchSubject: GCal.matchSubject, eventDate: GCal.eventDate, windowDates: GCal.windowDates };   // pure parts, for the Node tests   // pure sync helpers, used by the Node simulation tests
+  window.GCalCore = { merge: GCal.merge, taskIdFor: GCal.taskIdFor, matchSubject: GCal.matchSubject, eventDate: GCal.eventDate, windowDates: GCal.windowDates };   // pure parts, for the Node tests   // pure sync helpers, used by the Node simulation tests
 
   /* ===========================================================
    * Boot
