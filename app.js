@@ -1573,8 +1573,8 @@
        page arrives (the sync refresh re-renders it), or on "edit anyway". */
     // pages the user chose to write on anyway: unlocked for this session only. The
     // placeholder flag stays, so an untouched page is still never uploaded (an empty
-    // page with a fresh syncAt would replace the real one); the first real content
-    // makes it an ordinary upload, as the confirm says.
+    // page with a fresh syncAt would replace the real one); the first real edit, of
+    // any field, drops the flag in saveCurrentFields and makes it an ordinary page.
     var unlockedPages = (typeof WeakSet !== 'undefined') ? new WeakSet() : null;
 
     function isPending(page) {
@@ -1740,6 +1740,10 @@
           cues: Utils.$('cues').value, summary: Utils.$('summary').value, body: Utils.$('notes-body').innerHTML
         };
         Object.keys(fields).forEach(function (k) { if (page[k] !== fields[k]) { page[k] = fields[k]; pageChanged = true; } });
+        // first real edit on a page unlocked with "edit anyway": from now on it is an
+        // ordinary page. Kept as a placeholder it would be stamped but not uploaded
+        // (a date-only edit), or turn into a tombstone once cleared again.
+        if (pageChanged && page.placeholder && unlockedPages && unlockedPages.has(page)) delete page.placeholder;
       }
       // cloud sync: stamp the edit right away. The debounced save stamps too, but while
       // the user keeps typing it never fires, and a remote copy with an older stamp must
