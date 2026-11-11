@@ -155,7 +155,7 @@
       'lib.quotaBooks': 'Google Books search limit reached. Try later, add a free Google Books key in Settings → Integrations, or enter the details manually.',
       'lib.searching': 'searching…',
       'lib.quotaBooksKey': 'your Google Books key has used up its quota. Try again later (the daily quota resets at midnight Pacific time), or enter the details manually.',
-      'gcal.title': 'google calendar', 'gcal.note': 'Brings the next two weeks into today\'s list.',
+      'gcal.title': 'google calendar', 'gcal.note': 'Brings the next two weeks into the schedule.',
       'gcal.calendarLabel': 'which calendar', 'gcal.subjectLabel': 'default subject',
       'gcal.connect': 'connect Google Calendar', 'gcal.import': 'import now', 'gcal.change': 'choose calendar',
       'gcal.unconfigured': 'calendar import is not set up yet: this build has no Google client ID.',
@@ -164,7 +164,7 @@
       'gcal.done': 'imported: {added} new, {updated} updated, {removed} removed.', 'gcal.last': 'last import: {when}',
       'gcal.untitled': '(untitled)', 'gcal.offline': 'you appear to be offline. Connect and try again.',
       'gcal.timeout': 'Google did not answer in time. Try again.', 'gcal.denied': 'sign-in was cancelled or access was not allowed.',
-      'gcal.gisFailed': 'the Google sign-in script could not load (blocked or offline).', 'gcal.expired': 'Google sign-in expired. Press import again.',
+      'gcal.gisFailed': 'the Google sign-in script could not load (blocked or offline).', 'gcal.expired': 'Google sign-in expired. Press the button again.', 'gcal.changed': 'the calendar changed during the import. Press import now again.',
       'gcal.forbidden': 'Google refused access to this calendar.', 'gcal.notFound': 'that calendar no longer exists. Choose another one.',
       'gcal.quota': 'Google\'s request limit was reached. Try again later.', 'gcal.failed': 'import failed. Try again later.',
       'pending.note': 'this page is still downloading from the cloud', 'pending.edit': 'edit anyway',
@@ -352,7 +352,7 @@
       'lib.quotaBooks': 'Google Books 검색 한도에 도달했습니다. 나중에 다시 하거나, 설정 → 연동에 무료 Google Books 키를 넣거나, 직접 입력하세요.',
       'lib.searching': '검색 중…',
       'lib.quotaBooksKey': 'Google Books 키의 한도를 다 썼습니다. 나중에 다시 시도하거나(하루 한도는 미국 태평양 시간 자정에 초기화) 직접 입력하세요.',
-      'gcal.title': '구글 캘린더', 'gcal.note': '앞으로 2주 일정을 오늘 목록으로 가져옵니다.',
+      'gcal.title': '구글 캘린더', 'gcal.note': '앞으로 2주 일정을 일정 달력으로 가져옵니다.',
       'gcal.calendarLabel': '가져올 캘린더', 'gcal.subjectLabel': '기본 과목',
       'gcal.connect': '구글 캘린더 연결', 'gcal.import': '지금 가져오기', 'gcal.change': '캘린더 다시 고르기',
       'gcal.unconfigured': '캘린더 가져오기가 아직 설정되지 않았습니다: 이 빌드에는 Google 로그인 설정이 없습니다.',
@@ -361,7 +361,7 @@
       'gcal.done': '가져옴: 새 일정 {added}개, 바뀐 일정 {updated}개, 지운 일정 {removed}개.', 'gcal.last': '마지막 가져오기: {when}',
       'gcal.untitled': '(제목 없음)', 'gcal.offline': '오프라인인 것 같습니다. 연결한 뒤 다시 시도하세요.',
       'gcal.timeout': 'Google이 제때 응답하지 않았습니다. 다시 시도하세요.', 'gcal.denied': '로그인이 취소됐거나 접근이 허용되지 않았습니다.',
-      'gcal.gisFailed': 'Google 로그인 스크립트를 불러오지 못했습니다(차단됐거나 오프라인).', 'gcal.expired': 'Google 로그인이 만료됐습니다. 지금 가져오기를 다시 누르세요.',
+      'gcal.gisFailed': 'Google 로그인 스크립트를 불러오지 못했습니다(차단됐거나 오프라인).', 'gcal.expired': 'Google 로그인이 만료됐습니다. 버튼을 다시 누르세요.', 'gcal.changed': '가져오는 동안 캘린더가 바뀌었습니다. 지금 가져오기를 다시 누르세요.',
       'gcal.forbidden': 'Google이 이 캘린더 접근을 거부했습니다.', 'gcal.notFound': '그 캘린더가 더 이상 없습니다. 다른 캘린더를 고르세요.',
       'gcal.quota': 'Google 요청 한도에 도달했습니다. 나중에 다시 시도하세요.', 'gcal.failed': '가져오지 못했습니다. 나중에 다시 시도하세요.',
       'pending.note': '이 페이지는 아직 클라우드에서 받는 중입니다', 'pending.edit': '그래도 쓰기',
@@ -1312,6 +1312,7 @@
       var target = Utils.$('page-' + page);
       if (target) target.classList.add('active');
       currentPage = page;
+      if (page === 'settings' && typeof GCal !== 'undefined') GCal.preload();
       Utils.$('tb-title').textContent = PAGE_TITLES[page] ? tx(PAGE_TITLES[page]) : page;
       if (Utils.$('tb-notebooks-btn')) Utils.$('tb-notebooks-btn').hidden = (page !== 'notes');
       if (Utils.$('tb-today-btn')) Utils.$('tb-today-btn').hidden = (page !== 'notes');
@@ -3958,6 +3959,7 @@
       document.querySelectorAll('.spanel').forEach(function (p) {
         p.hidden = (p.id !== 'spanel-' + name);
       });
+      if (name === 'integrations' && typeof GCal !== 'undefined') GCal.preload();
       try {
         localStorage.setItem(this.TAB_KEY, name);
       } catch (e) {
@@ -4604,7 +4606,7 @@
     var API = 'https://www.googleapis.com/calendar/v3';
     var DAYS = 14;                      // today + the next two weeks
     var token = null, tokenUntil = 0;   // memory only: never stored or synced
-    var tokenClient = null, gisLoading = null;
+    var tokenClient = null, gisLoading = null, tokenWait = null;
 
     // ---------- pure part (no network) ----------
 
@@ -4671,7 +4673,10 @@
       (events || []).forEach(function (ev) {
         if (!ev || !ev.id || ev.status === 'cancelled') return;
         var date = eventDate(ev);
-        if (!date) return;
+        // Google's timeMin filters on an event's END, so one that started before
+        // the window (yesterday, running into today) also comes back: leave it out
+        // (and unseen) instead of creating a task dated outside the window
+        if (!date || (opts.from && date < opts.from) || (opts.to && date > opts.to)) return;
         seen[ev.id] = true;
         var m = matchSubject(ev.summary || '', state.subjects, opts.subjectId);
         var title = m.title || opts.untitled || '(untitled)';
@@ -4735,43 +4740,73 @@
       return gisLoading;
     }
 
-    /** An access token, asking Google (a popup on the first use in a session). */
-    function getToken() {
-      if (token && Date.now() < tokenUntil) return Promise.resolve(token);
-      return loadGis().then(function () {
-        return new Promise(function (resolve, reject) {
-          tokenClient = window.google.accounts.oauth2.initTokenClient({
-            client_id: GOOGLE_CLIENT_ID,
-            scope: SCOPE,
-            callback: function (r) {
-              if (!r || r.error || !r.access_token) { reject(new Error('denied')); return; }
-              token = r.access_token;
-              tokenUntil = Date.now() + (Math.max(60, (r.expires_in || 3600) - 60) * 1000);
-              resolve(token);
-            },
-            error_callback: function () { reject(new Error('denied')); }
-          });
-          tokenClient.requestAccessToken({ prompt: '' });
-        });
+    function initClient() {
+      if (tokenClient) return;
+      tokenClient = window.google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: SCOPE,
+        callback: function (r) {
+          var w = tokenWait; tokenWait = null;
+          if (!w) return;
+          if (!r || r.error || !r.access_token) { w.reject(new Error('denied')); return; }
+          token = r.access_token;
+          tokenUntil = Date.now() + (Math.max(60, (r.expires_in || 3600) - 60) * 1000);
+          w.resolve(token);
+        },
+        error_callback: function () { var w = tokenWait; tokenWait = null; if (w) w.reject(new Error('denied')); }
       });
     }
 
+    /** Load Google's sign-in script ahead of the click (when the Integrations tab
+        is shown), so the popup opens inside the click itself: browsers block a
+        popup that comes after a slow script download. Only with a client ID. */
+    function preload() {
+      if (!GOOGLE_CLIENT_ID || tokenClient) return;
+      var card = Utils.$('gcal-card');
+      if (!card || !card.getClientRects().length) return;   // only once the card is on screen
+      loadGis().then(initClient).catch(function () { /* reported when the user presses connect/import */ });
+    }
+
+    /** An access token. Without one this asks Google (a popup on the first use in
+        a session) synchronously, so it must be called from the click handler's
+        own call stack - connect/importNow reach here without any await before it. */
+    function getToken() {
+      if (token && Date.now() < tokenUntil) return Promise.resolve(token);
+      function ask() {
+        initClient();
+        if (tokenWait) tokenWait.reject(new Error('denied'));   // an older unanswered popup
+        return new Promise(function (resolve, reject) {
+          tokenWait = { resolve: resolve, reject: reject };
+          tokenClient.requestAccessToken({ prompt: '' });
+        });
+      }
+      if (window.google && window.google.accounts && window.google.accounts.oauth2) return ask();
+      return loadGis().then(ask);   // not preloaded (e.g. very fast click): may still be inside the click's activation
+    }
+
+    var QUOTA_REASONS = /^(rateLimitExceeded|userRateLimitExceeded|quotaExceeded|dailyLimitExceeded)$/;
+
     /** GET from the Calendar API. The 15 s timeout starts after the sign-in
-        popup (which may take a while), and a 401 (token revoked or expired early)
-        gets one fresh token and one retry. */
-    function api(path, retried) {
+        popup (which may take a while). A 401 (token revoked or expired early)
+        drops the token and asks the user to press the button again - a new
+        popup outside a click would be blocked. A 403 is a quota error when
+        Google's reason says so, otherwise access was refused. */
+    function api(path) {
       if (!navigator.onLine) return Promise.reject(new Error('offline'));
       return getToken().then(function (tok) {
         var ctl = new AbortController();
         var timer = setTimeout(function () { ctl.abort(); }, 15000);
         return fetch(API + path, { headers: { Authorization: 'Bearer ' + tok }, signal: ctl.signal }).then(function (res) {
           clearTimeout(timer);
-          if (res.status === 401) {
-            token = null;
-            if (!retried) return api(path, true);
-            throw new Error('expired');
+          if (res.status === 401) { token = null; throw new Error('expired'); }
+          if (res.status === 403) {
+            return res.json().catch(function () { return null; }).then(function (body) {
+              var err = body && body.error || {};
+              var reasons = (err.errors || []).map(function (x) { return x && x.reason; });
+              if (err.details) err.details.forEach(function (d) { if (d && d.reason) reasons.push(d.reason.replace(/^RATE_LIMIT_EXCEEDED$/, 'rateLimitExceeded')); });
+              throw new Error(reasons.some(function (r) { return QUOTA_REASONS.test(r || ''); }) ? 'quota' : 'forbidden');
+            });
           }
-          if (res.status === 403) throw new Error('forbidden');
           if (res.status === 404) throw new Error('notfound');
           if (res.status === 429) throw new Error('quota');
           if (!res.ok) throw new Error('http ' + res.status);
@@ -4808,10 +4843,29 @@
       return page('');
     }
 
+    /** Every calendar the user can read, following nextPageToken. */
+    function fetchCalendars() {
+      var all = [];
+      function page(tokenParam) {
+        return api('/users/me/calendarList?minAccessRole=reader&maxResults=250' +
+          (tokenParam ? '&pageToken=' + encodeURIComponent(tokenParam) : '')).then(function (data) {
+          all = all.concat(data.items || []);
+          return data.nextPageToken ? page(data.nextPageToken) : all;
+        });
+      }
+      return page('');
+    }
+
+    // bumped by every connect/import: a result that arrives after a newer request
+    // started is dropped, so an older, slower request never applies last
+    var reqSeq = 0;
+
     function connect() {
+      var seq = ++reqSeq;
       setStatus('gcal.connecting');
-      api('/users/me/calendarList?minAccessRole=reader').then(function (data) {
-        var items = (data.items || []).map(function (c) { return { id: c.id, name: c.summaryOverride || c.summary || c.id, primary: !!c.primary }; });
+      fetchCalendars().then(function (list) {
+        if (seq !== reqSeq) return;
+        var items = list.map(function (c) { return { id: c.id, name: c.summaryOverride || c.summary || c.id, primary: !!c.primary }; });
         var g = AppState.settings.gcal;
         var pick = items.filter(function (c) { return c.id === g.calendarId; })[0] ||
           items.filter(function (c) { return /공부|study/i.test(c.name); })[0] ||
@@ -4820,23 +4874,30 @@
         if (pick) { g.calendarId = pick.id; g.calendarName = pick.name; Storage.scheduleSave(); }
         render();
         if (items.length) setStatus('gcal.connected'); else setStatus('gcal.noCalendars', null, true);
-      }).catch(showError);
+      }).catch(function (e) { if (seq === reqSeq) showError(e); });
     }
 
     function importNow() {
       var g = AppState.settings.gcal;
       if (!g.calendarId) { connect(); return; }
       var w = windowDates(new Date());
+      var calId = g.calendarId, seq = ++reqSeq;
       setStatus('gcal.importing');
-      fetchEvents(g.calendarId, w).then(function (events) {
+      fetchEvents(calId, w).then(function (events) {
+        if (seq !== reqSeq) return;   // a newer connect/import is under way: it reports
+        g = AppState.settings.gcal;   // a backup or a synced settings change may have replaced it
+        // the calendar changed while this was loading (chosen here, on another device,
+        // or by a backup): these events belong to the old one - merging them would
+        // label them as the new calendar's and remove its tasks
+        if (!g || g.calendarId !== calId) { setStatus('gcal.changed', null, true); return; }
         var signedIn = typeof Sync !== 'undefined' && Sync.isSignedIn && Sync.isSignedIn();
-        var r = merge(AppState, events, { calendarId: g.calendarId, subjectId: g.subjectId, from: w.from, to: w.to,
+        var r = merge(AppState, events, { calendarId: calId, subjectId: g.subjectId, from: w.from, to: w.to,
           uid: Utils.uid, untitled: tx('gcal.untitled'), now: signedIn ? Date.now() : 0 });
         g.lastImportAt = new Date().toISOString();
         Storage.scheduleSave();
         Schedule.renderTodayTasks(); Schedule.renderCalendar(); Schedule.renderManagerTaskList(); Stats.render();
         setStatus('gcal.done', { added: r.added, updated: r.updated, removed: r.removed });
-      }).catch(showError);
+      }).catch(function (e) { if (seq === reqSeq) showError(e); });
     }
 
     var calendars = null;   // the list from the last connect (this session)
@@ -4884,7 +4945,7 @@
       });
     }
 
-    return { setup: setup, render: render, merge: merge, matchSubject: matchSubject, eventDate: eventDate, windowDates: windowDates };
+    return { setup: setup, render: render, preload: preload, merge: merge, matchSubject: matchSubject, eventDate: eventDate, windowDates: windowDates };
   })();
 
   var Stats = {
