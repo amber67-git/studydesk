@@ -44,7 +44,7 @@
   var APP_HOME = 'https://amber-studydesk.netlify.app/';
   // Shown bottom-left in the sidebar. Bump both in the same PR that adds a
   // line to the guide's 변경 이력 (version = number of entries there).
-  var APP_VERSION = 'v16';
+  var APP_VERSION = 'v17';
   var APP_UPDATED = '2026-11-11';
 
   /* ===========================================================
@@ -145,6 +145,9 @@
       'lib.offline': 'you appear to be offline — connect and try again, or fill the form in by hand.',
       'lib.timeout': 'the search timed out. Check your connection, or enter the details manually.',
       'lib.quota': 'search limit reached for now. Wait a few minutes, or enter the details manually.',
+      'lib.quotaBooks': 'Google Books search limit reached. Try later, add a free Google Books key in Settings → Integrations, or enter the details manually.',
+      'lib.searching': 'searching…',
+      'lib.quotaBooksKey': 'your Google Books key has used up its quota. Try again later (the daily quota resets at midnight Pacific time), or enter the details manually.',
       'lib.authFail': 'the API key was rejected. Check it in Settings, or enter the details manually.',
       'lib.searchFailed': 'search failed. You can still fill the form in by hand.',
       'lib.noLookup': "automatic lookup isn't available for this type — fill the form in by hand.",
@@ -238,8 +241,9 @@
       'lists.stillUsed': '"{name}" is still used by library items. Rename it to merge it into another value.',
       'listedit.rename': 'Rename', 'listedit.name': 'Name', 'common.save': 'Save', 'common.add': 'Add', 'common.cancel': 'Cancel',
       'subjdel.title': 'Delete subject', 'subjdel.moveTo': 'Move them to', 'subjdel.confirm': 'move & delete',
-      'integ.title': 'auto-fill (optional)', 'integ.note': 'Film & TV search. Free key at themoviedb.org',
+      'integ.title': 'auto-fill (optional)', 'integ.note': 'Only film & TV need a key; books work without.',
       'integ.tmdbLabel': 'TMDB API key', 'integ.keyPh': 'paste your key (optional)',
+      'integ.gbooksLabel': 'Google Books API key', 'integ.gbooksPh': 'only if book search hits its limit',
       'guide.title': 'StudyDesk user guide'
     },
     ko: {
@@ -324,6 +328,9 @@
       'lib.offline': '오프라인인 것 같습니다. 연결 후 다시 시도하거나 직접 입력하세요.',
       'lib.timeout': '검색 시간이 초과됐습니다. 연결을 확인하거나 직접 입력하세요.',
       'lib.quota': '검색 한도에 도달했습니다. 몇 분 뒤 다시 시도하거나 직접 입력하세요.',
+      'lib.quotaBooks': 'Google Books 검색 한도에 도달했습니다. 나중에 다시 하거나, 설정 → 연동에 무료 Google Books 키를 넣거나, 직접 입력하세요.',
+      'lib.searching': '검색 중…',
+      'lib.quotaBooksKey': 'Google Books 키의 한도를 다 썼습니다. 나중에 다시 시도하거나(하루 한도는 미국 태평양 시간 자정에 초기화) 직접 입력하세요.',
       'lib.authFail': 'API 키가 거부됐습니다. 설정에서 키를 확인하거나 직접 입력하세요.',
       'lib.searchFailed': '검색에 실패했습니다. 직접 입력할 수 있습니다.',
       'lib.noLookup': '이 종류는 자동 검색을 지원하지 않습니다. 직접 입력하세요.',
@@ -414,8 +421,9 @@
       'lists.stillUsed': '"{name}"은(는) 아직 자료가 쓰고 있습니다. 이름을 바꾸어 다른 값과 합치세요.',
       'listedit.rename': '이름 바꾸기', 'listedit.name': '이름', 'common.save': '저장', 'common.add': '추가', 'common.cancel': '취소',
       'subjdel.title': '과목 삭제', 'subjdel.moveTo': '옮길 과목', 'subjdel.confirm': '옮기고 삭제',
-      'integ.title': '자동 채우기 (선택)', 'integ.note': '영화 & TV 검색용. themoviedb.org에서 무료 키 발급',
+      'integ.title': '자동 채우기 (선택)', 'integ.note': '키는 영화·TV만 필요합니다. 책은 없어도 됩니다.',
       'integ.tmdbLabel': 'TMDB API 키', 'integ.keyPh': '키 붙여넣기 (선택)',
+      'integ.gbooksLabel': 'Google Books API 키', 'integ.gbooksPh': '책 검색이 한도에 걸릴 때만',
       'guide.title': 'StudyDesk 사용 설명서'
     }
   };
@@ -1128,6 +1136,7 @@
       var days = parseInt(s.backupReminderDays, 10);
       s.backupReminderDays = isNaN(days) ? 7 : days;
       if (typeof s.tmdbKey !== 'string') s.tmdbKey = '';
+      if (typeof s.googleBooksKey !== 'string') s.googleBooksKey = '';
       if (s.lang !== 'ko' && s.lang !== 'en') s.lang = I18n.detect();   // first run: browser language
       // Settings → Lists: library category / genre values the user added
       // themselves, kept so they stay in the dropdowns before any item uses them.
@@ -2928,8 +2937,14 @@
 
     /* Shared lookup wrapper: offline check, hard 15s timeout, and quota/auth
        errors translated into actionable words. A failed lookup never blocks
-       manual entry - the form stays editable throughout. */
-    function fetchJson(url, cb) {
+       manual entry - the form stays editable throughout.
+       opts.quotaMsg: message for a quota error (default lib.quota);
+       opts.badRequestIsAuth: a 400 means a rejected key (Google answers an
+       invalid key with 400, not 401/403);
+       opts.forbiddenIsQuota: with no key of ours, a 403 is Google's anonymous
+       daily limit, not a rejected key. */
+    function fetchJson(url, cb, opts) {
+      opts = opts || {};
       if (!navigator.onLine) {
         setStatus(tx('lib.offline'), true);
         return;
@@ -2942,6 +2957,8 @@
         .then(function (res) {
           clearTimeout(timer);
           if (res.status === 429) throw new Error('quota');
+          if (res.status === 403 && opts.forbiddenIsQuota) throw new Error('quota');
+          if (res.status === 400 && opts.badRequestIsAuth) throw new Error('auth');
           if (res.status === 401 || res.status === 403) throw new Error('auth');
           if (!res.ok) throw new Error('http ' + res.status);
           return res.json();
@@ -2952,7 +2969,7 @@
           if (e.name === 'AbortError') {
             setStatus(tx('lib.timeout'), true);
           } else if (e.message === 'quota') {
-            setStatus(tx('lib.quota'), true);
+            setStatus(opts.quotaMsg ? opts.quotaMsg() : tx('lib.quota'), true);
           } else if (e.message === 'auth') {
             setStatus(tx('lib.authFail'), true);
           } else {
@@ -2966,7 +2983,7 @@
       if (!q) return;
       var type = Utils.$('lib-type').value;
       Utils.$('lib-results').innerHTML = '';
-      setStatus('searching\u2026');
+      setStatus(tx('lib.searching'));
 
       if (type === 'book') return searchBooks(q);
       if (type === 'movie' || type === 'series') return searchTmdb(q, type);
@@ -3024,7 +3041,14 @@
     }
 
     function searchBooks(q) {
-      var url = 'https://www.googleapis.com/books/v1/volumes?q=intitle:' + encodeURIComponent(q) + '&maxResults=8';
+      // optional key (Settings → Integrations): only needed when the shared
+      // anonymous quota runs out ("search limit reached")
+      var key = (AppState.settings.googleBooksKey || '').trim();
+      var url = 'https://www.googleapis.com/books/v1/volumes?q=intitle:' + encodeURIComponent(q) + '&maxResults=8' +
+        (key ? '&key=' + encodeURIComponent(key) : '');
+      // with a key, a 429 is that key's own quota (per minute or per day), not the shared one
+      var opts = key ? { badRequestIsAuth: true, quotaMsg: function () { return tx('lib.quotaBooksKey'); } }
+                     : { quotaMsg: function () { return tx('lib.quotaBooks'); }, forbiddenIsQuota: true };
       fetchJson(url, function (data) {
         var rows = (data.items || []).map(function (it) {
           var v = it.volumeInfo || {};
@@ -3042,7 +3066,7 @@
           };
         });
         renderResults(rows);
-      });
+      }, opts);
     }
 
     function searchTmdb(q, type) {
@@ -3964,6 +3988,18 @@
       return I18n.tn('banner.lastBackup', elapsedDays);
     },
 
+    /** Show the saved auto-fill keys. Called on every render, so a key that
+        arrives with a backup import or a cloud settings change shows up too;
+        a field the user is typing in (focused) is left alone, and catches up
+        on blur (see setup: an edit has already been saved by 'change', which
+        fires before 'blur', so the refresh never drops what was typed). */
+    refreshKeyInputs: function () {
+      [['tmdb-key-input', 'tmdbKey'], ['gbooks-key-input', 'googleBooksKey']].forEach(function (pair) {
+        var el = Utils.$(pair[0]);
+        if (el && document.activeElement !== el) el.value = AppState.settings[pair[1]] || '';
+      });
+    },
+
     applyFontSize: function () {
       document.documentElement.style.setProperty('--note-font-size',
         AppState.settings.noteFontSize + 'px');
@@ -4059,10 +4095,19 @@
 
       // ------ optional TMDB key for Library film & TV auto-fill ------
       var tmdbInput = Utils.$('tmdb-key-input');
-      tmdbInput.value = AppState.settings.tmdbKey || '';
       tmdbInput.addEventListener('change', function () {
         AppState.settings.tmdbKey = this.value.trim();
         Storage.scheduleSave();
+      });
+      // ------ optional Google Books key (only when the anonymous quota runs out) ------
+      var gbInput = Utils.$('gbooks-key-input');
+      gbInput.addEventListener('change', function () {
+        AppState.settings.googleBooksKey = this.value.trim();
+        Storage.scheduleSave();
+      });
+      // a key synced in while the field had focus was skipped: show it on leaving
+      [tmdbInput, gbInput].forEach(function (el) {
+        el.addEventListener('blur', function () { Settings.refreshKeyInputs(); });
       });
 
       // ------ backup: export ------
@@ -5195,6 +5240,7 @@
       if (I18n.syncLanguage()) { Nav.refreshTitle(); if (Sync.refreshStatus) Sync.refreshStatus(); }
       Settings.applyFontMode();
       Settings.applyFontSize();
+      Settings.refreshKeyInputs();
       Nav.renderHeaderDate();
       Subjects.renderSelects();
       NotesModule.renderList();

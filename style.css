@@ -455,6 +455,11 @@ textarea#summary:focus-visible{box-shadow:inset 0 0 0 2px var(--bdr2)}
 .backup-status{font-family:var(--sans);font-size:12px;color:var(--txt3);margin:8px 0 0;min-height:15px}
 .backup-reminder-row{display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap}
 .backup-reminder-row select{width:auto;min-width:140px}
+/* Integrations: label | key input, labels in one fixed column so the inputs line up */
+.integ-row{display:grid;grid-template-columns:170px minmax(0,1fr);gap:6px 10px;align-items:center;margin-top:12px}
+.integ-row label{font-family:var(--sans);font-size:13px;color:var(--txt2)}
+#spanel-integrations .cb{container-type:inline-size}
+@container (max-width:460px){.integ-row{grid-template-columns:minmax(0,1fr)}.integ-row input{margin-bottom:6px}}
 
 /* backup reminder banner (under the topbar, all pages) */
 /* Banners (address move, backup reminder) dock at the bottom of the viewport

@@ -9,6 +9,8 @@ const T = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text
 let fails = 0; const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); if (!c) fails++; };
 const SCR = process.env.SCREENS || os.tmpdir();   // screenshots, never inside the repo
 // proper nouns / acronyms / data-like tokens allowed in Korean mode
+// product names kept in English as a whole (the single words are not allowed on their own)
+const ALLOW_PHRASES = /Google Books/g;
 const ALLOW = new Set(['studydesk', 'google', 'tmdb', 'api', 'isbn', 'doi', 'url', 'cue', 'main', 'notes', 'summary', 'pg', 'mb', 'kb', 'tv', 'ctrl', 'json', 'firebase', 'firestore', 'netlify', 'english', 'themoviedb', 'org', 'https', 'chrome', 'android', 'ios', 'pc', 'px', 'ok', 'esc', 'www', 'com', 'http', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']);
 // containers that hold user data (sample notes are English content): not scanned
 const DATA = '#note-list, #today-task-list, #lib-grid, #cal-grid, #card-grid, #notes-body, #cues, #summary, #day-events-list, #page-list-body, #recurring-list, #manager-task-list, #lib-results, #study-card, #sb-foot-ver, #header-date, #today-date-label, #cal-month-label, .guide-body, select, #note-title, #note-chapter, #note-tags, #lists-subjects, #lists-categories, #lists-genres, #lib-search-input, #sync-status, #storage-usage, #subject-delete-target, #subject-delete-text, #lib-notebook-link';
@@ -49,7 +51,7 @@ async function run(lang, browserLang) {
     const bad = [];
     for (const { t, where } of r) {
       if (lang === 'ko') {
-        const words = (t.match(/[A-Za-z]{2,}/g) || []).filter(w => !ALLOW.has(w.toLowerCase()));
+        const words = (t.replace(ALLOW_PHRASES, ' ').match(/[A-Za-z]{2,}/g) || []).filter(w => !ALLOW.has(w.toLowerCase()));
         if (words.length) bad.push(where + ': ' + t);
       } else if (/[가-힣]/.test(t)) bad.push(where + ': ' + t);
     }

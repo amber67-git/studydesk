@@ -27,7 +27,7 @@
   - card: `{ id, front, back, subjectId }`
   - library item: `{ id, title, author, illustrator, publisher, isbn, coverUrl, coverRotation(0|90|180|270), type, category, genre, callNo, levelInput, status, progress(0-100), rating(0-5), notes, noteId, createdAt, updatedAt }`
     — type ∈ book|movie|series|lecture|video|paper|article|music|other, status ∈ want|in progress|done
-  - settings: `{ fontMode('hand'|'clean'), noteFontSize(13-22), backupReminderDays, lastBackupAt, tmdbKey, customCategories[], customGenres[], lang('en'|'ko') }` — `customCategories`·`customGenres`는 Settings → Lists에서 사용자가 직접 추가한 Library 카테고리·장르(자료에 쓰이기 전에도 드롭다운에 보이게)로, `applySettingDefaults`가 없으면 `[]`로 채운다(시드 직후에도 호출). `lang`은 없으면 `I18n.detect()`(브라우저 언어) 값으로 채우고, 읽을 때도 없으면 같은 규칙을 쓴다(옛 백업·옛 기기의 설정이 영어로 바꿔 버리지 않게).
+  - settings: `{ fontMode('hand'|'clean'), noteFontSize(13-22), backupReminderDays, lastBackupAt, tmdbKey, googleBooksKey, customCategories[], customGenres[], lang('en'|'ko') }` — `customCategories`·`customGenres`는 Settings → Lists에서 사용자가 직접 추가한 Library 카테고리·장르(자료에 쓰이기 전에도 드롭다운에 보이게)로, `applySettingDefaults`가 없으면 `[]`로 채운다(시드 직후에도 호출). `lang`은 없으면 `I18n.detect()`(브라우저 언어) 값으로 채우고, 읽을 때도 없으면 같은 규칙을 쓴다(옛 백업·옛 기기의 설정이 영어로 바꿔 버리지 않게).
   - 이 브라우저의 데이터가 마지막으로 동기화된 계정 uid는 `study-notes-app-chalkboard-v2:sync-uid`(별도 localStorage 키)에 둔다. 다른 uid로 로그인하면 로컬에 내용이 있을 때 confirm으로 묻고(확인=서버에서 실제로 내려받은 뒤 설정까지 포함해 로컬 폐기, 취소=로그아웃) 두 계정의 데이터가 섞여 올라가는 것을 막는다. 내려받는 동안 편집이 있었으면 한 번 더 묻는다. 첫 다운로드는 `get({source:'server'})`라 오프라인 캐시로는 절대 로컬을 대체하지 않는다. clear all data가 이 키도 지운다.
   - 로그아웃 시 이 기기가 갖고 있던 문서 id 목록을 `study-notes-app-chalkboard-v2:sync-known`(`{uid, at, ids}`)에 적어 둔다. 같은 계정으로 다시 로그인하면 "그때 이미 있었고 그 뒤 클라우드에서 바뀌지 않은 문서"는 로컬이 더 최신으로 보고 내려받지 않는다(로그아웃 중 지운 노트가 되살아나지 않고 톰스톤으로 전파됨). 병합 후 키 삭제, clear all data도 삭제.
   - 동기화가 켜진 뒤 바뀐 항목에는 `syncAt`(ms)이 추가로 붙는다(note/page/subject/task/card/library item/settings). 추가 필드일 뿐이라 옛 백업 파일과 호환된다. **library item의 `updatedAt`(ISO 문자열)과는 별개 필드**다(라이브러리 정렬이 `localeCompare`를 쓰므로 숫자를 넣으면 깨진다). 아직 받지 못한 클라우드 페이지의 자리표시 페이지는 `placeholder: true`로 표시되며 비어 있는 동안 업로드되지 않는다.
@@ -77,7 +77,7 @@ Icons(인라인 SVG, CDN 금지 — 아이콘 폰트 차단으로 빈 네모 버
 - **백업 import와의 관계**: import로 바뀐 내용도 diff를 통해 그대로 클라우드에 반영된다(없어진 id는 톰스톤). 즉 백업 복원은 모든 기기에 전파된다.
 - **검증**: `SyncCore`는 window에 노출돼 Node 시뮬레이션(scratch의 sync-core.test.js)으로 diff/merge/톰스톤/용량 케이스를 돌린다. 실제 Firebase 왕복은 콘솔 프로젝트가 있는 기기에서 수동 확인.
 
-외부 API (Library 자동채우기): Google Books(키 불필요, intitle:), MusicBrainz, Crossref, TMDB(선택 — settings.tmdbKey, 없으면 영화 검색만 비활성·수동입력 가능). 모든 fetch: navigator.onLine 체크 + AbortController 15초 + 429/401·403 친절 메시지.
+외부 API (Library 자동채우기): Google Books(intitle:, 키 선택 — settings.googleBooksKey가 있으면 `&key=`. 키가 없을 때 429·403은 공용 익명 한도라 "설정 → 연동에 키를 넣으라"는 `lib.quotaBooks`, 키가 있을 때 400(구글은 잘못된 키에 400을 준다)·401·403은 `lib.authFail`, 429는 그 키 자신의 한도라 `lib.quotaBooksKey`(하루 한도는 태평양 시간 자정 초기화). 키 입력칸은 `Settings.refreshKeyInputs()`가 renderAll마다(포커스 중인 칸 제외)·blur 때 저장값으로 다시 채운다(백업·동기화로 바뀐 키가 보이게, 입력 중인 값은 change가 blur보다 먼저 저장). `fetchJson(url, cb, opts)`의 `quotaMsg`/`badRequestIsAuth`/`forbiddenIsQuota`), MusicBrainz, Crossref, TMDB(선택 — settings.tmdbKey, 없으면 영화 검색만 비활성·수동입력 가능). 모든 fetch: navigator.onLine 체크 + AbortController 15초 + 429/401·403 친절 메시지.
 
 ## 검증 워크플로우 (변경마다 돌리던 것 — 유지 권장)
 1. `node -c app.js` (문법)
@@ -97,7 +97,7 @@ Icons(인라인 SVG, CDN 금지 — 아이콘 폰트 차단으로 빈 네모 버
 
 ## 미해결 과제 (우선순위순)
 1. **모바일 폰트 불일치 (해결, Android에서 확인)** — PC와 폰에서 글씨체가 다르게 보이던 문제. 원인으로 확인된 것: 글꼴 스택의 마지막이 generic `cursive`였고, 웹폰트가 실패하면 Android는 Dancing Script, iOS는 Snell Roundhand를 골라 기기마다 다른 글씨가 됐다. 조치: 라틴 폰트 자체 호스팅(`fonts/`) + 스택 끝을 시스템 한글 고딕 → `sans-serif`로 교체(위 배포 산출물 참조). 남은 확인: 폰에서 실제로 같은 글꼴이 나오는지 사용자 확인. 여전히 다르면 "폰에서 어떻게 열었는지(파일 직접 / 서버) / 손글씨가 아예 안 나오는지 vs 다른 손글씨인지"를 받아 진단.
-2. **Google Books API 키 입력란 (선택)** — 429 "search limit reached" 재발 시 추가. TMDB 키 입력란(Settings → auto-fill)과 동일 패턴, 키 있으면 `&key=` 붙이기. 무료 1,000회/일.
+2. **Google Books API 키 입력란 (완료, 2026-11-11, v17)** — Settings → Integrations의 auto-fill 카드에 TMDB 키 아래 `#gbooks-key-input`(`.integ-row` 그리드로 라벨 칸 고정, 좁으면 한 줄씩). 키 받는 법·제한 권장은 설명서 FAQ. 무료 1,000회/일.
 3. **배포 + PWA 설치 (완료, 2026-11-04 주소 이사)** — https://amber-studydesk.netlify.app/ (Netlify). 옛 GitHub Pages 주소는 이사 안내만(위 배포 산출물 참조). 홈 화면 설치·오프라인 동작. 데이터는 여전히 기기별(5번에서 해결). 설명서에 설치 방법과 "주소 이사" 섹션 있음.
 4. **구글 캘린더 단방향 가져오기** — 설계 합의됨: 전용 "공부" 캘린더 구독 방식, OAuth 클라이언트 필요, localhost에서 동작. 가져온 일정→subject 매핑 규칙 필요.
 5. **기기 간 실시간 동기화 (구현 완료, Firebase 설정 대기)** — 위 '동기화' 절 참조. 남은 일: 소유자가 Firebase 프로젝트(studydesk 전용, ClassDesk와 별개)를 만들고 웹 설정을 `FIREBASE_CONFIG`에 넣기, `firestore.rules` 게시, Authentication에 Google 로그인과 승인 도메인(**amber-studydesk.netlify.app**. 옛 주소에서는 로그인을 지원하지 않아도 된다) 등록, 로그인 1회 후 신규 가입 차단. ※ ClassDesk(학생 관리)와 이 앱은 다른 프로젝트 — 혼동 주의.

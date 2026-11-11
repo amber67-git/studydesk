@@ -467,10 +467,12 @@ Write the main idea in your own words." data-i18n-placeholder="cornell.summaryPh
         <div class="card">
           <div class="ch"><div class="ct"><span class="icon" data-icon="external-link" aria-hidden="true"></span>auto-fill (optional)</div></div>
           <div class="cb p">
-            <p class="card-note">Film &amp; TV search. Free key at themoviedb.org</p>
-            <div class="backup-reminder-row">
-              <label for="tmdb-key-input" style="font-family:var(--sans);font-size:13px;color:var(--txt2);">TMDB API key</label>
-              <input type="text" id="tmdb-key-input" placeholder="paste your key (optional)" style="flex:1;min-width:200px;" autocomplete="off" />
+            <p class="card-note">Only film &amp; TV need a key; books work without.</p>
+            <div class="integ-row">
+              <label for="tmdb-key-input">TMDB API key</label>
+              <input type="text" id="tmdb-key-input" placeholder="paste your key (optional)" autocomplete="off" />
+              <label for="gbooks-key-input">Google Books API key</label>
+              <input type="text" id="gbooks-key-input" placeholder="only if book search hits its limit" autocomplete="off" />
             </div>
           </div>
         </div>
@@ -546,7 +548,7 @@ Write the main idea in your own words." data-i18n-placeholder="cornell.summaryPh
                 <h3>자료실 사용하기</h3>
                 <p>공부에 쓰는 모든 자료를 한 곳에서 관리합니다. 노트북과는 별개의 목록이므로, 노트를 쓰지 않은 자료도 자유롭게 등록할 수 있습니다. 등록 흐름은 "검색 한 번, 나머지는 확인만" 입니다 — 맨 위 검색창에 제목을 넣고 결과를 클릭하면 아래 필드가 자동으로 채워집니다.</p>
                 <ul>
-                  <li><b>자동 채우기</b> — 유형을 고르고 제목을 검색하면 저자·출판사·표지 등이 채워집니다. 책(Google Books)·음악(MusicBrainz)·논문(Crossref)은 바로 되고, 영화/TV는 무료 TMDB 키를 <b>설정 → 연동 → 자동 채우기</b>에 넣으면 켜집니다(선택사항). 직접 입력한 칸은 자동 채우기가 <b>절대 덮어쓰지 않습니다.</b></li>
+                  <li><b>자동 채우기</b> — 유형을 고르고 제목을 검색하면 저자·출판사·표지 등이 채워집니다. 책(Google Books)·음악(MusicBrainz)·논문(Crossref)은 바로 되고, 영화/TV는 무료 TMDB 키를 <b>설정 → 연동 → 자동 채우기</b>에 넣으면 켜집니다(선택사항). 책 검색이 "Google Books 검색 한도에 도달했습니다"로 자주 막히면 같은 곳에 무료 <b>Google Books API 키</b>를 넣으세요(아래 FAQ). 직접 입력한 칸은 자동 채우기가 <b>절대 덮어쓰지 않습니다.</b></li>
                   <li><b>표지</b> — 표지 박스 하나가 전부입니다: 클릭하면 파일 선택, 이미지를 끌어다 놓거나, 복사한 이미지를 모달 안에서 Ctrl+V 하면 바로 들어갑니다(자동 압축). 박스 아래 <b>↻ 90°</b>로 회전, <b>구글 이미지에서 표지 찾기</b>로 표지를 찾을 수 있습니다.</li>
                   <li><b>카테고리와 장르</b> — 카테고리는 자료의 <b>형태</b>(Novel, Documentary, Online Course...), 장르는 <b>주제</b>(Economics, History...)입니다. 같은 저자·시리즈("Write Right 2 - Beginner"와 "Write Right 3"도 같은 시리즈로 인식)의 자료를 추가하면 이전 분류·출판사를 빈 칸에 자동으로 이어받습니다. 드롭다운에 없는 값은 맨 아래 <b>+ 직접 입력…</b>으로 그 자리에서 추가하고, 목록 정리(추가·이름 변경·합치기)는 <b>설정 → 목록</b>에서 합니다.</li>
                   <li><b>상태와 진행률</b> — 등록할 때는 핵심 정보만 입력하고, 상태(예정 / 진행 중 / 완료)·진행률·별점·청구기호는 <b>편집(연필 버튼)</b>에서 관리합니다. 진행 중인 자료는 카드에 진행률 막대가 표시됩니다.</li>
@@ -641,6 +643,8 @@ Write the main idea in your own words." data-i18n-placeholder="cornell.summaryPh
                   <dd>영화/TV 자동 채우기만 무료 TMDB 키가 필요합니다(책·음악·논문은 키 없이 동작). themoviedb.org에서 가입 후 설정의 API 메뉴에서 키를 발급받아 <b>설정 → 연동 → 자동 채우기</b>에 붙여넣으면 됩니다. "API 키가 거부됐습니다" 메시지가 나오면 키를 잘못 붙여넣었는지 확인하세요. 키 없이도 모든 정보를 직접 입력할 수 있습니다.</dd>
                   <dt>자료실 검색이 계속 실패해요.</dt>
                   <dd>인터넷 연결을 먼저 확인하세요. 오프라인이거나 응답이 15초를 넘으면 검색이 중단되고 안내가 표시됩니다. 짧은 시간에 여러 번 검색하면 "검색 한도에 도달했습니다" 가 뜰 수 있으며 몇 분 뒤 다시 시도하면 됩니다. 검색이 안 되어도 모든 항목은 직접 입력으로 등록할 수 있습니다.</dd>
+                  <dt>책 검색에 "Google Books 검색 한도에 도달했습니다" 라고 떠요.</dt>
+                  <dd>키 없는 Google Books 검색은 여러 사용자가 한도를 나눠 써서 자주 막힐 수 있습니다. 내 키를 넣으면 하루 1,000회까지 무료로 따로 씁니다. 받는 법: console.cloud.google.com에서 프로젝트를 만들고 → <b>Books API</b>를 사용 설정 → 사용자 인증 정보에서 <b>API 키</b> 만들기 → <b>설정 → 연동 → 자동 채우기</b>의 Google Books API 키 칸에 붙여넣기. 키 설정에서 웹사이트를 amber-studydesk.netlify.app으로, API를 Books API로 제한해 두면 안전합니다. "API 키가 거부됐습니다"가 뜨면 키를 잘못 붙여넣었거나 Books API를 켜지 않은 것입니다. "Google Books 키의 한도를 다 썼습니다"는 내 키의 하루 한도를 다 쓴 것으로, 미국 태평양 시간 자정(한국 시간 오후 4~5시)에 초기화됩니다. 키는 이 기기와 백업 파일(동기화를 켜면 내 클라우드)에 저장되므로 백업 파일은 남에게 주지 마세요.</dd>
                 </dl>
                 <p><b>편집</b></p>
                 <dl>
@@ -655,6 +659,7 @@ Write the main idea in your own words." data-i18n-placeholder="cornell.summaryPh
                 <h3>변경 이력</h3>
                 <p>사용자가 체감하는 주요 변경만 적습니다. 최신이 위입니다. 사이드바 왼쪽 아래의 <b>버전 번호</b>는 이 목록의 항목 수이고, 옆의 날짜가 마지막 갱신일입니다.</p>
                 <ul>
+                  <li><b>2026-11-11</b> — <b>Google Books 키</b>: 책 검색이 한도에 걸릴 때 설정 → 연동에 내 Google Books API 키를 넣을 수 있고, 한도 안내가 그 방법을 알려 줍니다. "검색 중…" 문구도 한국어로 나옵니다.</li>
                   <li><b>2026-11-11</b> — <b>요약 없는 페이지 표시</b>: 페이지 목록(N / M)에서 내용은 있는데 SUMMARY가 빈 페이지에 "요약 없음"이 붙고, "이것만 보기"로 그 페이지들만 볼 수 있습니다.</li>
                   <li><b>2026-11-11</b> — <b>오늘 할 공부 → 종이로 한 번에</b>: 일정의 노트 열기가 그 노트북의 오늘 페이지(없으면 마지막 페이지 뒤 새 페이지)를 열고, 폰 상단에 남은 오늘 일정 수(<b>오늘 N개</b>)가 보이며 누르면 목록으로 갑니다.</li>
                   <li><b>2026-11-10</b> — <b>쓰는 중에 손이 덜 가게</b>: 이어지는 새 페이지가 앞 페이지의 챕터·태그를 물려받고, 폰 서식 도구줄은 자주 쓰는 네 개만 한 줄로 두고 ⋯으로 나머지를 펼치며, 종이 하단 바(◀ 쪽수 ▶ · 저장)가 화면 아래에 붙어 키보드가 떠 있어도 바로 넘길 수 있습니다.</li>
@@ -741,7 +746,7 @@ Write the main idea in your own words." data-i18n-placeholder="cornell.summaryPh
                 <h3>Using the Library</h3>
                 <p>Keep everything you study from in one place. It is separate from the notebooks, so you can register material you never take notes on. The flow is "search once, then just confirm": type a title in the search box at the top, click a result, and the fields below fill themselves in.</p>
                 <ul>
-                  <li><b>Auto-fill</b> — choose a type and search a title to fill in author, publisher, cover and so on. Books (Google Books), music (MusicBrainz) and papers (Crossref) work out of the box; films and TV switch on when you add a free TMDB key under <b>Settings → Integrations → auto-fill</b> (optional). Fields you typed yourself are <b>never overwritten</b> by auto-fill.</li>
+                  <li><b>Auto-fill</b> — choose a type and search a title to fill in author, publisher, cover and so on. Books (Google Books), music (MusicBrainz) and papers (Crossref) work out of the box; films and TV switch on when you add a free TMDB key under <b>Settings → Integrations → auto-fill</b> (optional). If book search keeps stopping at "Google Books search limit reached", add a free <b>Google Books API key</b> in the same place (see the FAQ). Fields you typed yourself are <b>never overwritten</b> by auto-fill.</li>
                   <li><b>Cover</b> — the cover box does everything: click to pick a file, drop an image onto it, or paste a copied image with Ctrl+V inside the dialog (compressed automatically). Below it, <b>↻ 90°</b> rotates and <b>search google images</b> finds a cover.</li>
                   <li><b>Category and Genre</b> — Category is the <b>form</b> of an item (Novel, Documentary, Online Course…), Genre is its <b>subject</b> (Economics, History…). Items of the same author or series ("Write Right 2 - Beginner" and "Write Right 3" count as one series) inherit the earlier classification and publisher into empty fields. A value missing from the dropdown can be added on the spot with <b>+ Custom…</b> at the bottom; tidying the lists (add, rename, merge) happens under <b>Settings → Lists</b>.</li>
                   <li><b>Status and progress</b> — enter only the essentials when adding; status (want / in progress / done), progress, rating and call number are managed in <b>edit (the pencil button)</b>. Items in progress show a progress bar on their card.</li>
@@ -836,6 +841,8 @@ Write the main idea in your own words." data-i18n-placeholder="cornell.summaryPh
                   <dd>Only film and TV auto-fill needs a free TMDB key (books, music and papers work without one). Sign up at themoviedb.org, get a key from the API section of the settings there, and paste it under <b>Settings → Integrations → auto-fill</b>. "the API key was rejected" means the key was pasted wrongly. Everything can also be typed in by hand without a key.</dd>
                   <dt>Library search keeps failing.</dt>
                   <dd>Check the internet connection first. Offline, or when a response takes more than 15 seconds, the search stops and says so. Many searches in a short time can show "search limit reached"; try again a few minutes later. Every item can be registered by hand even when search fails.</dd>
+                  <dt>Book search says "Google Books search limit reached".</dt>
+                  <dd>Google Books without a key shares its limit among many users, so it can run out often. With your own key you get 1,000 free searches a day to yourself. To get one: create a project at console.cloud.google.com → enable the <b>Books API</b> → under Credentials, create an <b>API key</b> → paste it into the Google Books API key field under <b>Settings → Integrations → auto-fill</b>. Restricting the key to the website amber-studydesk.netlify.app and to the Books API keeps it safe. "the API key was rejected" means the key was pasted wrongly or the Books API is not enabled. "your Google Books key has used up its quota" means your key's daily quota is spent; it resets at midnight Pacific time. The key is stored on this device and in backup files (and in your cloud when sync is on), so do not hand backup files to others.</dd>
                 </dl>
                 <p><b>Editing</b></p>
                 <dl>
@@ -850,6 +857,7 @@ Write the main idea in your own words." data-i18n-placeholder="cornell.summaryPh
                 <h3>Change log</h3>
                 <p>Only changes you can notice are listed, newest first. The <b>version number</b> at the bottom left of the sidebar is the number of entries here, and the date next to it is the last update.</p>
                 <ul>
+                  <li><b>2026-11-11</b> — <b>Google Books key</b>: when book search hits its limit, your own Google Books API key can be added under Settings → Integrations, and the limit message says how.</li>
                   <li><b>2026-11-11</b> — <b>Pages without a summary are marked</b>: in the page list (N / M), pages with notes but an empty SUMMARY are tagged "no summary", and "only these" shows just those.</li>
                   <li><b>2026-11-11</b> — <b>From today's task to the paper in one tap</b>: go to note opens today's page of that notebook (a new page after the last one if needed), and on phones the top bar shows how many of today's tasks are left (<b>today N</b>); tapping it goes to the list.</li>
                   <li><b>2026-11-10</b> — <b>Fewer hands while writing</b>: a page that continues the previous one inherits its chapter and tags, the phone toolbar keeps the frequent four buttons in one row with ⋯ for the rest, and the bar under the paper (◀ page ▶ · save) sticks to the bottom of the screen so you can turn pages while the keyboard is up.</li>
