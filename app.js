@@ -31,6 +31,13 @@
      (window.STUDYDESK_FIREBASE_CONFIG lets a test page inject one.) */
   var FIREBASE_CONFIG = (typeof window !== 'undefined' && window.STUDYDESK_FIREBASE_CONFIG) || null;
 
+  /* Google Calendar import (Settings → Integrations): the OAuth client ID of a
+     Google Cloud project with the Calendar API enabled and this site listed as
+     an authorized JavaScript origin. Like the Firebase config it is not a secret.
+     null = the calendar card says it is not set up and nothing is loaded.
+     (window.STUDYDESK_GOOGLE_CLIENT_ID lets a test page inject one.) */
+  var GOOGLE_CLIENT_ID = (typeof window !== 'undefined' && window.STUDYDESK_GOOGLE_CLIENT_ID) || null;
+
   /* Where the app lives. Since 2026-11-04 StudyDesk has its own origin on
      Netlify. The old GitHub Pages address shares amber67-git.github.io with
      ClassDesk and the owner's other apps, and current Android Chrome installs
@@ -44,7 +51,7 @@
   var APP_HOME = 'https://amber-studydesk.netlify.app/';
   // Shown bottom-left in the sidebar. Bump both in the same PR that adds a
   // line to the guide's 변경 이력 (version = number of entries there).
-  var APP_VERSION = 'v18';
+  var APP_VERSION = 'v19';
   var APP_UPDATED = '2026-11-11';
 
   /* ===========================================================
@@ -148,6 +155,18 @@
       'lib.quotaBooks': 'Google Books search limit reached. Try later, add a free Google Books key in Settings → Integrations, or enter the details manually.',
       'lib.searching': 'searching…',
       'lib.quotaBooksKey': 'your Google Books key has used up its quota. Try again later (the daily quota resets at midnight Pacific time), or enter the details manually.',
+      'gcal.title': 'google calendar', 'gcal.note': 'Brings the next two weeks into today\'s list.',
+      'gcal.calendarLabel': 'which calendar', 'gcal.subjectLabel': 'default subject',
+      'gcal.connect': 'connect Google Calendar', 'gcal.import': 'import now', 'gcal.change': 'choose calendar',
+      'gcal.unconfigured': 'calendar import is not set up yet: this build has no Google client ID.',
+      'gcal.connecting': 'connecting to Google…', 'gcal.connected': 'connected. Check the calendar, then import.',
+      'gcal.noCalendars': 'no calendars found in this Google account.', 'gcal.importing': 'importing…',
+      'gcal.done': 'imported: {added} new, {updated} updated, {removed} removed.', 'gcal.last': 'last import: {when}',
+      'gcal.untitled': '(untitled)', 'gcal.offline': 'you appear to be offline. Connect and try again.',
+      'gcal.timeout': 'Google did not answer in time. Try again.', 'gcal.denied': 'sign-in was cancelled or access was not allowed.',
+      'gcal.gisFailed': 'the Google sign-in script could not load (blocked or offline).', 'gcal.expired': 'Google sign-in expired. Press import again.',
+      'gcal.forbidden': 'Google refused access to this calendar.', 'gcal.notFound': 'that calendar no longer exists. Choose another one.',
+      'gcal.quota': 'Google\'s request limit was reached. Try again later.', 'gcal.failed': 'import failed. Try again later.',
       'pending.note': 'this page is still downloading from the cloud', 'pending.edit': 'edit anyway',
       'pending.confirm': 'Write on this page before it arrives? What you write here will replace the version from your other device.',
       'lib.authFail': 'the API key was rejected. Check it in Settings, or enter the details manually.',
@@ -333,6 +352,18 @@
       'lib.quotaBooks': 'Google Books 검색 한도에 도달했습니다. 나중에 다시 하거나, 설정 → 연동에 무료 Google Books 키를 넣거나, 직접 입력하세요.',
       'lib.searching': '검색 중…',
       'lib.quotaBooksKey': 'Google Books 키의 한도를 다 썼습니다. 나중에 다시 시도하거나(하루 한도는 미국 태평양 시간 자정에 초기화) 직접 입력하세요.',
+      'gcal.title': '구글 캘린더', 'gcal.note': '앞으로 2주 일정을 오늘 목록으로 가져옵니다.',
+      'gcal.calendarLabel': '가져올 캘린더', 'gcal.subjectLabel': '기본 과목',
+      'gcal.connect': '구글 캘린더 연결', 'gcal.import': '지금 가져오기', 'gcal.change': '캘린더 다시 고르기',
+      'gcal.unconfigured': '캘린더 가져오기가 아직 설정되지 않았습니다: 이 빌드에는 Google 로그인 설정이 없습니다.',
+      'gcal.connecting': 'Google에 연결하는 중…', 'gcal.connected': '연결됐습니다. 캘린더를 확인한 뒤 가져오세요.',
+      'gcal.noCalendars': '이 Google 계정에 캘린더가 없습니다.', 'gcal.importing': '가져오는 중…',
+      'gcal.done': '가져옴: 새 일정 {added}개, 바뀐 일정 {updated}개, 지운 일정 {removed}개.', 'gcal.last': '마지막 가져오기: {when}',
+      'gcal.untitled': '(제목 없음)', 'gcal.offline': '오프라인인 것 같습니다. 연결한 뒤 다시 시도하세요.',
+      'gcal.timeout': 'Google이 제때 응답하지 않았습니다. 다시 시도하세요.', 'gcal.denied': '로그인이 취소됐거나 접근이 허용되지 않았습니다.',
+      'gcal.gisFailed': 'Google 로그인 스크립트를 불러오지 못했습니다(차단됐거나 오프라인).', 'gcal.expired': 'Google 로그인이 만료됐습니다. 지금 가져오기를 다시 누르세요.',
+      'gcal.forbidden': 'Google이 이 캘린더 접근을 거부했습니다.', 'gcal.notFound': '그 캘린더가 더 이상 없습니다. 다른 캘린더를 고르세요.',
+      'gcal.quota': 'Google 요청 한도에 도달했습니다. 나중에 다시 시도하세요.', 'gcal.failed': '가져오지 못했습니다. 나중에 다시 시도하세요.',
       'pending.note': '이 페이지는 아직 클라우드에서 받는 중입니다', 'pending.edit': '그래도 쓰기',
       'pending.confirm': '받기 전에 이 페이지에 쓸까요? 여기 쓴 내용이 다른 기기에서 쓴 내용을 대신하게 됩니다.',
       'lib.authFail': 'API 키가 거부됐습니다. 설정에서 키를 확인하거나 직접 입력하세요.',
@@ -587,7 +618,8 @@
       'lib-status-filter': 1, 'bulk-category': 1, 'bulk-genre': 1, 'bulk-status': 1, 'lists-subjects': 1,
       'lists-categories': 1, 'lists-genres': 1, 'sb-foot-status': 1, 'sync-status': 1, 'sync-oversized': 1,
       'backup-status': 1, 'save-status': 1, 'storage-usage': 1, 'lib-status': 1, 'lib-notebook-link': 1,
-      'font-size-value': 1, 'page-list-tools': 1, 'move-banner-text': 1, 'backup-banner-text': 1, 'tb-today-count': 1
+      'font-size-value': 1, 'page-list-tools': 1, 'move-banner-text': 1, 'backup-banner-text': 1, 'tb-today-count': 1,
+      'gcal-status': 1, 'gcal-calendar': 1, 'gcal-subject': 1
     };
     var ATTRS = ['placeholder', 'data-placeholder', 'title', 'aria-label'];   // data-placeholder: the contenteditable editor's hint
 
@@ -1141,6 +1173,11 @@
       s.backupReminderDays = isNaN(days) ? 7 : days;
       if (typeof s.tmdbKey !== 'string') s.tmdbKey = '';
       if (typeof s.googleBooksKey !== 'string') s.googleBooksKey = '';
+      // Google Calendar import: which calendar, and the subject for events that name none
+      if (!s.gcal || typeof s.gcal !== 'object') s.gcal = {};
+      ['calendarId', 'calendarName', 'subjectId', 'lastImportAt'].forEach(function (k) {
+        if (typeof s.gcal[k] !== 'string') s.gcal[k] = '';
+      });
       if (s.lang !== 'ko' && s.lang !== 'en') s.lang = I18n.detect();   // first run: browser language
       // Settings → Lists: library category / genre values the user added
       // themselves, kept so they stay in the dropdowns before any item uses them.
@@ -4553,6 +4590,303 @@
   /* ===========================================================
    * Stats - dashboard counters at the top of the Notes page
    * =========================================================== */
+  /* ===========================================================
+   * GCal - one-way import from a Google Calendar into the one-off
+   * tasks (today's list + calendar). Read-only scope; nothing is ever
+   * written to Google. Imported tasks carry gcal: { id, cal, title, date }
+   * (the event instance id and the values as last imported), so a re-import
+   * updates them in place, never duplicates them, and leaves alone a task
+   * the user edited here (touched rule). Events gone from the calendar are
+   * removed only when the task is unedited and not checked off.
+   * =========================================================== */
+  var GCal = (function () {
+    var SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
+    var API = 'https://www.googleapis.com/calendar/v3';
+    var DAYS = 14;                      // today + the next two weeks
+    var token = null, tokenUntil = 0;   // memory only: never stored or synced
+    var tokenClient = null, gisLoading = null;
+
+    // ---------- pure part (no network) ----------
+
+    function norm(s) { return String(s || '').trim().toLowerCase(); }
+
+    /** Subject for an event title, and the title without a subject prefix.
+        "[Econ] ch.3 review" / "Econ: ch.3 review" -> Econ, "ch.3 review";
+        otherwise a subject name inside the title (longest wins), title kept;
+        otherwise the fallback subject. */
+    function matchSubject(title, subjects, fallbackId) {
+      var t = String(title || '').trim();
+      var byName = function (name) {
+        var n = norm(name);
+        if (!n) return null;
+        for (var i = 0; i < subjects.length; i++) if (norm(subjects[i].name) === n) return subjects[i];
+        return null;
+      };
+      var m = t.match(/^\[([^\]]+)\]\s*(.*)$/) || t.match(/^([^:：]{1,40})[:：]\s*(.+)$/);
+      if (m) {
+        var hit = byName(m[1]);
+        if (hit) return { subjectId: hit.id, title: m[2].trim() || t };
+      }
+      var best = null, low = norm(t);
+      subjects.forEach(function (sub) {
+        var n = norm(sub.name);
+        if (n && low.indexOf(n) !== -1 && (!best || n.length > norm(best.name).length)) best = sub;
+      });
+      if (best) return { subjectId: best.id, title: t };
+      var ok = subjects.some(function (sub) { return sub.id === fallbackId; });
+      return { subjectId: ok ? fallbackId : (subjects[0] && subjects[0].id) || '', title: t };
+    }
+
+    /** Local calendar date of an event start (all-day: as given; timed: in this
+        device's time zone. Never toISOString - that is UTC, a day off in Seoul). */
+    function eventDate(ev) {
+      var st = ev && ev.start || {};
+      if (st.date) return st.date;
+      if (st.dateTime) { var d = new Date(st.dateTime); if (!isNaN(d)) return Utils.fmtDateYMD(d); }
+      return '';
+    }
+
+    /** Notebook type for a subject: that of its first notebook, else lecture. */
+    function typeFor(state, subjectId) {
+      var n = (state.notes || []).filter(function (x) { return x.subjectId === subjectId; })[0];
+      return n && n.type ? n.type : 'lecture';
+    }
+
+    function isDone(state, task) {
+      var day = (state.completions || {})[task.date];
+      return !!(day && day['adhoc:' + task.id]);
+    }
+
+    function edited(task) {
+      return !task.gcal || task.title !== task.gcal.title || task.date !== task.gcal.date;
+    }
+
+    /** Merge fetched events into state.adhocTasks. from/to: YYYY-MM-DD window
+        (inclusive) that was fetched. Returns { added, updated, removed }. */
+    function merge(state, events, opts) {
+      var cal = opts.calendarId, res = { added: 0, updated: 0, removed: 0 };
+      var byId = {};
+      state.adhocTasks.forEach(function (t) { if (t.gcal && t.gcal.cal === cal) byId[t.gcal.id] = t; });
+      var seen = {};
+      (events || []).forEach(function (ev) {
+        if (!ev || !ev.id || ev.status === 'cancelled') return;
+        var date = eventDate(ev);
+        if (!date) return;
+        seen[ev.id] = true;
+        var m = matchSubject(ev.summary || '', state.subjects, opts.subjectId);
+        var title = m.title || opts.untitled || '(untitled)';
+        var task = byId[ev.id];
+        if (!task) {
+          task = { id: opts.uid(), title: title, subjectId: m.subjectId, type: typeFor(state, m.subjectId), date: date,
+                   gcal: { id: ev.id, cal: cal, title: title, date: date } };
+          state.adhocTasks.push(task);
+          res.added++;
+          return;
+        }
+        if (edited(task)) return;                       // touched here: never overwritten
+        if (task.title === title && task.date === date && task.subjectId === m.subjectId) return;
+        if (task.date !== date && isDone(state, task)) return;   // checked off on its old day: keep
+        task.title = title; task.date = date;
+        if (task.subjectId !== m.subjectId) { task.subjectId = m.subjectId; task.type = typeFor(state, m.subjectId); }
+        task.gcal = { id: ev.id, cal: cal, title: title, date: date };
+        if (opts.now) task.syncAt = opts.now;
+        res.updated++;
+      });
+      state.adhocTasks = state.adhocTasks.filter(function (t) {
+        if (!t.gcal || t.gcal.cal !== cal || seen[t.gcal.id]) return true;
+        if (t.date < opts.from || t.date > opts.to) return true;   // outside what we looked at
+        if (edited(t) || isDone(state, t)) return true;
+        res.removed++;
+        return false;
+      });
+      return res;
+    }
+
+    function windowDates(now) {
+      var d0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      var d1 = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate() + DAYS);
+      var dEnd = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate() + DAYS + 1);
+      return { from: Utils.fmtDateYMD(d0), to: Utils.fmtDateYMD(d1), timeMin: d0.toISOString(), timeMax: dEnd.toISOString() };
+    }
+
+    // ---------- Google part ----------
+
+    // the status line keeps its key, so a language switch re-translates it (render)
+    var status = null;
+    function setStatus(key, vars, isError) {
+      status = key ? { key: key, vars: vars || null, err: !!isError } : null;
+      var el = Utils.$('gcal-status');
+      if (!el) return;
+      el.textContent = key ? tx(key, vars || undefined) : '';
+      el.classList.toggle('err', !!isError);
+    }
+
+    function loadGis() {
+      if (window.google && window.google.accounts && window.google.accounts.oauth2) return Promise.resolve();
+      if (gisLoading) return gisLoading;
+      gisLoading = new Promise(function (resolve, reject) {
+        var sc = document.createElement('script');
+        sc.src = 'https://accounts.google.com/gsi/client';
+        sc.async = true;
+        sc.onload = function () { resolve(); };
+        sc.onerror = function () { gisLoading = null; reject(new Error('gis')); };
+        document.head.appendChild(sc);
+      });
+      return gisLoading;
+    }
+
+    /** An access token, asking Google (a popup on the first use in a session). */
+    function getToken() {
+      if (token && Date.now() < tokenUntil) return Promise.resolve(token);
+      return loadGis().then(function () {
+        return new Promise(function (resolve, reject) {
+          tokenClient = window.google.accounts.oauth2.initTokenClient({
+            client_id: GOOGLE_CLIENT_ID,
+            scope: SCOPE,
+            callback: function (r) {
+              if (!r || r.error || !r.access_token) { reject(new Error('denied')); return; }
+              token = r.access_token;
+              tokenUntil = Date.now() + (Math.max(60, (r.expires_in || 3600) - 60) * 1000);
+              resolve(token);
+            },
+            error_callback: function () { reject(new Error('denied')); }
+          });
+          tokenClient.requestAccessToken({ prompt: '' });
+        });
+      });
+    }
+
+    /** GET from the Calendar API. The 15 s timeout starts after the sign-in
+        popup (which may take a while), and a 401 (token revoked or expired early)
+        gets one fresh token and one retry. */
+    function api(path, retried) {
+      if (!navigator.onLine) return Promise.reject(new Error('offline'));
+      return getToken().then(function (tok) {
+        var ctl = new AbortController();
+        var timer = setTimeout(function () { ctl.abort(); }, 15000);
+        return fetch(API + path, { headers: { Authorization: 'Bearer ' + tok }, signal: ctl.signal }).then(function (res) {
+          clearTimeout(timer);
+          if (res.status === 401) {
+            token = null;
+            if (!retried) return api(path, true);
+            throw new Error('expired');
+          }
+          if (res.status === 403) throw new Error('forbidden');
+          if (res.status === 404) throw new Error('notfound');
+          if (res.status === 429) throw new Error('quota');
+          if (!res.ok) throw new Error('http ' + res.status);
+          return res.json();
+        }, function (e) { clearTimeout(timer); throw e; });
+      });
+    }
+
+    function showError(e) {
+      var m = (e && (e.name === 'AbortError' ? 'timeout' : e.message)) || '';
+      if (m === 'offline') setStatus('gcal.offline', null, true);
+      else if (m === 'timeout') setStatus('gcal.timeout', null, true);
+      else if (m === 'denied') setStatus('gcal.denied', null, true);
+      else if (m === 'gis') setStatus('gcal.gisFailed', null, true);
+      else if (m === 'expired') setStatus('gcal.expired', null, true);
+      else if (m === 'forbidden') setStatus('gcal.forbidden', null, true);
+      else if (m === 'notfound') setStatus('gcal.notFound', null, true);
+      else if (m === 'quota') setStatus('gcal.quota', null, true);
+      else setStatus('gcal.failed', null, true);
+    }
+
+    /** All events of the window, following nextPageToken. */
+    function fetchEvents(calId, w) {
+      var all = [];
+      function page(tokenParam) {
+        var q = '?singleEvents=true&orderBy=startTime&maxResults=250' +
+          '&timeMin=' + encodeURIComponent(w.timeMin) + '&timeMax=' + encodeURIComponent(w.timeMax) +
+          (tokenParam ? '&pageToken=' + encodeURIComponent(tokenParam) : '');
+        return api('/calendars/' + encodeURIComponent(calId) + '/events' + q).then(function (data) {
+          all = all.concat(data.items || []);
+          return data.nextPageToken ? page(data.nextPageToken) : all;
+        });
+      }
+      return page('');
+    }
+
+    function connect() {
+      setStatus('gcal.connecting');
+      api('/users/me/calendarList?minAccessRole=reader').then(function (data) {
+        var items = (data.items || []).map(function (c) { return { id: c.id, name: c.summaryOverride || c.summary || c.id, primary: !!c.primary }; });
+        var g = AppState.settings.gcal;
+        var pick = items.filter(function (c) { return c.id === g.calendarId; })[0] ||
+          items.filter(function (c) { return /공부|study/i.test(c.name); })[0] ||
+          items.filter(function (c) { return c.primary; })[0] || items[0];
+        calendars = items;
+        if (pick) { g.calendarId = pick.id; g.calendarName = pick.name; Storage.scheduleSave(); }
+        render();
+        if (items.length) setStatus('gcal.connected'); else setStatus('gcal.noCalendars', null, true);
+      }).catch(showError);
+    }
+
+    function importNow() {
+      var g = AppState.settings.gcal;
+      if (!g.calendarId) { connect(); return; }
+      var w = windowDates(new Date());
+      setStatus('gcal.importing');
+      fetchEvents(g.calendarId, w).then(function (events) {
+        var signedIn = typeof Sync !== 'undefined' && Sync.isSignedIn && Sync.isSignedIn();
+        var r = merge(AppState, events, { calendarId: g.calendarId, subjectId: g.subjectId, from: w.from, to: w.to,
+          uid: Utils.uid, untitled: tx('gcal.untitled'), now: signedIn ? Date.now() : 0 });
+        g.lastImportAt = new Date().toISOString();
+        Storage.scheduleSave();
+        Schedule.renderTodayTasks(); Schedule.renderCalendar(); Schedule.renderManagerTaskList(); Stats.render();
+        setStatus('gcal.done', { added: r.added, updated: r.updated, removed: r.removed });
+      }).catch(showError);
+    }
+
+    var calendars = null;   // the list from the last connect (this session)
+
+    function render() {
+      var card = Utils.$('gcal-card');
+      if (!card) return;
+      var g = AppState.settings.gcal || {};
+      var on = !!GOOGLE_CLIENT_ID;
+      Utils.$('gcal-connect-btn').hidden = !on || !!g.calendarId;
+      Utils.$('gcal-import-btn').hidden = !on || !g.calendarId;
+      Utils.$('gcal-change-btn').hidden = !on || !g.calendarId;
+      Utils.$('gcal-setup').hidden = !on || !g.calendarId;
+      if (!on) { setStatus('gcal.unconfigured'); return; }
+      var calSel = Utils.$('gcal-calendar');
+      var list = calendars || (g.calendarId ? [{ id: g.calendarId, name: g.calendarName || g.calendarId }] : []);
+      calSel.innerHTML = list.map(function (c) {
+        return '<option value="' + Utils.escapeHtml(c.id) + '"' + (c.id === g.calendarId ? ' selected' : '') + '>' + Utils.escapeHtml(c.name) + '</option>';
+      }).join('');
+      var subSel = Utils.$('gcal-subject');
+      var subId = AppState.subjects.some(function (x) { return x.id === g.subjectId; }) ? g.subjectId : (AppState.subjects[0] && AppState.subjects[0].id);
+      subSel.innerHTML = AppState.subjects.map(function (x) {
+        return '<option value="' + x.id + '"' + (x.id === subId ? ' selected' : '') + '>' + Utils.escapeHtml(x.name) + '</option>';
+      }).join('');
+      if (status && status.key !== 'gcal.last') setStatus(status.key, status.vars, status.err);   // re-translate
+      else if (g.lastImportAt) {
+        setStatus('gcal.last', { when: new Date(g.lastImportAt).toLocaleString(I18n.locale(), { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) });
+      } else setStatus(null);
+    }
+
+    function setup() {
+      if (!Utils.$('gcal-card')) return;
+      Utils.$('gcal-connect-btn').addEventListener('click', connect);
+      Utils.$('gcal-change-btn').addEventListener('click', connect);
+      Utils.$('gcal-import-btn').addEventListener('click', importNow);
+      Utils.$('gcal-calendar').addEventListener('change', function () {
+        var g = AppState.settings.gcal;
+        g.calendarId = this.value;
+        g.calendarName = this.options[this.selectedIndex] ? this.options[this.selectedIndex].text : '';
+        Storage.scheduleSave();
+      });
+      Utils.$('gcal-subject').addEventListener('change', function () {
+        AppState.settings.gcal.subjectId = this.value;
+        Storage.scheduleSave();
+      });
+    }
+
+    return { setup: setup, render: render, merge: merge, matchSubject: matchSubject, eventDate: eventDate, windowDates: windowDates };
+  })();
+
   var Stats = {
     render: function () {
       Utils.$('st-notes').textContent = AppState.notes.length;
@@ -5314,6 +5648,7 @@
       Flashcards.renderGrid();
       Stats.render();
       Lists.render();
+      GCal.render();
     },
 
     init: function () {
@@ -5349,6 +5684,7 @@
       Flashcards.setupStudyMode();
       Settings.setup();
       Lists.setup();
+      GCal.setup();
 
       // translate the static markup before anything renders (first run: browser language)
       I18n.apply();
@@ -5394,7 +5730,8 @@
 
   // expose App.renderAll for Settings module's cross-call
   window.App = App;
-  window.SyncCore = SyncCore;   // pure sync helpers, used by the Node simulation tests
+  window.SyncCore = SyncCore;
+  window.GCalCore = { merge: GCal.merge, matchSubject: GCal.matchSubject, eventDate: GCal.eventDate, windowDates: GCal.windowDates };   // pure parts, for the Node tests   // pure sync helpers, used by the Node simulation tests
 
   /* ===========================================================
    * Boot

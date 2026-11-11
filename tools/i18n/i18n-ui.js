@@ -110,6 +110,13 @@ async function run(lang, browserLang) {
   await p.evaluate(() => showPage('notes')); await p.waitForTimeout(150);
   const label = sel => p.evaluate(s => document.querySelector(s).textContent.trim(), sel);
   const want = (en, ko) => lang === 'ko' ? ko : en;
+  // Google Calendar card: its buttons and selects appear only with a client ID; shown directly, then scanned
+  await p.evaluate(() => showPage('settings')); await p.click('.stab[data-stab=integrations]');
+  await p.evaluate(() => ['gcal-setup', 'gcal-connect-btn', 'gcal-import-btn', 'gcal-change-btn'].forEach(id => { document.getElementById(id).hidden = false; }));
+  ok((await label('label[for=gcal-subject]')) === want('default subject', '기본 과목') && (await label('#gcal-import-btn')) === want('import now', '지금 가져오기'), lang + ': calendar card labels -> "' + (await label('#gcal-card .cb')).slice(0, 60) + '"');
+  await scan('settings/integrations+calendar');
+  await p.evaluate(() => ['gcal-setup', 'gcal-connect-btn', 'gcal-import-btn', 'gcal-change-btn'].forEach(id => { document.getElementById(id).hidden = true; }));
+  await p.evaluate(() => showPage('notes')); await p.waitForTimeout(150);
   // the notice on a cloud page that has not arrived yet (sync only): shown directly, then scanned
   await p.evaluate(() => { document.getElementById('page-pending').hidden = false; });
   ok((await label('#page-pending span')) === want('this page is still downloading from the cloud', '이 페이지는 아직 클라우드에서 받는 중입니다') && (await label('#page-pending-edit')) === want('edit anyway', '그래도 쓰기'), lang + ': pending-page notice -> "' + (await label('#page-pending')) + '"');
