@@ -130,6 +130,15 @@ async function run(lang, browserLang) {
   for (const pg of ['notes', 'manager']) { await p.evaluate(x => showPage(x), pg); await p.waitForTimeout(200); await scan(pg + ' (no tasks)'); }
   const empties = await p.evaluate(() => Array.from(document.querySelectorAll('#recurring-list .empty-note, #manager-task-list .empty-note, #today-task-list .empty-note')).map(e => e.textContent.trim()));
   ok(empties.length === 3, lang + ': three empty-state lines rendered ' + JSON.stringify(empties));
+  // "edit anyway" on a cloud page that has not arrived yet: its confirm text, in this language
+  await p.evaluate(k => { const d = JSON.parse(localStorage.getItem(k)); const n = d.notes[0];
+    n.pages.push({ chapter: '', tags: '', date: '', cues: '', body: '', summary: '', placeholder: true });
+    localStorage.setItem(k + ':last-note', JSON.stringify({ noteId: n.id, page: n.pages.length - 1 }));
+    localStorage.setItem(k, JSON.stringify(d)); }, K);
+  await p.reload(); await p.waitForTimeout(500);
+  let confirmMsg = ''; p.once('dialog', d => { confirmMsg = d.message(); d.dismiss(); });
+  await p.click('#page-pending-edit'); await p.waitForTimeout(200);
+  ok(lang === 'ko' ? /다른 기기에서 쓴 내용을 대신/.test(confirmMsg) && !/[A-Za-z]{2,}/.test(confirmMsg) : /replace the version from your other device/.test(confirmMsg) && !/[가-힣]/.test(confirmMsg), lang + ': edit-anyway confirm -> "' + confirmMsg + '"');
   const all = await p.evaluate(() => document.querySelectorAll('.mo').length);
   ok(scanned.size === all, lang + ': every dialog scanned (' + scanned.size + ' / ' + all + ')');
   // guide: only the current language's guide is visible

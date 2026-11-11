@@ -1571,8 +1571,15 @@
     /* Cloud sync: a page whose content is still downloading is shown read-only
        with a notice (see SyncCore.isPendingPage). It unlocks by itself when the
        page arrives (the sync refresh re-renders it), or on "edit anyway". */
+    // pages the user chose to write on anyway: unlocked for this session only. The
+    // placeholder flag stays, so an untouched page is still never uploaded (an empty
+    // page with a fresh syncAt would replace the real one); the first real content
+    // makes it an ordinary upload, as the confirm says.
+    var unlockedPages = (typeof WeakSet !== 'undefined') ? new WeakSet() : null;
+
     function isPending(page) {
-      return typeof SyncCore !== 'undefined' && SyncCore.isPendingPage(page);
+      return typeof SyncCore !== 'undefined' && SyncCore.isPendingPage(page) &&
+        !(unlockedPages && unlockedPages.has(page));
     }
 
     var PAGE_FIELDS = ['note-chapter', 'note-tags', 'note-date', 'cues', 'summary'];
@@ -1593,7 +1600,7 @@
       var page = AppState.currentPage();
       if (!isPending(page)) return;
       if (!window.confirm(tx('pending.confirm'))) return;
-      delete page.placeholder;
+      if (unlockedPages) unlockedPages.add(page); else delete page.placeholder;
       renderActivePage();
       Utils.$('notes-body').focus();
     }
@@ -1775,7 +1782,10 @@
 
     function readImageFile(file) {
       if (!file) return;
-      if (isPending(AppState.currentPage())) return;
+      // the image goes to the page it was added on: reading and compressing are
+      // async, and by then the user may have turned to another (possibly pending) page
+      var target = AppState.currentPage();
+      if (isPending(target)) return;
       // guard against non-images (a dragged PDF, a renamed file) and against
       // huge originals that would stall the browser before compression runs
       if (!/^image\//.test(file.type || '')) {
@@ -1789,6 +1799,7 @@
       var reader = new FileReader();
       reader.onload = function (e) {
         compressImage(e.target.result, function (finalUrl) {
+          if (AppState.currentPage() !== target || isPending(target)) return;
           insertImageAtCursor(finalUrl);
           saveCurrentFields();
           Storage.scheduleSave();
