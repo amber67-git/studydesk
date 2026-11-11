@@ -5101,10 +5101,9 @@
       return h;
     }
 
-    /** Ids of every document this device holds, per collection (settings excluded).
-        Stored at sign-out, so the next sign-in can tell "deleted here while signed out"
-        from "created elsewhere while signed out". */
-    /** What this device holds at sign-out: { collection: { id: syncAt } }, each
+    /** Stored at sign-out, so the next sign-in can tell "deleted here while signed out"
+        from "created elsewhere while signed out" (settings excluded).
+        What this device holds at sign-out: { collection: { id: syncAt } }, each
         document with the syncAt of the copy this device actually has (completions:
         their completionSync stamp). Per document, not one sign-out time: a document
         edited on another device while this one was offline is older than the
