@@ -4922,7 +4922,10 @@
         // or by a backup): these events belong to the old one - merging them would
         // label them as the new calendar's and remove its tasks
         if (!g || g.calendarId !== calId) { setStatus('gcal.changed', null, true); return; }
-        var signedIn = typeof Sync !== 'undefined' && Sync.isSignedIn && Sync.isSignedIn();
+        // stamp only once the first download is merged: an import made while it is still
+        // pending stays unstamped, so a cloud task with the same stable id (edited on
+        // another device) wins the merge instead of being overwritten by this import
+        var signedIn = typeof Sync !== 'undefined' && Sync.isReady && Sync.isReady();
         var r = merge(AppState, events, { calendarId: calId, subjectId: g.subjectId, from: w.from, to: w.to,
           uid: Utils.uid, untitled: tx('gcal.untitled'), now: signedIn ? Date.now() : 0 });
         g.lastImportAt = new Date().toISOString();
@@ -5208,7 +5211,13 @@
         if (id !== 'settings') return false;
         if (remote.deleted) return false;
         if (ts <= ((state.settings && state.settings.syncAt) || 0)) return false;
-        state.settings = JSON.parse(JSON.stringify(remote));
+        // a device on an older version sends settings without the fields it does not
+        // know (gcal, googleBooksKey, ...): those keep their local values instead of
+        // being reset to empty defaults that would then sync back out to every device
+        var prev = (state.settings && typeof state.settings === 'object') ? state.settings : {};
+        var next = JSON.parse(JSON.stringify(remote));
+        Object.keys(prev).forEach(function (k) { if (k !== 'syncAt' && !(k in next)) next[k] = prev[k]; });
+        state.settings = next;
         return true;
       }
 
@@ -5725,6 +5734,9 @@
       collectChanges: collectChanges,
       push: push,
       isSignedIn: function () { return !!uid; },
+      /** Signed in AND the first download has been merged (only then is a local
+          stamp safe: before it, the cloud may hold a newer edit of the same id). */
+      isReady: function () { return !!uid && ready; },
       phase: function () { return phase; }
     };
   })();
