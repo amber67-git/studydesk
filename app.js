@@ -4917,7 +4917,12 @@
         - signed in, first download not merged: still running -> wait; failed or offline
           -> say so (pressing again would not help; fix sync or sign out for a local import).
         Without Firebase (FIREBASE_CONFIG null) or signed out, imports are local and allowed. */
-    function syncReady() { return typeof Sync !== 'undefined' && !!(Sync.isReady && Sync.isReady()); }
+    /** The sync session an import started in: sign-in, sign-out (even signing out and back in
+        to the same account) and the first download finishing all change it. */
+    function syncSession() {
+      if (typeof Sync === 'undefined') return '';
+      return Sync.session ? Sync.session() : String(!!(Sync.isReady && Sync.isReady()));
+    }
 
     function syncBlock() {
       if (typeof Sync === 'undefined' || !Sync.phase) return null;
@@ -4932,11 +4937,11 @@
       if (!g.calendarId) { connect(); return; }
       var block = syncBlock();
       if (block) { setStatus(block, null, true); return; }
-      // whether cloud sync was connected and merged when this fetch started: if that
-      // changes before the events arrive (signed in and downloaded meanwhile, or signed
-      // out), the response predates tasks the download brought in - merging it would
-      // remove those as vanished - so it is dropped and the user presses import again
-      var startReady = syncReady();
+      // the sync session this fetch started in: if it changes before the events arrive
+      // (signed in and downloaded meanwhile, signed out, or out and back in), the response
+      // predates tasks a download brought in - merging it would remove those as vanished -
+      // so it is dropped and the user presses import again
+      var startSession = syncSession();
       var w = windowDates(new Date());
       var calId = g.calendarId, seq = ++reqSeq;
       setStatus('gcal.importing');
@@ -4950,7 +4955,7 @@
         // signed in again (or re-downloading) while this was loading: same race as above
         block = syncBlock();
         if (block) { setStatus(block, null, true); return; }
-        if (syncReady() !== startReady) { setStatus('gcal.syncChanged', null, true); return; }
+        if (syncSession() !== startSession) { setStatus('gcal.syncChanged', null, true); return; }
         // signed in and merged: stamp, so an older cloud copy or tombstone with the same
         // stable id that lands before the debounced save cannot replace or delete it
         var signedIn = typeof Sync !== 'undefined' && Sync.isReady && Sync.isReady();
@@ -5770,6 +5775,9 @@
       isSignedIn: function () { return !!uid; },
       /** False until we know whether a previous sign-in is being restored (see authKnown). */
       authKnown: function () { return authKnown; },
+      /** Changes whenever sync signs in/out (generation, bumped by start/stop) or its first
+          download finishes (ready): async work begun under one value must not apply under another. */
+      session: function () { return generation + (ready ? ':ready' : ':pending'); },
       /** Signed in AND the first download has been merged (only then is a local
           stamp safe: before it, the cloud may hold a newer edit of the same id). */
       isReady: function () { return !!uid && ready; },
