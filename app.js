@@ -164,7 +164,7 @@
       'gcal.done': 'imported: {added} new, {updated} updated, {removed} removed.', 'gcal.last': 'last import: {when}',
       'gcal.untitled': '(untitled)', 'gcal.offline': 'you appear to be offline. Connect and try again.',
       'gcal.timeout': 'Google did not answer in time. Try again.', 'gcal.denied': 'sign-in was cancelled or access was not allowed.',
-      'gcal.gisFailed': 'the Google sign-in script could not load (blocked or offline).', 'gcal.expired': 'Google sign-in expired. Press the button again.', 'gcal.changed': 'the calendar changed during the import. Press import now again.', 'gcal.loading': 'Google sign-in is still loading. Press the button again in a moment.', 'gcal.syncPending': 'cloud sync is still downloading. Press import now again in a moment.', 'gcal.syncBroken': 'cloud sync has not finished its first download (offline or an error). Check Settings → Account, or sign out to import on this device only.',
+      'gcal.gisFailed': 'the Google sign-in script could not load (blocked or offline).', 'gcal.expired': 'Google sign-in expired. Press the button again.', 'gcal.changed': 'the calendar changed during the import. Press import now again.', 'gcal.loading': 'Google sign-in is still loading. Press the button again in a moment.', 'gcal.syncPending': 'cloud sync is still downloading. Press import now again in a moment.', 'gcal.syncBroken': 'cloud sync has not finished its first download (offline or an error). Check Settings → Account, or sign out to import on this device only.', 'gcal.syncChanged': 'cloud sync connected or disconnected during the import. Press import now again.',
       'gcal.forbidden': 'Google refused access to this calendar.', 'gcal.notFound': 'that calendar no longer exists. Choose another one.',
       'gcal.quota': 'Google\'s request limit was reached. Try again later.', 'gcal.failed': 'import failed. Try again later.',
       'pending.note': 'this page is still downloading from the cloud', 'pending.edit': 'edit anyway',
@@ -361,7 +361,7 @@
       'gcal.done': '가져옴: 새 일정 {added}개, 바뀐 일정 {updated}개, 지운 일정 {removed}개.', 'gcal.last': '마지막 가져오기: {when}',
       'gcal.untitled': '(제목 없음)', 'gcal.offline': '오프라인인 것 같습니다. 연결한 뒤 다시 시도하세요.',
       'gcal.timeout': 'Google이 제때 응답하지 않았습니다. 다시 시도하세요.', 'gcal.denied': '로그인이 취소됐거나 접근이 허용되지 않았습니다.',
-      'gcal.gisFailed': 'Google 로그인 스크립트를 불러오지 못했습니다(차단됐거나 오프라인).', 'gcal.expired': 'Google 로그인이 만료됐습니다. 버튼을 다시 누르세요.', 'gcal.changed': '가져오는 동안 캘린더가 바뀌었습니다. 지금 가져오기를 다시 누르세요.', 'gcal.loading': 'Google 로그인을 준비하는 중입니다. 잠시 뒤 다시 누르세요.', 'gcal.syncPending': '클라우드 동기화를 내려받는 중입니다. 잠시 뒤 지금 가져오기를 다시 누르세요.', 'gcal.syncBroken': '클라우드 동기화가 첫 내려받기를 마치지 못했습니다(오프라인 또는 오류). 설정 → 계정을 확인하거나, 이 기기에만 가져오려면 로그아웃하세요.',
+      'gcal.gisFailed': 'Google 로그인 스크립트를 불러오지 못했습니다(차단됐거나 오프라인).', 'gcal.expired': 'Google 로그인이 만료됐습니다. 버튼을 다시 누르세요.', 'gcal.changed': '가져오는 동안 캘린더가 바뀌었습니다. 지금 가져오기를 다시 누르세요.', 'gcal.loading': 'Google 로그인을 준비하는 중입니다. 잠시 뒤 다시 누르세요.', 'gcal.syncPending': '클라우드 동기화를 내려받는 중입니다. 잠시 뒤 지금 가져오기를 다시 누르세요.', 'gcal.syncBroken': '클라우드 동기화가 첫 내려받기를 마치지 못했습니다(오프라인 또는 오류). 설정 → 계정을 확인하거나, 이 기기에만 가져오려면 로그아웃하세요.', 'gcal.syncChanged': '가져오는 동안 클라우드 동기화가 연결되거나 끊겼습니다. 지금 가져오기를 다시 누르세요.',
       'gcal.forbidden': 'Google이 이 캘린더 접근을 거부했습니다.', 'gcal.notFound': '그 캘린더가 더 이상 없습니다. 다른 캘린더를 고르세요.',
       'gcal.quota': 'Google 요청 한도에 도달했습니다. 나중에 다시 시도하세요.', 'gcal.failed': '가져오지 못했습니다. 나중에 다시 시도하세요.',
       'pending.note': '이 페이지는 아직 클라우드에서 받는 중입니다', 'pending.edit': '그래도 쓰기',
@@ -4917,6 +4917,8 @@
         - signed in, first download not merged: still running -> wait; failed or offline
           -> say so (pressing again would not help; fix sync or sign out for a local import).
         Without Firebase (FIREBASE_CONFIG null) or signed out, imports are local and allowed. */
+    function syncReady() { return typeof Sync !== 'undefined' && !!(Sync.isReady && Sync.isReady()); }
+
     function syncBlock() {
       if (typeof Sync === 'undefined' || !Sync.phase) return null;
       var ph = Sync.phase();
@@ -4930,6 +4932,11 @@
       if (!g.calendarId) { connect(); return; }
       var block = syncBlock();
       if (block) { setStatus(block, null, true); return; }
+      // whether cloud sync was connected and merged when this fetch started: if that
+      // changes before the events arrive (signed in and downloaded meanwhile, or signed
+      // out), the response predates tasks the download brought in - merging it would
+      // remove those as vanished - so it is dropped and the user presses import again
+      var startReady = syncReady();
       var w = windowDates(new Date());
       var calId = g.calendarId, seq = ++reqSeq;
       setStatus('gcal.importing');
@@ -4943,6 +4950,7 @@
         // signed in again (or re-downloading) while this was loading: same race as above
         block = syncBlock();
         if (block) { setStatus(block, null, true); return; }
+        if (syncReady() !== startReady) { setStatus('gcal.syncChanged', null, true); return; }
         // signed in and merged: stamp, so an older cloud copy or tombstone with the same
         // stable id that lands before the debounced save cannot replace or delete it
         var signedIn = typeof Sync !== 'undefined' && Sync.isReady && Sync.isReady();
