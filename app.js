@@ -5101,23 +5101,37 @@
       return h;
     }
 
-    /** Ids of every document this device holds, per collection (settings excluded).
-        Stored at sign-out, so the next sign-in can tell "deleted here while signed out"
-        from "created elsewhere while signed out". */
+    /** Stored at sign-out, so the next sign-in can tell "deleted here while signed out"
+        from "created elsewhere while signed out" (settings excluded).
+        What this device holds at sign-out: { collection: { id: syncAt } }, each
+        document with the syncAt of the copy this device actually has (completions:
+        their completionSync stamp). Per document, not one sign-out time: a document
+        edited on another device while this one was offline is older than the
+        sign-out but newer than what this device has, and must not be skipped. */
     function knownIds(state) {
-      var data = flatten(state).data, ids = {};
-      Object.keys(data).forEach(function (c) { if (c !== 'meta') ids[c] = Object.keys(data[c]); });
+      var f = flatten(state), ids = {};
+      Object.keys(f.data).forEach(function (c) {
+        if (c === 'meta') return;
+        ids[c] = {};
+        Object.keys(f.data[c]).forEach(function (id) {
+          ids[c][id] = c === 'completions' ? (f.stamps[id] || 0) : (f.data[c][id].syncAt || 0);
+        });
+      });
       return ids;
     }
 
-    /** True when this device already held `doc` when it signed out (same id, and the
-        cloud copy has not changed since): the local state is then the newer one,
-        whatever happened to it while signed out (edit, deletion, page cut). */
+    /** True when this device already held `doc` when it signed out and the cloud copy
+        is not newer than the one it held: the local state is then the newer one,
+        whatever happened to it while signed out (edit, deletion, page cut). A record
+        from an older version (ids as plain arrays + one sign-out time) is not trusted:
+        normal LWW then (a deletion made while signed out may come back once, but an
+        edit made elsewhere is never lost). */
     function seenBeforeSignOut(known, c, id, doc) {
       if (!known || !known.ids || !doc || doc.deleted) return false;
-      var list = known.ids[c];
-      if (!list || list.indexOf(id) === -1) return false;
-      return (doc.syncAt || 0) <= (known.at || 0);
+      var map = known.ids[c];
+      if (!map || typeof map !== 'object' || Array.isArray(map)) return false;
+      if (!Object.prototype.hasOwnProperty.call(map, id)) return false;
+      return (doc.syncAt || 0) <= (Number(map[id]) || 0);
     }
 
     function completionId(date, key) { return date + '|' + key; }
@@ -5362,7 +5376,7 @@
     var currentUser = null;   // Firebase user of the active session (for the offline retry of the first download)
     var pushQueue = Promise.resolve();   // pushes of one session run strictly one after another
     var UID_KEY = Storage.KEY + ':sync-uid';   // the account this browser's data was last synced with
-    var KNOWN_KEY = Storage.KEY + ':sync-known';   // { uid, at, ids } written at sign-out (see SyncCore.knownIds)
+    var KNOWN_KEY = Storage.KEY + ':sync-known';   // { uid, at, ids: { collection: { id: syncAt } } } written at sign-out (see SyncCore.knownIds)
     var ready = false;        // initial merge done: only then do local saves push
     var unsubscribers = [];
     var lastInputAt = 0;
