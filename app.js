@@ -4922,7 +4922,7 @@
     function syncBlock() {
       if (typeof Sync === 'undefined' || !Sync.phase) return null;
       var ph = Sync.phase();
-      if (ph === 'loading') return 'gcal.syncPending';
+      if (ph === 'loading' || (Sync.authKnown && !Sync.authKnown())) return 'gcal.syncPending';
       if (!(Sync.isSignedIn && Sync.isSignedIn()) || (Sync.isReady && Sync.isReady())) return null;
       return (ph === 'error' || ph === 'offline') ? 'gcal.syncBroken' : 'gcal.syncPending';
     }
@@ -5363,6 +5363,11 @@
     var lastInputAt = 0;
     var refreshTimer = null;
     var phase = 'off', detail = '', lastSyncAt = null;
+    // whether we know if someone is signed in: false from start-up until Firebase's first
+    // auth callback (it restores a previous sign-in asynchronously), true when there is
+    // no Firebase at all or its SDK could not start. Separate from `phase`, which a
+    // sign-in click changes to 'syncing' before that first callback.
+    var authKnown = false;
 
     function $(id) { return Utils.$(id); }
 
@@ -5736,21 +5741,22 @@
       });
       window.addEventListener('offline', function () { if (uid) setStatus('offline'); });
 
-      if (!FIREBASE_CONFIG) { setStatus('unconfigured'); return; }
+      if (!FIREBASE_CONFIG) { authKnown = true; setStatus('unconfigured'); return; }
       setStatus('loading');
       loadSdk(function (err) {
-        if (err) { setStatus('error', tx('sync.sdkFailed', { msg: err.message })); return; }
+        if (err) { authKnown = true; setStatus('error', tx('sync.sdkFailed', { msg: err.message })); return; }
         try {
           firebase.initializeApp(FIREBASE_CONFIG);
           auth = firebase.auth();
           db = firebase.firestore();
-        } catch (e) { setStatus('error', describe(e)); return; }
+        } catch (e) { authKnown = true; setStatus('error', describe(e)); return; }
         // offline queue + cache (IndexedDB); if another tab holds it we still sync, just without cache
         db.enablePersistence({ synchronizeTabs: true }).catch(function (e) {
           console.warn('StudyDesk sync: offline persistence not available:', e && e.code);
         });
         auth.getRedirectResult().catch(function (e) { setStatus('error', describe(e)); });
         auth.onAuthStateChanged(function (user) {
+          authKnown = true;
           if (user) start(user); else stop();
         });
       });
@@ -5762,6 +5768,8 @@
       collectChanges: collectChanges,
       push: push,
       isSignedIn: function () { return !!uid; },
+      /** False until we know whether a previous sign-in is being restored (see authKnown). */
+      authKnown: function () { return authKnown; },
       /** Signed in AND the first download has been merged (only then is a local
           stamp safe: before it, the cloud may hold a newer edit of the same id). */
       isReady: function () { return !!uid && ready; },
