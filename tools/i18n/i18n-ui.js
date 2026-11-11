@@ -136,7 +136,7 @@ async function run(lang, browserLang) {
     localStorage.setItem(k + ':last-note', JSON.stringify({ noteId: n.id, page: n.pages.length - 1 }));
     localStorage.setItem(k, JSON.stringify(d)); }, K);
   await p.reload(); await p.waitForTimeout(500);
-  let confirmMsg = ''; p.once('dialog', d => { confirmMsg = d.message(); d.dismiss(); });
+  let confirmMsg = ''; p.once('dialog', d => { confirmMsg = d.message(); });   // the page-wide handler dismisses it
   await p.click('#page-pending-edit'); await p.waitForTimeout(200);
   ok(lang === 'ko' ? /다른 기기에서 쓴 내용을 대신/.test(confirmMsg) && !/[A-Za-z]{2,}/.test(confirmMsg) : /replace the version from your other device/.test(confirmMsg) && !/[가-힣]/.test(confirmMsg), lang + ': edit-anyway confirm -> "' + confirmMsg + '"');
   const all = await p.evaluate(() => document.querySelectorAll('.mo').length);
