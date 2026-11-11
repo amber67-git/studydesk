@@ -4703,6 +4703,9 @@
           if (state.adhocTasks.some(function (x) { return x.id === tid; })) tid = opts.uid();   // id already taken (not ours): never clobber it
           task = { id: tid, title: title, subjectId: m.subjectId, type: typeFor(state, m.subjectId), date: date,
                    gcal: { id: ev.id, cal: cal, title: title, date: date, subjectId: m.subjectId } };
+          // signed in: stamped now, so an older cloud copy or tombstone with this (stable) id
+          // that lands before the debounced save cannot replace or delete it
+          if (opts.now) task.syncAt = opts.now;
           state.adhocTasks.push(task);
           res.added++;
           return;
@@ -5487,12 +5490,21 @@
             var data = d.data();
             snapshot[c][d.id] = JSON.stringify(data);
             if (useKnown && SyncCore.seenBeforeSignOut(known, c, d.id, data)) return;
-            if (SyncCore.applyRemote(AppState, c, d.id, data)) changed = true;
+            if (applyDoc(c, d.id, data)) changed = true;
           });
         });
         forgetKnown();
         return changed;
       });
+    }
+
+    /** applyRemote, plus: settings that replaced ours are filled with defaults at once
+        (a device on an older version sends settings without newer fields such as gcal),
+        so nothing reads a missing field before the delayed refresh. Existing values stay. */
+    function applyDoc(c, id, data) {
+      var changed = SyncCore.applyRemote(AppState, c, id, data);
+      if (changed && c === 'meta') Storage.applySettingDefaults();
+      return changed;
     }
 
     function noteExists(noteId) {
@@ -5536,7 +5548,7 @@
               }
             }
             snapshot[c][ch.doc.id] = json;
-            if (SyncCore.applyRemote(AppState, c, ch.doc.id, data)) changed = true; else stale = true;
+            if (applyDoc(c, ch.doc.id, data)) changed = true; else stale = true;
             if (c === 'notes' && !data.deleted && applyPendingPages(ch.doc.id)) changed = true;
           });
           if (changed) scheduleRefresh();
