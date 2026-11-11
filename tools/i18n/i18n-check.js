@@ -36,7 +36,7 @@ for (const mm of app.matchAll(/'(lists\.n\.|type\.|lt\.|day\.|status\.|lists\.no
 for (const mm of app.matchAll(/'(lists\.(?:renameX|addX))'/g)) used.add(mm[1]);
 for (const mm of app.matchAll(/'(lib\.f\.(?:category|genre))'/g)) used.add(mm[1]);
 for (const mm of app.matchAll(/\bbtnLabel\(\s*'[^']*'\s*,\s*'([^']+)'/g)) used.add(mm[1]);   // NotesModule.btnLabel(icon, key)
-for (const mm of app.matchAll(/\bsetStatus\(\s*'(gcal\.[A-Za-z]+)'/g)) used.add(mm[1]);   // GCal.setStatus(key, vars, isError)
+for (const mm of app.matchAll(/'(gcal\.[A-Za-z]+)'(?!:)/g)) used.add(mm[1]);   // GCal status keys (setStatus(key, ...) and keys passed through variables, e.g. syncBlock())
 for (const mm of html.matchAll(/data-i18n(?:-[a-z-]+)?="([^"]+)"/g)) used.add(mm[1]);
 const missing = [...used].filter(k => !k.endsWith('*') && !(k in I18N.en));
 ok(missing.length === 0, 'every key the code references exists ' + JSON.stringify(missing));

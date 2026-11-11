@@ -164,7 +164,7 @@
       'gcal.done': 'imported: {added} new, {updated} updated, {removed} removed.', 'gcal.last': 'last import: {when}',
       'gcal.untitled': '(untitled)', 'gcal.offline': 'you appear to be offline. Connect and try again.',
       'gcal.timeout': 'Google did not answer in time. Try again.', 'gcal.denied': 'sign-in was cancelled or access was not allowed.',
-      'gcal.gisFailed': 'the Google sign-in script could not load (blocked or offline).', 'gcal.expired': 'Google sign-in expired. Press the button again.', 'gcal.changed': 'the calendar changed during the import. Press import now again.', 'gcal.loading': 'Google sign-in is still loading. Press the button again in a moment.', 'gcal.syncPending': 'cloud sync is still downloading. Press import now again in a moment.',
+      'gcal.gisFailed': 'the Google sign-in script could not load (blocked or offline).', 'gcal.expired': 'Google sign-in expired. Press the button again.', 'gcal.changed': 'the calendar changed during the import. Press import now again.', 'gcal.loading': 'Google sign-in is still loading. Press the button again in a moment.', 'gcal.syncPending': 'cloud sync is still downloading. Press import now again in a moment.', 'gcal.syncBroken': 'cloud sync has not finished its first download (offline or an error). Check Settings → Account, or sign out to import on this device only.',
       'gcal.forbidden': 'Google refused access to this calendar.', 'gcal.notFound': 'that calendar no longer exists. Choose another one.',
       'gcal.quota': 'Google\'s request limit was reached. Try again later.', 'gcal.failed': 'import failed. Try again later.',
       'pending.note': 'this page is still downloading from the cloud', 'pending.edit': 'edit anyway',
@@ -361,7 +361,7 @@
       'gcal.done': '가져옴: 새 일정 {added}개, 바뀐 일정 {updated}개, 지운 일정 {removed}개.', 'gcal.last': '마지막 가져오기: {when}',
       'gcal.untitled': '(제목 없음)', 'gcal.offline': '오프라인인 것 같습니다. 연결한 뒤 다시 시도하세요.',
       'gcal.timeout': 'Google이 제때 응답하지 않았습니다. 다시 시도하세요.', 'gcal.denied': '로그인이 취소됐거나 접근이 허용되지 않았습니다.',
-      'gcal.gisFailed': 'Google 로그인 스크립트를 불러오지 못했습니다(차단됐거나 오프라인).', 'gcal.expired': 'Google 로그인이 만료됐습니다. 버튼을 다시 누르세요.', 'gcal.changed': '가져오는 동안 캘린더가 바뀌었습니다. 지금 가져오기를 다시 누르세요.', 'gcal.loading': 'Google 로그인을 준비하는 중입니다. 잠시 뒤 다시 누르세요.', 'gcal.syncPending': '클라우드 동기화를 내려받는 중입니다. 잠시 뒤 지금 가져오기를 다시 누르세요.',
+      'gcal.gisFailed': 'Google 로그인 스크립트를 불러오지 못했습니다(차단됐거나 오프라인).', 'gcal.expired': 'Google 로그인이 만료됐습니다. 버튼을 다시 누르세요.', 'gcal.changed': '가져오는 동안 캘린더가 바뀌었습니다. 지금 가져오기를 다시 누르세요.', 'gcal.loading': 'Google 로그인을 준비하는 중입니다. 잠시 뒤 다시 누르세요.', 'gcal.syncPending': '클라우드 동기화를 내려받는 중입니다. 잠시 뒤 지금 가져오기를 다시 누르세요.', 'gcal.syncBroken': '클라우드 동기화가 첫 내려받기를 마치지 못했습니다(오프라인 또는 오류). 설정 → 계정을 확인하거나, 이 기기에만 가져오려면 로그아웃하세요.',
       'gcal.forbidden': 'Google이 이 캘린더 접근을 거부했습니다.', 'gcal.notFound': '그 캘린더가 더 이상 없습니다. 다른 캘린더를 고르세요.',
       'gcal.quota': 'Google 요청 한도에 도달했습니다. 나중에 다시 시도하세요.', 'gcal.failed': '가져오지 못했습니다. 나중에 다시 시도하세요.',
       'pending.note': '이 페이지는 아직 클라우드에서 받는 중입니다', 'pending.edit': '그래도 쓰기',
@@ -4909,17 +4909,27 @@
       }).catch(function (e) { if (seq === reqSeq) showError(e); });
     }
 
-    /** Signed in to cloud sync but its first download not merged yet: an import now
-        would race that download (a fresh task overwritten by an older cloud copy, a
-        removal brought back by it), so it waits for the merge instead. */
-    function syncPending() {
-      return typeof Sync !== 'undefined' && Sync.isSignedIn && Sync.isSignedIn() && !(Sync.isReady && Sync.isReady());
+    /** Why an import must wait for cloud sync, or null. An import that races the first
+        download after sign-in (a fresh task overwritten by an older cloud copy, a removal
+        brought back by it, a cloud edit overwritten) is not allowed:
+        - 'loading': Firebase is still restoring a previous sign-in at start-up (we do not
+          know yet whether we are signed in) -> wait;
+        - signed in, first download not merged: still running -> wait; failed or offline
+          -> say so (pressing again would not help; fix sync or sign out for a local import).
+        Without Firebase (FIREBASE_CONFIG null) or signed out, imports are local and allowed. */
+    function syncBlock() {
+      if (typeof Sync === 'undefined' || !Sync.phase) return null;
+      var ph = Sync.phase();
+      if (ph === 'loading') return 'gcal.syncPending';
+      if (!(Sync.isSignedIn && Sync.isSignedIn()) || (Sync.isReady && Sync.isReady())) return null;
+      return (ph === 'error' || ph === 'offline') ? 'gcal.syncBroken' : 'gcal.syncPending';
     }
 
     function importNow() {
       var g = AppState.settings.gcal;
       if (!g.calendarId) { connect(); return; }
-      if (syncPending()) { setStatus('gcal.syncPending', null, true); return; }
+      var block = syncBlock();
+      if (block) { setStatus(block, null, true); return; }
       var w = windowDates(new Date());
       var calId = g.calendarId, seq = ++reqSeq;
       setStatus('gcal.importing');
@@ -4931,7 +4941,8 @@
         // label them as the new calendar's and remove its tasks
         if (!g || g.calendarId !== calId) { setStatus('gcal.changed', null, true); return; }
         // signed in again (or re-downloading) while this was loading: same race as above
-        if (syncPending()) { setStatus('gcal.syncPending', null, true); return; }
+        block = syncBlock();
+        if (block) { setStatus(block, null, true); return; }
         // signed in and merged: stamp, so an older cloud copy or tombstone with the same
         // stable id that lands before the debounced save cannot replace or delete it
         var signedIn = typeof Sync !== 'undefined' && Sync.isReady && Sync.isReady();
