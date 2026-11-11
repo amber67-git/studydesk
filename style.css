@@ -267,7 +267,15 @@ textarea#cues{border:none;flex:1;min-height:0;line-height:28px;padding:8px 12px;
 textarea#cues:focus{box-shadow:none}
 textarea#cues:focus-visible{box-shadow:inset 0 0 0 2px var(--bdr2)}
 
-.notes-body-wrap{display:flex;flex-direction:column;height:560px;min-width:0}
+.notes-body-wrap{display:flex;flex-direction:column;height:560px;min-width:0;position:relative}
+/* cloud page not received yet: read-only paper with a notice over MAIN NOTES */
+.page-pending-note{position:absolute;left:12px;right:12px;top:50%;transform:translateY(-50%);display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:center;padding:12px 14px;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rl);box-shadow:var(--shm);font-family:var(--sans);font-size:13px;color:var(--txt2);text-align:center}
+.page-pending-note[hidden]{display:none}
+.cornell.page-pending .notes-body-toolbar button:disabled{opacity:.35;cursor:default}
+.cornell.page-pending input[readonly],.cornell.page-pending textarea[readonly]{cursor:default}
+/* no "write here" hints on a page that cannot be written yet */
+.cornell.page-pending .notes-body-editable:empty::before{content:none}
+.cornell.page-pending input::placeholder,.cornell.page-pending textarea::placeholder{color:transparent}
 .notes-body-toolbar{display:flex;align-items:center;gap:3px;height:42px;padding:0 10px;border-bottom:1px solid var(--bdr);background:#fdfcf7;flex-wrap:nowrap;flex-shrink:0;box-sizing:border-box;overflow-x:auto;overflow-y:hidden}
 .notes-body-toolbar::-webkit-scrollbar{height:0}
 .fmt-btn{border:none;background:transparent;padding:6px 8px;border-radius:6px;font-size:16px;line-height:1;color:var(--txt);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}

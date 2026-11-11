@@ -110,6 +110,11 @@ async function run(lang, browserLang) {
   await p.evaluate(() => showPage('notes')); await p.waitForTimeout(150);
   const label = sel => p.evaluate(s => document.querySelector(s).textContent.trim(), sel);
   const want = (en, ko) => lang === 'ko' ? ko : en;
+  // the notice on a cloud page that has not arrived yet (sync only): shown directly, then scanned
+  await p.evaluate(() => { document.getElementById('page-pending').hidden = false; });
+  ok((await label('#page-pending span')) === want('this page is still downloading from the cloud', '이 페이지는 아직 클라우드에서 받는 중입니다') && (await label('#page-pending-edit')) === want('edit anyway', '그래도 쓰기'), lang + ': pending-page notice -> "' + (await label('#page-pending')) + '"');
+  await scan('notes/pending-notice');
+  await p.evaluate(() => { document.getElementById('page-pending').hidden = true; });
   await p.click('#review-mode-btn'); ok((await label('#review-mode-btn')) === want('show notes', '노트 보기'), lang + ': self-test on -> "' + (await label('#review-mode-btn')) + '"');
   await p.click('#review-mode-btn'); ok((await label('#review-mode-btn')) === want('self-test', '셀프 테스트'), lang + ': self-test off -> "' + (await label('#review-mode-btn')) + '"');
   await p.click('#save-note-btn'); ok((await label('#save-note-btn')) === want('saved', '저장됨'), lang + ': save pressed -> "' + (await label('#save-note-btn')) + '"');
