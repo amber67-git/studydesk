@@ -2069,7 +2069,7 @@
       Utils.$('page-indicator').addEventListener('click', openPageListModal);
       Utils.$('page-list-filter').addEventListener('click', function () {
         pageListOnlyMissing = !pageListOnlyMissing;
-        openPageListModal();
+        renderPageList();
       });
       Utils.$('page-list-modal-close').addEventListener('click', function () { Modal.close('mo-page-list'); });
     }
@@ -2099,8 +2099,20 @@
     var pageListOnlyMissing = false;   // "only these" toggle, kept while the app is open
 
     function openPageListModal() {
+      if (renderPageList()) Modal.open('mo-page-list');
+    }
+
+    /** While the page list is open, keep it current: a language switch, a
+        backup import or a synced change re-renders it in place (renderAll). */
+    function refreshPageList() {
+      var m = Utils.$('mo-page-list');
+      if (!m || !m.classList.contains('show')) return;
+      if (!renderPageList()) Modal.close('mo-page-list');
+    }
+
+    function renderPageList() {
       var n = AppState.currentNote();
-      if (!n) return;
+      if (!n) return false;
       AppState.ensurePages(n);
       var missing = n.pages.filter(needsSummary).length;
       if (!missing) pageListOnlyMissing = false;
@@ -2134,7 +2146,7 @@
           Modal.close('mo-page-list');
         });
       });
-      Modal.open('mo-page-list');
+      return true;
     }
 
     function openNewNotebookModal() {
@@ -2249,7 +2261,7 @@
     return {
       renderList: renderList,
       selectNote: selectNote,
-      refreshEditor: refreshEditor,
+      refreshEditor: refreshEditor, refreshPageList: refreshPageList,
       restoreLastPosition: restoreLastPosition,
       focusBodyIfDesktop: focusBodyIfDesktop, isBlankPage: isBlankPage, touchPage: touchPage, showPaper: showPaper,
       setupEditor: setupEditor,
@@ -5186,6 +5198,7 @@
       Nav.renderHeaderDate();
       Subjects.renderSelects();
       NotesModule.renderList();
+      NotesModule.refreshPageList();
       Library.renderList();
       Schedule.renderDayPicker();
       Schedule.renderRecurringList();
