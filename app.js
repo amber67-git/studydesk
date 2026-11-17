@@ -51,8 +51,8 @@
   var APP_HOME = 'https://amber-studydesk.netlify.app/';
   // Shown bottom-left in the sidebar. Bump both in the same PR that adds a
   // line to the guide's 변경 이력 (version = number of entries there).
-  var APP_VERSION = 'v19';
-  var APP_UPDATED = '2026-11-11';
+  var APP_VERSION = 'v20';
+  var APP_UPDATED = '2026-11-18';
 
   /* ===========================================================
    * I18N - every user-facing string, English and Korean. Static HTML text
@@ -191,6 +191,13 @@
       'sched.enterTitle': 'Enter a task title.', 'sched.pickDay': 'Pick at least one day.',
       'sched.noSubject': 'This task has no subject linked yet.',
       'sched.subjectGone': "The subject for this task no longer exists, so its notebook can't be opened.",
+      'sched.start': 'start', 'sched.end': 'end',
+      'sched.bothTimes': 'Set both a start and an end time, or leave both empty.',
+      'sched.endAfterStart': 'The end time must be later than the start time.',
+      'clash.local': 'Overlaps with: {list}', 'clash.gcal': 'Overlaps in Google Calendar: {list}',
+      'clash.more': 'and {n} more', 'clash.check': 'check Google Calendar', 'clash.checking': 'checking Google Calendar…',
+      'clash.clear': 'Nothing in Google Calendar overlaps.', 'clash.busy': '(busy)',
+      'clash.failed': 'Could not check Google Calendar. Try again later.',
       // flashcards
       'cards.reviewMode': 'review mode', 'cards.addBtn': 'card', 'cards.filterAria': 'filter cards by subject',
       'cards.prev': 'previous card', 'cards.next': 'next card', 'cards.flip': 'flip', 'cards.empty': 'No cards yet.',
@@ -387,6 +394,13 @@
       'sched.enterTitle': '일정 이름을 입력하세요.', 'sched.pickDay': '요일을 하나 이상 고르세요.',
       'sched.noSubject': '이 일정에는 아직 과목이 없습니다.',
       'sched.subjectGone': '이 일정의 과목이 삭제되어 노트북을 열 수 없습니다.',
+      'sched.start': '시작', 'sched.end': '끝',
+      'sched.bothTimes': '시작 시간과 끝 시간을 둘 다 넣거나 둘 다 비워 두세요.',
+      'sched.endAfterStart': '끝 시간은 시작 시간보다 늦어야 합니다.',
+      'clash.local': '겹치는 일정: {list}', 'clash.gcal': '구글 캘린더와 겹침: {list}',
+      'clash.more': '외 {n}개', 'clash.check': '구글 캘린더 확인', 'clash.checking': '구글 캘린더 확인 중…',
+      'clash.clear': '구글 캘린더에 겹치는 일정이 없습니다.', 'clash.busy': '(일정 있음)',
+      'clash.failed': '구글 캘린더를 확인하지 못했습니다. 나중에 다시 시도하세요.',
       'cards.reviewMode': '복습 모드', 'cards.addBtn': '카드', 'cards.filterAria': '과목으로 카드 거르기',
       'cards.prev': '이전 카드', 'cards.next': '다음 카드', 'cards.flip': '뒤집기', 'cards.empty': '아직 카드가 없습니다.',
       'card.title': '암기 카드 추가', 'card.front': '질문 / 앞면', 'card.back': '답 / 뒷면', 'card.add': '카드 추가',
@@ -611,6 +625,7 @@
     var SKIP_IDS = {
       'note-list': 1, 'today-task-list': 1, 'lib-grid': 1, 'cal-grid': 1, 'card-grid': 1, 'notes-body': 1,
       'day-events-list': 1, 'page-list-body': 1, 'recurring-list': 1, 'manager-task-list': 1, 'lib-results': 1,
+      'manager-task-clash': 1, 'rec-clash': 1,
       'study-card': 1, 'sb-foot-ver': 1, 'header-date': 1, 'today-date-label': 1, 'cal-month-label': 1,
       'note-subject-select': 1, 'notebook-subject-filter': 1, 'deck-filter': 1, 'rec-subject': 1,
       'adhoc-task-subject': 1, 'manager-task-subject': 1, 'new-notebook-subject': 1, 'subject-delete-target': 1,
@@ -1313,6 +1328,7 @@
       if (target) target.classList.add('active');
       currentPage = page;
       if (page === 'settings' && typeof GCal !== 'undefined') GCal.preload();
+      if (page === 'manager' && typeof GCal !== 'undefined') GCal.preloadForSchedule();
       Utils.$('tb-title').textContent = PAGE_TITLES[page] ? tx(PAGE_TITLES[page]) : page;
       if (Utils.$('tb-notebooks-btn')) Utils.$('tb-notebooks-btn').hidden = (page !== 'notes');
       if (Utils.$('tb-today-btn')) Utils.$('tb-today-btn').hidden = (page !== 'notes');
@@ -2372,6 +2388,135 @@
   /* ===========================================================
    * Schedule - calendar + today's list + recurring + one-off tasks
    * =========================================================== */
+  /* ===========================================================
+   * TimeBlock - optional study time on a task: start/end "HH:MM" in this
+   * device's local time ("24:00" allowed as an end). A task without both is
+   * a whole-day task, as before. Pure helpers (no DOM, no network) for the
+   * forms, the lists and the overlap warning; exposed as window.TimeBlockCore.
+   * =========================================================== */
+  var TimeBlock = (function () {
+    var START_RE = /^([01]\d|2[0-3]):[0-5]\d$/, END_RE = /^(([01]\d|2[0-3]):[0-5]\d|24:00)$/;
+    var LOOKAHEAD = 14;   // a recurring block is checked over the next two weeks
+
+    function toMin(s) { var m = String(s || '').match(/^(\d\d):(\d\d)$/); return m ? (+m[1]) * 60 + (+m[2]) : NaN; }
+    function pad(n) { return (n < 10 ? '0' : '') + n; }
+    function hhmm(d) { return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+    function parseDate(s) { var p = String(s).split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
+    function addDays(s, n) { var d = parseDate(s); return Utils.fmtDateYMD(new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)); }
+    function dayIndex(s) { return (parseDate(s).getDay() + 6) % 7; }   // 0 = Monday, as task.days
+
+    /** The block of a task ({start, end, s, e} with minutes), or null when it has none
+        (or a broken one: such a task simply shows as a whole-day task). */
+    function of(task) {
+      if (!task || !START_RE.test(task.start || '') || !END_RE.test(task.end || '')) return null;
+      var s = toMin(task.start), e = toMin(task.end);
+      return e > s ? { start: task.start, end: task.end, s: s, e: e } : null;
+    }
+
+    function label(b) { return b ? b.start + '–' + b.end : ''; }
+
+    /** Form values -> { block } (null when both are empty) or { error: i18n key }. */
+    function validate(start, end) {
+      start = String(start || ''); end = String(end || '');
+      if (!start && !end) return { block: null };
+      if (!start || !end) return { error: 'sched.bothTimes' };
+      if (!of({ start: start, end: end })) return { error: 'sched.endAfterStart' };
+      return { block: { start: start, end: end } };
+    }
+
+    /** Untimed tasks first (like all-day events), then by start time; stable otherwise. */
+    function compare(a, b) {
+      var x = of(a), y = of(b);
+      if (!x || !y) return (x ? 1 : 0) - (y ? 1 : 0);
+      return x.s - y.s || x.e - y.e;
+    }
+
+    /** Block of a timed Google event in local time, or null (all-day, or running past
+        midnight - an end exactly at the next midnight becomes "24:00"). */
+    function eventBlock(ev) {
+      var st = ev && ev.start || {}, en = ev && ev.end || {};
+      if (!st.dateTime || !en.dateTime) return null;
+      var s = new Date(st.dateTime), e = new Date(en.dateTime);
+      if (isNaN(s) || isNaN(e) || e <= s) return null;
+      var sd = Utils.fmtDateYMD(s), ed = Utils.fmtDateYMD(e), end;
+      if (ed === sd) end = hhmm(e);
+      else if (ed === addDays(sd, 1) && e.getHours() === 0 && e.getMinutes() === 0) end = '24:00';
+      else return null;
+      return of({ start: hhmm(s), end: end }) ? { start: hhmm(s), end: end } : null;
+    }
+
+    /** Dates a block occupies: a one-off its date; a recurring task its weekdays
+        over the next two weeks (from today). */
+    function dates(cand, today) {
+      if (cand.date) return [cand.date];
+      var out = [];
+      for (var i = 0; i < LOOKAHEAD; i++) {
+        var d = addDays(today, i);
+        if ((cand.days || []).indexOf(dayIndex(d)) !== -1) out.push(d);
+      }
+      return out;
+    }
+
+    function overlaps(a, b) { return a.s < b.e && b.s < a.e; }   // touching ends is not a clash
+
+    /** Tasks in state whose block overlaps the candidate's ({start, end, date} or
+        {start, end, days}) on one of its dates. A clash on a one-off date carries
+        no date (it is the form's date); for a recurring candidate it carries the
+        first date it happens on. */
+    function localClashes(state, cand, today) {
+      var b = of(cand);
+      if (!b) return [];
+      var ds = dates(cand, today), out = [];
+      (state.recurring || []).forEach(function (r) {
+        var rb = of(r);
+        if (!rb || !overlaps(b, rb)) return;
+        var hit = ds.filter(function (d) { return (r.days || []).indexOf(dayIndex(d)) !== -1; })[0];
+        if (hit) out.push({ title: r.title, start: rb.start, end: rb.end, date: cand.date ? '' : hit, sort: hit });
+      });
+      (state.adhocTasks || []).forEach(function (t) {
+        var tb = of(t);
+        if (!tb || ds.indexOf(t.date) === -1 || !overlaps(b, tb)) return;
+        out.push({ title: t.title, start: tb.start, end: tb.end, date: cand.date ? '' : t.date, sort: t.date });
+      });
+      return sortClashes(out);
+    }
+
+    /** Google events (singleEvents) that overlap the candidate's block on its dates.
+        All-day, cancelled, "free", declined and working-location events never clash;
+        skip(ev) leaves out events the local check already covers. */
+    function eventClashes(events, cand, today, skip) {
+      var b = of(cand);
+      if (!b) return [];
+      var out = [], seen = {};
+      dates(cand, today).forEach(function (date) {
+        var d = parseDate(date);
+        var bs = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, b.s).getTime();
+        var be = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, b.e).getTime();
+        (events || []).forEach(function (ev) {
+          if (!ev || ev.status === 'cancelled' || !ev.start || !ev.start.dateTime || !ev.end || !ev.end.dateTime) return;
+          if (ev.transparency === 'transparent' || ev.eventType === 'workingLocation') return;
+          if ((ev.attendees || []).some(function (a) { return a && a.self && a.responseStatus === 'declined'; })) return;
+          if (skip && skip(ev)) return;
+          var s = Date.parse(ev.start.dateTime), e = Date.parse(ev.end.dateTime);
+          if (!(s < be && bs < e)) return;
+          var key = (ev.id || '') + '|' + (cand.date ? '' : date);
+          if (seen[key]) return;
+          seen[key] = true;
+          out.push({ title: ev.summary || '', start: hhmm(new Date(s)), end: hhmm(new Date(e)), date: cand.date ? '' : date, sort: date });
+        });
+      });
+      return sortClashes(out);
+    }
+
+    function sortClashes(list) {
+      return list.sort(function (a, b) { return (a.sort || '').localeCompare(b.sort || '') || toMin(a.start) - toMin(b.start); });
+    }
+
+    return { of: of, label: label, validate: validate, compare: compare, eventBlock: eventBlock, dates: dates,
+      localClashes: localClashes, eventClashes: eventClashes, addDays: addDays };
+  })();
+  window.TimeBlockCore = TimeBlock;
+
   var Schedule = (function () {
 
     // ------ recurring schedule ------
@@ -2388,15 +2533,17 @@
     }
 
     function renderRecurringList() {
+      renderClashes();
       if (AppState.recurring.length === 0) {
         Utils.$('recurring-list').innerHTML = '<p class="empty-note">' + tx('sched.noRecurring') + '</p>';
         return;
       }
       Utils.$('recurring-list').innerHTML = AppState.recurring.map(function (r) {
         var dayLabels = r.days.map(function (d) { return Utils.dayLabel(d); }).join(', ');
+        var blk = TimeBlock.of(r);
         return '<div class="recurring-item">' +
           '<span>' + Utils.escapeHtml(r.title) + ' &middot; ' + Utils.escapeHtml(subjectName(r.subjectId)) +
-          ' (' + Utils.escapeHtml(tx('type.' + r.type)) + ') &middot; ' + dayLabels + '</span>' +
+          ' (' + Utils.escapeHtml(tx('type.' + r.type)) + ') &middot; ' + dayLabels + (blk ? ' &middot; ' + TimeBlock.label(blk) : '') + '</span>' +
           '<button class="del-recurring" data-id="' + r.id + '"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>';
       }).join('');
       document.querySelectorAll('.del-recurring').forEach(function (b) {
@@ -2419,9 +2566,15 @@
         if (!title) { alert(tx('sched.enterTitle')); return; }
         if (!subjectId) { alert(tx('common.pickSubject')); return; }
         if (days.length === 0) { alert(tx('sched.pickDay')); return; }
-        AppState.recurring.push({ id: Utils.uid(), title: title, subjectId: subjectId, type: type, days: days });
+        var time = TimeBlock.validate(Utils.$('rec-start').value, Utils.$('rec-end').value);
+        if (time.error) { alert(tx(time.error)); return; }
+        var rec = { id: Utils.uid(), title: title, subjectId: subjectId, type: type, days: days };
+        if (time.block) { rec.start = time.block.start; rec.end = time.block.end; }
+        AppState.recurring.push(rec);
         Utils.$('rec-title').value = '';
+        Utils.$('rec-start').value = ''; Utils.$('rec-end').value = '';
         document.querySelectorAll('.day-check:checked').forEach(function (c) { c.checked = false; });
+        resetClash('rec');
         renderRecurringList(); renderTodayTasks(); renderCalendar();
         Stats.render(); Storage.scheduleSave();
       });
@@ -2454,8 +2607,14 @@
         var type = Utils.$('manager-task-type').value;
         var date = Utils.$('manager-task-date').value || Utils.todayStr();
         if (!title) { alert(tx('sched.enterTitle')); return; }
-        AppState.adhocTasks.push({ id: Utils.uid(), title: title, subjectId: subjectId, type: type, date: date });
+        var time = TimeBlock.validate(Utils.$('manager-task-start').value, Utils.$('manager-task-end').value);
+        if (time.error) { alert(tx(time.error)); return; }
+        var task = { id: Utils.uid(), title: title, subjectId: subjectId, type: type, date: date };
+        if (time.block) { task.start = time.block.start; task.end = time.block.end; }
+        AppState.adhocTasks.push(task);
         Utils.$('manager-task-input').value = '';
+        Utils.$('manager-task-start').value = ''; Utils.$('manager-task-end').value = '';
+        resetClash('manager');
         renderTodayTasks(); renderCalendar(); renderManagerTaskList();
         Stats.render(); Storage.scheduleSave();
       });
@@ -2464,9 +2623,130 @@
       });
     }
 
+    // ------ time blocks: overlap warning while a form is filled in ------
+    // Local tasks are checked at once. Google Calendar is checked automatically when
+    // this session already holds a Google token; otherwise a "check Google Calendar"
+    // button asks for one (the sign-in popup must come from a click). Only a warning:
+    // adding is never blocked.
+    var clash = {
+      manager: { seq: 0, timer: null, local: [], g: null },
+      rec: { seq: 0, timer: null, local: [], g: null }
+    };
+
+    function clashCandidate(form) {
+      var start = Utils.$(form === 'manager' ? 'manager-task-start' : 'rec-start').value;
+      var end = Utils.$(form === 'manager' ? 'manager-task-end' : 'rec-end').value;
+      var v = TimeBlock.validate(start, end);
+      if (!v.block) return null;
+      if (form === 'manager') return { start: v.block.start, end: v.block.end, date: Utils.$('manager-task-date').value || Utils.todayStr() };
+      var days = Array.prototype.slice.call(document.querySelectorAll('.day-check:checked')).map(function (c) { return parseInt(c.value, 10); });
+      return days.length ? { start: v.block.start, end: v.block.end, days: days } : null;
+    }
+
+    function clashListHtml(list) {
+      var shown = list.slice(0, 3).map(function (c) {
+        var p = c.date ? c.date.split('-').map(Number) : null;
+        var when = (p ? new Date(p[0], p[1] - 1, p[2]).toLocaleDateString(I18n.locale(), { month: 'numeric', day: 'numeric' }) + ' ' : '') + c.start + '\u2013' + c.end;
+        return Utils.escapeHtml(c.title || tx('clash.busy')) + ' (' + when + ')';
+      }).join(', ');
+      return shown + (list.length > 3 ? ' ' + Utils.escapeHtml(tx('clash.more', { n: list.length - 3 })) : '');
+    }
+
+    function renderClash(form) {
+      var st = clash[form], box = Utils.$(form === 'manager' ? 'manager-task-clash' : 'rec-clash');
+      var btn = Utils.$(form === 'manager' ? 'manager-task-gcheck' : 'rec-gcheck');
+      if (!box || !btn) return;
+      var cand = clashCandidate(form), html = '';
+      // recomputed on every render, so a task deleted, synced or imported meanwhile is reflected
+      st.local = cand ? TimeBlock.localClashes(AppState, cand, Utils.todayStr()) : [];
+      // the list goes in through a function: a "$&" in a title must stay literal
+      var withList = function (text, list) {
+        return Utils.escapeHtml(text).replace('\u0001', function () { return clashListHtml(list); });
+      };
+      if (cand && st.local.length) html += '<p class="clash-warn">' + withList(tx('clash.local', { list: '\u0001' }), st.local) + '</p>';
+      var g = cand ? st.g : null;
+      if (g && g.state === 'checking') html += '<p class="clash-info">' + Utils.escapeHtml(tx('clash.checking')) + '</p>';
+      var gItems = g && g.state === 'done' ? gcalClashes(g) : [];
+      if (g && g.state === 'done' && gItems.length) html += '<p class="clash-warn">' + withList(tx('clash.gcal', { list: '\u0001' }), gItems) + '</p>';
+      else if (g && g.state === 'done') html += '<p class="clash-info">' + Utils.escapeHtml(tx('clash.clear')) + '</p>';
+      else if (g && g.state === 'error') html += '<p class="clash-warn">' + Utils.escapeHtml(tx(g.key)) + '</p>';
+      box.innerHTML = html;
+      // the button: a block is filled in, Google is set up, and no check is running -
+      // shown until a token is at hand (then checks run by themselves), and after an error
+      btn.hidden = !(cand && GCal.configured() && !(g && g.state === 'checking') && (!GCal.hasToken() || (g && g.state === 'error')));
+    }
+
+    /** Re-run the checks for a form. interactive: from the button's click (may open
+        Google's sign-in); otherwise Google is only asked when a token is at hand. */
+    function checkClash(form, interactive) {
+      var st = clash[form], seq = ++st.seq;
+      clearTimeout(st.timer);
+      var cand = clashCandidate(form);
+      if (!cand || !GCal.configured() || (!interactive && !GCal.hasToken())) { st.g = null; renderClash(form); return; }
+      // the last result was for other values: "checking" until the new one arrives
+      st.g = { state: 'checking' };
+      renderClash(form);
+      var run = function () {
+        if (seq !== st.seq) return;
+        var ds = TimeBlock.dates(cand, Utils.todayStr());
+        if (!ds.length) { st.g = { state: 'done', events: [], cand: cand }; renderClash(form); return; }
+        GCal.eventsForDates(ds, interactive).then(function (events) {
+          if (seq !== st.seq) return;   // the form changed meanwhile: a newer check reports
+          // the events are kept; which ones clash is worked out on every render (gcalClashes),
+          // so deleting or importing a task changes the result without asking Google again
+          st.g = { state: 'done', events: events, cand: cand };
+          renderClash(form);
+        }).catch(function (e) {
+          if (seq !== st.seq) return;
+          st.g = { state: 'error', key: GCal.errorKey(e, 'clash.failed') };
+          renderClash(form);
+        });
+      };
+      // the button's click must reach Google's sign-in without waiting; typing waits a moment
+      if (interactive) run(); else st.timer = setTimeout(run, 500);
+    }
+
+    /** Google events of a finished check that clash with the block it was made for. Events
+        imported as timed tasks are left to the local check (which sees their time as edited
+        here); one imported without a time (e.g. past midnight) is reported here. Worked out
+        against the current tasks, so deleting such a task brings its event back. */
+    function gcalClashes(g) {
+      return TimeBlock.eventClashes(g.events, g.cand, Utils.todayStr(), function (ev) {
+        var tid = ev.__cal ? GCal.taskIdFor(ev.__cal, ev.id) : '';
+        return !!tid && AppState.adhocTasks.some(function (t) {
+          return (t.id === tid || (t.gcal && t.gcal.cal === ev.__cal && t.gcal.id === ev.id)) && !!TimeBlock.of(t);
+        });
+      });
+    }
+
+    /** Both forms: either kind of task (added, deleted, synced, imported) can be what
+        the other form clashes with, and every change re-renders one of the two lists. */
+    function renderClashes() { renderClash('manager'); renderClash('rec'); }
+
+    function resetClash(form) {
+      var st = clash[form];
+      st.seq++; clearTimeout(st.timer); st.local = []; st.g = null;
+      renderClash(form);
+    }
+
+    function setupClash() {
+      ['manager-task-date', 'manager-task-start', 'manager-task-end'].forEach(function (id) {
+        Utils.$(id).addEventListener('change', function () { checkClash('manager'); });
+        Utils.$(id).addEventListener('input', function () { checkClash('manager'); });
+      });
+      ['rec-start', 'rec-end'].forEach(function (id) {
+        Utils.$(id).addEventListener('change', function () { checkClash('rec'); });
+        Utils.$(id).addEventListener('input', function () { checkClash('rec'); });
+      });
+      Utils.$('day-picker').addEventListener('change', function () { checkClash('rec'); });
+      Utils.$('manager-task-gcheck').addEventListener('click', function () { checkClash('manager', true); });
+      Utils.$('rec-gcheck').addEventListener('click', function () { checkClash('rec', true); });
+    }
+
     function renderManagerTaskList() {
+      renderClashes();
       var upcoming = AppState.adhocTasks.slice().sort(function (a, b) {
-        return (a.date || '').localeCompare(b.date || '');
+        return (a.date || '').localeCompare(b.date || '') || TimeBlock.compare(a, b);
       });
       if (upcoming.length === 0) {
         Utils.$('manager-task-list').innerHTML = '<p class="empty-note">' + tx('sched.noOneoff') + '</p>';
@@ -2475,7 +2755,8 @@
       Utils.$('manager-task-list').innerHTML = upcoming.map(function (t) {
         return '<div class="recurring-item">' +
           '<span>' + Utils.escapeHtml(t.title) + ' &middot; ' + Utils.escapeHtml(subjectName(t.subjectId)) +
-          ' (' + Utils.escapeHtml(tx('type.' + t.type)) + ') &middot; ' + (t.date || '') + '</span>' +
+          ' (' + Utils.escapeHtml(tx('type.' + t.type)) + ') &middot; ' + (t.date || '') +
+          (TimeBlock.of(t) ? ' ' + TimeBlock.label(TimeBlock.of(t)) : '') + '</span>' +
           '<button class="del-manager-task" data-id="' + t.id + '"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>';
       }).join('');
       document.querySelectorAll('.del-manager-task').forEach(function (b) {
@@ -2566,7 +2847,15 @@
       Storage.scheduleSave();
     }
 
-    function taskRowHtml(key, title, subjectId, type, freqLabel, adhocId) {
+    /** The time column of a row in a list where some task has a time (an empty
+        cell for an untimed one, so titles stay lined up), else nothing. */
+    function timeCellHtml(task, withTime) {
+      if (!withTime) return '';
+      var blk = TimeBlock.of(task);
+      return '<span class="task-time">' + (blk ? TimeBlock.label(blk) : '') + '</span>';
+    }
+
+    function taskRowHtml(key, title, subjectId, type, freqLabel, adhocId, timeCell) {
       var checked = isTaskDone(key) ? 'checked' : '';
       var doneClass = isTaskDone(key) ? 'done' : '';
       var delBtn = adhocId
@@ -2577,6 +2866,7 @@
       // row never shifts with the length of "recurring" vs "one-off" or a name
       return '<div class="task-row">' +
         '<input type="checkbox" class="task-check" data-key="' + key + '" ' + checked + '>' +
+        (timeCell || '') +
         '<span class="task-label ' + doneClass + '">' + Utils.escapeHtml(title) + '</span>' +
         '<span class="task-meta">' +
           '<span class="badge ' + colorClass + '" title="' + Utils.escapeHtml(subjectName(subjectId)) + '">' + Utils.escapeHtml(subjectName(subjectId)) + '</span>' +
@@ -2590,13 +2880,17 @@
       var dayIdx = Utils.todayDayIndex();
       var recurringToday = AppState.recurring.filter(function (r) { return r.days.indexOf(dayIdx) !== -1; });
       var adhocToday = AppState.adhocTasks.filter(function (t) { return t.date === Utils.todayStr(); });
-      var rows = [];
-      recurringToday.forEach(function (r) {
-        rows.push(taskRowHtml('rec:' + r.id, r.title, r.subjectId, r.type, tx('sched.kind.recurring')));
+      // untimed first, then by start time; a time column only when some task has a time
+      var items = recurringToday.map(function (r) { return { rec: r }; })
+        .concat(adhocToday.map(function (t) { return { adhoc: t }; }))
+        .sort(function (a, b) { return TimeBlock.compare(a.rec || a.adhoc, b.rec || b.adhoc); });
+      var withTime = items.some(function (it) { return !!TimeBlock.of(it.rec || it.adhoc); });
+      var rows = items.map(function (it) {
+        if (it.rec) return taskRowHtml('rec:' + it.rec.id, it.rec.title, it.rec.subjectId, it.rec.type, tx('sched.kind.recurring'), null, timeCellHtml(it.rec, withTime));
+        var t = it.adhoc;
+        return taskRowHtml('adhoc:' + t.id, t.title, t.subjectId, t.type, tx('sched.kind.oneoff'), t.id, timeCellHtml(t, withTime));
       });
-      adhocToday.forEach(function (t) {
-        rows.push(taskRowHtml('adhoc:' + t.id, t.title, t.subjectId, t.type, tx('sched.kind.oneoff'), t.id));
-      });
+      Utils.$('today-task-list').classList.toggle('has-time', withTime);
 
       renderTodayBadge();
       if (rows.length === 0) {
@@ -2636,13 +2930,13 @@
       var items = [];
       AppState.recurring.forEach(function (r) {
         if (r.days.indexOf(dayIdx) !== -1) {
-          items.push({ title: r.title, subjectId: r.subjectId, type: r.type, kind: tx('sched.kind.recurring') });
+          items.push({ title: r.title, subjectId: r.subjectId, type: r.type, kind: tx('sched.kind.recurring'), start: r.start, end: r.end });
         }
       });
       AppState.adhocTasks.forEach(function (t) {
-        if (t.date === dateStr) items.push({ title: t.title, subjectId: t.subjectId, type: t.type, kind: tx('sched.kind.oneoff') });
+        if (t.date === dateStr) items.push({ title: t.title, subjectId: t.subjectId, type: t.type, kind: tx('sched.kind.oneoff'), start: t.start, end: t.end });
       });
-      return items;
+      return items.sort(TimeBlock.compare);
     }
 
     function changeMonth(delta) {
@@ -2688,8 +2982,10 @@
         var visible = items.slice(0, MAX_VISIBLE);
         var extra = items.length - visible.length;
         var eventsHtml = visible.map(function (it) {
-          var safeTitle = Utils.escapeHtml(it.title);
-          return '<div class="cal-event" style="background:var(--surf2);border-color:var(--txt2);color:var(--txt);" title="' + safeTitle + '">' + safeTitle + '</div>';
+          var safeTitle = Utils.escapeHtml(it.title), blk = TimeBlock.of(it);
+          return '<div class="cal-event" style="background:var(--surf2);border-color:var(--txt2);color:var(--txt);" title="' +
+            (blk ? TimeBlock.label(blk) + ' ' : '') + safeTitle + '">' +
+            (blk ? '<span class="cal-time">' + blk.start + '</span>' : '') + safeTitle + '</div>';
         }).join('');
         var moreHtml = extra > 0
           ? '<button class="cal-more-btn" data-date="' + cell.date + '">' + tx('cal.more', { n: extra }) + '</button>'
@@ -2715,10 +3011,14 @@
       });
       if (items.length === 0) {
         Utils.$('day-events-list').innerHTML = '<p class="empty-note">' + tx('cal.dayEmpty') + '</p>';
+        Utils.$('day-events-list').classList.remove('has-time');
       } else {
+        var withTime = items.some(function (it) { return !!TimeBlock.of(it); });
+        Utils.$('day-events-list').classList.toggle('has-time', withTime);
         Utils.$('day-events-list').innerHTML = items.map(function (it) {
           var colorClass = AppState.subjectColorClass(it.subjectId);
           return '<div class="task-row task-row-plain">' +
+            timeCellHtml(it, withTime) +
             '<span class="task-label">' + Utils.escapeHtml(it.title) + '</span>' +
             '<span class="task-meta">' +
               '<span class="badge ' + colorClass + '" title="' + Utils.escapeHtml(subjectName(it.subjectId)) + '">' + Utils.escapeHtml(subjectName(it.subjectId)) + '</span>' +
@@ -2752,6 +3052,7 @@
       renderCalendar: renderCalendar,
       setupRecurringForm: setupRecurringForm,
       setupAdhocForm: setupAdhocForm,
+      setupClash: setupClash,
       setupCalendarControls: setupCalendarControls
     };
   })();
@@ -4659,12 +4960,19 @@
       return !!(day && day['adhoc:' + task.id]);
     }
 
-    /** Changed in the app since the last import (title, date, or subject - the
+    /** Changed in the app since the last import (title, date, time, or subject - the
         subject also changes when Settings → Lists moves a deleted subject's tasks):
-        such a task is never overwritten or removed by an import. */
+        such a task is never overwritten or removed by an import. Imports from before
+        times were kept have no gcal.start: their (missing) time does not count as edited. */
     function edited(task) {
       return !task.gcal || task.title !== task.gcal.title || task.date !== task.gcal.date ||
-        (task.gcal.subjectId !== undefined && task.subjectId !== task.gcal.subjectId);
+        (task.gcal.subjectId !== undefined && task.subjectId !== task.gcal.subjectId) ||
+        (task.gcal.start !== undefined && ((task.start || '') !== task.gcal.start || (task.end || '') !== (task.gcal.end || '')));
+    }
+
+    /** Set (or clear) a task's time block from an event's. */
+    function setTime(task, blk) {
+      if (blk) { task.start = blk.start; task.end = blk.end; } else { delete task.start; delete task.end; }
     }
 
     /** Same task id for the same event on every device (FNV-1a of calendar + event
@@ -4697,12 +5005,14 @@
         seen[ev.id] = true;
         var m = matchSubject(ev.summary || '', state.subjects, opts.subjectId);
         var title = m.title || opts.untitled || '(untitled)';
+        var blk = TimeBlock.eventBlock(ev), st = blk ? blk.start : '', en = blk ? blk.end : '';
         var task = byId[ev.id];
         if (!task) {
           var tid = taskIdFor(cal, ev.id);
           if (state.adhocTasks.some(function (x) { return x.id === tid; })) tid = opts.uid();   // id already taken (not ours): never clobber it
           task = { id: tid, title: title, subjectId: m.subjectId, type: typeFor(state, m.subjectId), date: date,
-                   gcal: { id: ev.id, cal: cal, title: title, date: date, subjectId: m.subjectId } };
+                   gcal: { id: ev.id, cal: cal, title: title, date: date, subjectId: m.subjectId, start: st, end: en } };
+          setTime(task, blk);
           // signed in: stamped now, so an older cloud copy or tombstone with this (stable) id
           // that lands before the debounced save cannot replace or delete it
           if (opts.now) task.syncAt = opts.now;
@@ -4711,11 +5021,13 @@
           return;
         }
         if (edited(task)) return;                       // touched here: never overwritten
-        if (task.title === title && task.date === date && task.subjectId === m.subjectId) return;
+        if (task.title === title && task.date === date && task.subjectId === m.subjectId &&
+            (task.start || '') === st && (task.end || '') === en) return;
         if (task.date !== date && isDone(state, task)) return;   // checked off on its old day: keep
         task.title = title; task.date = date;
+        setTime(task, blk);
         if (task.subjectId !== m.subjectId) { task.subjectId = m.subjectId; task.type = typeFor(state, m.subjectId); }
-        task.gcal = { id: ev.id, cal: cal, title: title, date: date, subjectId: task.subjectId };
+        task.gcal = { id: ev.id, cal: cal, title: title, date: date, subjectId: task.subjectId, start: st, end: en };
         if (opts.now) task.syncAt = opts.now;
         res.updated++;
       });
@@ -4846,28 +5158,25 @@
       });
     }
 
-    function showError(e) {
+    /** The message key for a failed Google request. failKey: the generic one. */
+    function errorKey(e, failKey) {
       var m = (e && (e.name === 'AbortError' ? 'timeout' : e.message)) || '';
-      if (m === 'offline') setStatus('gcal.offline', null, true);
-      else if (m === 'timeout') setStatus('gcal.timeout', null, true);
-      else if (m === 'denied') setStatus('gcal.denied', null, true);
-      else if (m === 'gis') setStatus('gcal.gisFailed', null, true);
-      else if (m === 'loading') setStatus('gcal.loading', null, true);
-      else if (m === 'expired') setStatus('gcal.expired', null, true);
-      else if (m === 'forbidden') setStatus('gcal.forbidden', null, true);
-      else if (m === 'notfound') setStatus('gcal.notFound', null, true);
-      else if (m === 'quota') setStatus('gcal.quota', null, true);
-      else setStatus('gcal.failed', null, true);
+      return { offline: 'gcal.offline', timeout: 'gcal.timeout', denied: 'gcal.denied', gis: 'gcal.gisFailed',
+        loading: 'gcal.loading', expired: 'gcal.expired', forbidden: 'gcal.forbidden', notfound: 'gcal.notFound',
+        quota: 'gcal.quota' }[m] || failKey || 'gcal.failed';
     }
 
+    function showError(e) { setStatus(errorKey(e), null, true); }
+
     /** All events of the window, following nextPageToken. */
-    function fetchEvents(calId, w) {
+    function fetchEvents(calId, w, interactive) {
+      if (interactive === undefined) interactive = true;
       var all = [];
       function page(tokenParam) {
         var q = '?singleEvents=true&orderBy=startTime&maxResults=250' +
           '&timeMin=' + encodeURIComponent(w.timeMin) + '&timeMax=' + encodeURIComponent(w.timeMax) +
           (tokenParam ? '&pageToken=' + encodeURIComponent(tokenParam) : '');
-        return api('/calendars/' + encodeURIComponent(calId) + '/events' + q, !tokenParam).then(function (data) {
+        return api('/calendars/' + encodeURIComponent(calId) + '/events' + q, interactive && !tokenParam).then(function (data) {
           all = all.concat(data.items || []);
           return data.nextPageToken ? page(data.nextPageToken) : all;
         });
@@ -4876,16 +5185,64 @@
     }
 
     /** Every calendar the user can read, following nextPageToken. */
-    function fetchCalendars() {
+    function fetchCalendars(interactive) {
+      if (interactive === undefined) interactive = true;
       var all = [];
       function page(tokenParam) {
         return api('/users/me/calendarList?minAccessRole=reader&maxResults=250' +
-          (tokenParam ? '&pageToken=' + encodeURIComponent(tokenParam) : ''), !tokenParam).then(function (data) {
+          (tokenParam ? '&pageToken=' + encodeURIComponent(tokenParam) : ''), interactive && !tokenParam).then(function (data) {
           all = all.concat(data.items || []);
           return data.nextPageToken ? page(data.nextPageToken) : all;
         });
       }
       return page('');
+    }
+
+    function calItem(c) { return { id: c.id, name: c.summaryOverride || c.summary || c.id, primary: !!c.primary, selected: !!c.selected }; }
+
+    /** Timed events on the given dates (YYYY-MM-DD, ascending) across the calendars the
+        user shows in Google Calendar (plus the import calendar), for the time-block
+        overlap warning. Each event carries __cal (its calendar id). interactive: called
+        from a click, so Google's sign-in may open; otherwise a token must be at hand.
+        A calendar that can no longer be read is skipped. */
+    function eventsForDates(dates, interactive) {
+      interactive = !!interactive;   // never the fetch helpers' default (true): a background check must not open Google's sign-in
+      if (!navigator.onLine) return Promise.reject(new Error('offline'));
+      var first = TimeBlock.addDays(dates[0], 0).split('-').map(Number);
+      var last = TimeBlock.addDays(dates[dates.length - 1], 1).split('-').map(Number);
+      var w = { timeMin: new Date(first[0], first[1] - 1, first[2]).toISOString(),
+                timeMax: new Date(last[0], last[1] - 1, last[2]).toISOString() };
+      return getToken(interactive).then(function () {
+        // a background check (not a click) never opens Google's sign-in, also when the
+        // token runs out between the requests: those get 'expired' instead
+        return calendars ? calendars : fetchCalendars(interactive).then(function (list) { calendars = list.map(calItem); return calendars; });
+      }).then(function (cals) {
+        var importCal = (AppState.settings.gcal || {}).calendarId;
+        var ids = cals.filter(function (c) { return c.primary || c.selected || c.id === importCal; })
+          .map(function (c) { return c.id; });   // all of them: a capped check could report "nothing overlaps" wrongly
+        // the import calendar even when the list lacks it (chosen on another device or in a
+        // backup); one that cannot be read any more is skipped below
+        if (importCal && ids.indexOf(importCal) === -1) ids.push(importCal);
+        return Promise.all(ids.map(function (id) {
+          return fetchEvents(id, w, interactive).then(function (evs) {
+            evs.forEach(function (ev) { ev.__cal = id; });
+            return evs;
+          }, function (e) {
+            if (/^(notfound|forbidden)$/.test(e && e.message)) return [];
+            throw e;
+          });
+        }));
+      }).then(function (lists) { return [].concat.apply([], lists); });
+    }
+
+    function hasToken() { return !!token && Date.now() < tokenUntil; }
+    function configured() { return !!GOOGLE_CLIENT_ID; }
+
+    /** Load Google's sign-in script when the Schedule page opens (with a client ID),
+        so a "check Google Calendar" click can open the popup at once. */
+    function preloadForSchedule() {
+      if (!GOOGLE_CLIENT_ID || tokenClient) return;
+      loadGis().then(initClient).catch(function () { /* reported when the user presses the button */ });
     }
 
     // bumped by every connect/import: a result that arrives after a newer request
@@ -4897,7 +5254,7 @@
       setStatus('gcal.connecting');
       fetchCalendars().then(function (list) {
         if (seq !== reqSeq) return;
-        var items = list.map(function (c) { return { id: c.id, name: c.summaryOverride || c.summary || c.id, primary: !!c.primary }; });
+        var items = list.map(calItem);
         var g = AppState.settings.gcal;
         var pick = items.filter(function (c) { return c.id === g.calendarId; })[0] ||
           items.filter(function (c) { return /공부|study/i.test(c.name); })[0] ||
@@ -5016,7 +5373,9 @@
       });
     }
 
-    return { setup: setup, render: render, preload: preload, merge: merge, taskIdFor: taskIdFor, matchSubject: matchSubject, eventDate: eventDate, windowDates: windowDates };
+    return { setup: setup, render: render, preload: preload, preloadForSchedule: preloadForSchedule, merge: merge, taskIdFor: taskIdFor,
+      matchSubject: matchSubject, eventDate: eventDate, windowDates: windowDates, eventsForDates: eventsForDates,
+      hasToken: hasToken, configured: configured, errorKey: errorKey };
   })();
 
   var Stats = {
@@ -5854,6 +6213,7 @@
       Library.setup();
       Schedule.setupRecurringForm();
       Schedule.setupAdhocForm();
+      Schedule.setupClash();
       Schedule.setupCalendarControls();
       Flashcards.setupCards();
       Flashcards.setupStudyMode();
