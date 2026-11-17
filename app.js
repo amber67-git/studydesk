@@ -5220,6 +5220,9 @@
         var importCal = (AppState.settings.gcal || {}).calendarId;
         var ids = cals.filter(function (c) { return c.primary || c.selected || c.id === importCal; })
           .map(function (c) { return c.id; });   // all of them: a capped check could report "nothing overlaps" wrongly
+        // the import calendar even when the list lacks it (chosen on another device or in a
+        // backup); one that cannot be read any more is skipped below
+        if (importCal && ids.indexOf(importCal) === -1) ids.push(importCal);
         return Promise.all(ids.map(function (id) {
           return fetchEvents(id, w, interactive).then(function (evs) {
             evs.forEach(function (ev) { ev.__cal = id; });
