@@ -122,6 +122,20 @@ async function run(lang, browserLang) {
   ok((await label('#page-pending span')) === want('this page is still downloading from the cloud', '이 페이지는 아직 클라우드에서 받는 중입니다') && (await label('#page-pending-edit')) === want('edit anyway', '그래도 쓰기'), lang + ': pending-page notice -> "' + (await label('#page-pending')) + '"');
   await scan('notes/pending-notice');
   await p.evaluate(() => { document.getElementById('page-pending').hidden = true; });
+  // time-block overlap warning on the Schedule page (shown only while a form is filled in) and
+  // the "check Google Calendar" button (only with a client ID): a language-neutral task title "101"
+  await p.evaluate(() => showPage('manager')); await p.waitForTimeout(150);
+  const ymd = await p.evaluate(() => { const t = new Date(); return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); });
+  await p.fill('#manager-task-input', '101'); await p.fill('#manager-task-date', ymd);
+  await p.fill('#manager-task-start', '10:00'); await p.fill('#manager-task-end', '11:00'); await p.click('#manager-task-add'); await p.waitForTimeout(200);
+  await p.fill('#manager-task-start', '10:30'); await p.fill('#manager-task-end', '11:30'); await p.waitForTimeout(150);
+  await p.evaluate(() => { document.getElementById('manager-task-gcheck').hidden = false; });
+  ok((await label('#manager-task-clash')) === want('Overlaps with: 101 (10:00–11:00)', '겹치는 일정: 101 (10:00–11:00)') && (await label('#manager-task-gcheck')) === want('check Google Calendar', '구글 캘린더 확인'),
+    lang + ': overlap warning -> "' + (await label('#manager-task-clash')) + '" / "' + (await label('#manager-task-gcheck')) + '"');
+  await scan('manager/time-block warning');
+  await p.evaluate(() => { document.getElementById('manager-task-gcheck').hidden = true; });
+  await p.fill('#manager-task-start', ''); await p.fill('#manager-task-end', '');
+  await p.evaluate(() => showPage('notes')); await p.waitForTimeout(150);
   await p.click('#review-mode-btn'); ok((await label('#review-mode-btn')) === want('show notes', '노트 보기'), lang + ': self-test on -> "' + (await label('#review-mode-btn')) + '"');
   await p.click('#review-mode-btn'); ok((await label('#review-mode-btn')) === want('self-test', '셀프 테스트'), lang + ': self-test off -> "' + (await label('#review-mode-btn')) + '"');
   await p.click('#save-note-btn'); ok((await label('#save-note-btn')) === want('saved', '저장됨'), lang + ': save pressed -> "' + (await label('#save-note-btn')) + '"');

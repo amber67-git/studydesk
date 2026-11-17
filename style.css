@@ -398,6 +398,27 @@ textarea#summary:focus-visible{box-shadow:inset 0 0 0 2px var(--bdr2)}
   .task-row-plain{grid-template-columns:minmax(0,1fr)}
   .task-meta{grid-template-columns:minmax(0,96px) 52px auto;column-gap:8px}
 }
+/* a time column (76px, fits "15:00–16:30" and "24:00") only in lists where some
+   task has a time; untimed rows keep an empty cell there so titles line up */
+.task-time{font-family:var(--sans);font-size:11px;color:var(--txt2);white-space:nowrap;font-variant-numeric:tabular-nums}
+.has-time .task-row{grid-template-columns:16px 76px minmax(0,1fr) auto 20px}
+.has-time .task-row-plain{grid-template-columns:76px minmax(0,1fr) auto}
+@container (max-width:520px){
+  .has-time .task-row{grid-template-columns:16px 76px minmax(0,1fr) 20px}
+  .has-time .task-row-plain{grid-template-columns:76px minmax(0,1fr)}
+  .task-row .task-time{grid-row:1}
+}
+.cal-time{font-family:var(--sans);font-weight:600;margin-right:4px;font-variant-numeric:tabular-nums}
+.time-row{margin-bottom:10px}
+.time-field{display:flex;align-items:center;gap:8px;min-width:0;font-family:var(--sans);font-size:12px;color:var(--txt2)}
+.time-field span{flex:0 0 auto;min-width:32px}
+.time-field input{flex:1 1 auto;min-width:0}
+.clash-box{font-family:var(--sans);font-size:12px;line-height:1.45}
+.clash-box:empty{display:none}
+.clash-box p{margin:0 0 8px}
+.clash-warn{color:var(--red)}
+.clash-info{color:var(--txt3)}
+.clash-btn{margin-bottom:10px}
 .task-row:last-child{border-bottom:none}
 .task-row .task-label{min-width:0;overflow-wrap:anywhere;color:var(--txt)}
 .task-row .task-label.done{text-decoration:line-through;color:var(--txt3)}
