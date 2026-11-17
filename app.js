@@ -2657,10 +2657,16 @@
       var btn = Utils.$(form === 'manager' ? 'manager-task-gcheck' : 'rec-gcheck');
       if (!box || !btn) return;
       var cand = clashCandidate(form), html = '';
-      if (cand && st.local.length) html += '<p class="clash-warn">' + Utils.escapeHtml(tx('clash.local', { list: '\u0001' })).replace('\u0001', clashListHtml(st.local)) + '</p>';
+      // recomputed on every render, so a task deleted, synced or imported meanwhile is reflected
+      st.local = cand ? TimeBlock.localClashes(AppState, cand, Utils.todayStr()) : [];
+      // the list goes in through a function: a "$&" in a title must stay literal
+      var withList = function (text, list) {
+        return Utils.escapeHtml(text).replace('\u0001', function () { return clashListHtml(list); });
+      };
+      if (cand && st.local.length) html += '<p class="clash-warn">' + withList(tx('clash.local', { list: '\u0001' }), st.local) + '</p>';
       var g = cand ? st.g : null;
       if (g && g.state === 'checking') html += '<p class="clash-info">' + Utils.escapeHtml(tx('clash.checking')) + '</p>';
-      else if (g && g.state === 'done' && g.items.length) html += '<p class="clash-warn">' + Utils.escapeHtml(tx('clash.gcal', { list: '\u0001' })).replace('\u0001', clashListHtml(g.items)) + '</p>';
+      else if (g && g.state === 'done' && g.items.length) html += '<p class="clash-warn">' + withList(tx('clash.gcal', { list: '\u0001' }), g.items) + '</p>';
       else if (g && g.state === 'done') html += '<p class="clash-info">' + Utils.escapeHtml(tx('clash.clear')) + '</p>';
       else if (g && g.state === 'error') html += '<p class="clash-warn">' + Utils.escapeHtml(tx(g.key)) + '</p>';
       box.innerHTML = html;
@@ -2675,7 +2681,6 @@
       var st = clash[form], seq = ++st.seq;
       clearTimeout(st.timer);
       var cand = clashCandidate(form);
-      st.local = cand ? TimeBlock.localClashes(AppState, cand, Utils.todayStr()) : [];
       if (!cand || !GCal.configured() || (!interactive && !GCal.hasToken())) { st.g = null; renderClash(form); return; }
       var run = function () {
         if (seq !== st.seq) return;
@@ -2685,10 +2690,13 @@
         renderClash(form);
         GCal.eventsForDates(ds, interactive).then(function (events) {
           if (seq !== st.seq) return;   // the form changed meanwhile: a newer check reports
-          // events imported as tasks are left to the local check (which sees their time as edited here)
+          // events imported as timed tasks are left to the local check (which sees their time as
+          // edited here); one imported without a time (e.g. past midnight) is checked here
           var items = TimeBlock.eventClashes(events, cand, Utils.todayStr(), function (ev) {
             var tid = ev.__cal ? GCal.taskIdFor(ev.__cal, ev.id) : '';
-            return !!tid && AppState.adhocTasks.some(function (t) { return t.id === tid || (t.gcal && t.gcal.cal === ev.__cal && t.gcal.id === ev.id); });
+            return !!tid && AppState.adhocTasks.some(function (t) {
+              return (t.id === tid || (t.gcal && t.gcal.cal === ev.__cal && t.gcal.id === ev.id)) && !!TimeBlock.of(t);
+            });
           });
           st.g = { state: 'done', items: items };
           renderClash(form);
