@@ -2533,7 +2533,7 @@
     }
 
     function renderRecurringList() {
-      renderClash('rec');
+      renderClashes();
       if (AppState.recurring.length === 0) {
         Utils.$('recurring-list').innerHTML = '<p class="empty-note">' + tx('sched.noRecurring') + '</p>';
         return;
@@ -2710,6 +2710,10 @@
       if (interactive) run(); else st.timer = setTimeout(run, 500);
     }
 
+    /** Both forms: either kind of task (added, deleted, synced, imported) can be what
+        the other form clashes with, and every change re-renders one of the two lists. */
+    function renderClashes() { renderClash('manager'); renderClash('rec'); }
+
     function resetClash(form) {
       var st = clash[form];
       st.seq++; clearTimeout(st.timer); st.local = []; st.g = null;
@@ -2731,7 +2735,7 @@
     }
 
     function renderManagerTaskList() {
-      renderClash('manager');
+      renderClashes();
       var upcoming = AppState.adhocTasks.slice().sort(function (a, b) {
         return (a.date || '').localeCompare(b.date || '') || TimeBlock.compare(a, b);
       });
