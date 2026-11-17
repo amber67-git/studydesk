@@ -2666,7 +2666,8 @@
       if (cand && st.local.length) html += '<p class="clash-warn">' + withList(tx('clash.local', { list: '\u0001' }), st.local) + '</p>';
       var g = cand ? st.g : null;
       if (g && g.state === 'checking') html += '<p class="clash-info">' + Utils.escapeHtml(tx('clash.checking')) + '</p>';
-      else if (g && g.state === 'done' && g.items.length) html += '<p class="clash-warn">' + withList(tx('clash.gcal', { list: '\u0001' }), g.items) + '</p>';
+      var gItems = g && g.state === 'done' ? gcalClashes(g) : [];
+      if (g && g.state === 'done' && gItems.length) html += '<p class="clash-warn">' + withList(tx('clash.gcal', { list: '\u0001' }), gItems) + '</p>';
       else if (g && g.state === 'done') html += '<p class="clash-info">' + Utils.escapeHtml(tx('clash.clear')) + '</p>';
       else if (g && g.state === 'error') html += '<p class="clash-warn">' + Utils.escapeHtml(tx(g.key)) + '</p>';
       box.innerHTML = html;
@@ -2682,23 +2683,18 @@
       clearTimeout(st.timer);
       var cand = clashCandidate(form);
       if (!cand || !GCal.configured() || (!interactive && !GCal.hasToken())) { st.g = null; renderClash(form); return; }
+      // the last result was for other values: "checking" until the new one arrives
+      st.g = { state: 'checking' };
+      renderClash(form);
       var run = function () {
         if (seq !== st.seq) return;
         var ds = TimeBlock.dates(cand, Utils.todayStr());
-        if (!ds.length) { st.g = { state: 'done', items: [] }; renderClash(form); return; }
-        st.g = { state: 'checking' };
-        renderClash(form);
+        if (!ds.length) { st.g = { state: 'done', events: [], cand: cand }; renderClash(form); return; }
         GCal.eventsForDates(ds, interactive).then(function (events) {
           if (seq !== st.seq) return;   // the form changed meanwhile: a newer check reports
-          // events imported as timed tasks are left to the local check (which sees their time as
-          // edited here); one imported without a time (e.g. past midnight) is checked here
-          var items = TimeBlock.eventClashes(events, cand, Utils.todayStr(), function (ev) {
-            var tid = ev.__cal ? GCal.taskIdFor(ev.__cal, ev.id) : '';
-            return !!tid && AppState.adhocTasks.some(function (t) {
-              return (t.id === tid || (t.gcal && t.gcal.cal === ev.__cal && t.gcal.id === ev.id)) && !!TimeBlock.of(t);
-            });
-          });
-          st.g = { state: 'done', items: items };
+          // the events are kept; which ones clash is worked out on every render (gcalClashes),
+          // so deleting or importing a task changes the result without asking Google again
+          st.g = { state: 'done', events: events, cand: cand };
           renderClash(form);
         }).catch(function (e) {
           if (seq !== st.seq) return;
@@ -2708,6 +2704,19 @@
       };
       // the button's click must reach Google's sign-in without waiting; typing waits a moment
       if (interactive) run(); else st.timer = setTimeout(run, 500);
+    }
+
+    /** Google events of a finished check that clash with the block it was made for. Events
+        imported as timed tasks are left to the local check (which sees their time as edited
+        here); one imported without a time (e.g. past midnight) is reported here. Worked out
+        against the current tasks, so deleting such a task brings its event back. */
+    function gcalClashes(g) {
+      return TimeBlock.eventClashes(g.events, g.cand, Utils.todayStr(), function (ev) {
+        var tid = ev.__cal ? GCal.taskIdFor(ev.__cal, ev.id) : '';
+        return !!tid && AppState.adhocTasks.some(function (t) {
+          return (t.id === tid || (t.gcal && t.gcal.cal === ev.__cal && t.gcal.id === ev.id)) && !!TimeBlock.of(t);
+        });
+      });
     }
 
     /** Both forms: either kind of task (added, deleted, synced, imported) can be what
@@ -5160,13 +5169,14 @@
     function showError(e) { setStatus(errorKey(e), null, true); }
 
     /** All events of the window, following nextPageToken. */
-    function fetchEvents(calId, w) {
+    function fetchEvents(calId, w, interactive) {
+      if (interactive === undefined) interactive = true;
       var all = [];
       function page(tokenParam) {
         var q = '?singleEvents=true&orderBy=startTime&maxResults=250' +
           '&timeMin=' + encodeURIComponent(w.timeMin) + '&timeMax=' + encodeURIComponent(w.timeMax) +
           (tokenParam ? '&pageToken=' + encodeURIComponent(tokenParam) : '');
-        return api('/calendars/' + encodeURIComponent(calId) + '/events' + q, !tokenParam).then(function (data) {
+        return api('/calendars/' + encodeURIComponent(calId) + '/events' + q, interactive && !tokenParam).then(function (data) {
           all = all.concat(data.items || []);
           return data.nextPageToken ? page(data.nextPageToken) : all;
         });
@@ -5175,11 +5185,12 @@
     }
 
     /** Every calendar the user can read, following nextPageToken. */
-    function fetchCalendars() {
+    function fetchCalendars(interactive) {
+      if (interactive === undefined) interactive = true;
       var all = [];
       function page(tokenParam) {
         return api('/users/me/calendarList?minAccessRole=reader&maxResults=250' +
-          (tokenParam ? '&pageToken=' + encodeURIComponent(tokenParam) : ''), !tokenParam).then(function (data) {
+          (tokenParam ? '&pageToken=' + encodeURIComponent(tokenParam) : ''), interactive && !tokenParam).then(function (data) {
           all = all.concat(data.items || []);
           return data.nextPageToken ? page(data.nextPageToken) : all;
         });
@@ -5195,19 +5206,22 @@
         from a click, so Google's sign-in may open; otherwise a token must be at hand.
         A calendar that can no longer be read is skipped. */
     function eventsForDates(dates, interactive) {
+      interactive = !!interactive;   // never the fetch helpers' default (true): a background check must not open Google's sign-in
       if (!navigator.onLine) return Promise.reject(new Error('offline'));
       var first = TimeBlock.addDays(dates[0], 0).split('-').map(Number);
       var last = TimeBlock.addDays(dates[dates.length - 1], 1).split('-').map(Number);
       var w = { timeMin: new Date(first[0], first[1] - 1, first[2]).toISOString(),
                 timeMax: new Date(last[0], last[1] - 1, last[2]).toISOString() };
       return getToken(interactive).then(function () {
-        return calendars ? calendars : fetchCalendars().then(function (list) { calendars = list.map(calItem); return calendars; });
+        // a background check (not a click) never opens Google's sign-in, also when the
+        // token runs out between the requests: those get 'expired' instead
+        return calendars ? calendars : fetchCalendars(interactive).then(function (list) { calendars = list.map(calItem); return calendars; });
       }).then(function (cals) {
         var importCal = (AppState.settings.gcal || {}).calendarId;
         var ids = cals.filter(function (c) { return c.primary || c.selected || c.id === importCal; })
-          .slice(0, 10).map(function (c) { return c.id; });
+          .map(function (c) { return c.id; });   // all of them: a capped check could report "nothing overlaps" wrongly
         return Promise.all(ids.map(function (id) {
-          return fetchEvents(id, w).then(function (evs) {
+          return fetchEvents(id, w, interactive).then(function (evs) {
             evs.forEach(function (ev) { ev.__cal = id; });
             return evs;
           }, function (e) {
