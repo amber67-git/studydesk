@@ -206,6 +206,8 @@
       'gout.removeFailed': 'Deleted here, but it could not be removed from Google Calendar. Delete it there too (StudyDesk calendar).',
       'gout.changed': 'Your data changed while sending (a backup was loaded or the account changed). Nothing was added; send it again.',
       'gout.notSaved': "Not added: this browser's storage is full, so the link to Google Calendar could not be kept. Free up space, then send it again.",
+      'gout.syncPending': 'Not added: cloud sync is still downloading. Send it again in a moment.',
+      'gout.syncBroken': 'Not added: cloud sync has not finished its first download (offline or an error). Check Settings → Account, or sign out to send from this device only.',
       // flashcards
       'cards.reviewMode': 'review mode', 'cards.addBtn': 'card', 'cards.filterAria': 'filter cards by subject',
       'cards.prev': 'previous card', 'cards.next': 'next card', 'cards.flip': 'flip', 'cards.empty': 'No cards yet.',
@@ -417,6 +419,8 @@
       'gout.removeFailed': '여기서는 지웠지만 구글 캘린더에서는 지우지 못했습니다. 구글 캘린더(StudyDesk 캘린더)에서도 지워 주세요.',
       'gout.changed': '보내는 동안 데이터가 바뀌었습니다(백업을 불러왔거나 계정이 바뀜). 아무것도 추가하지 않았으니 다시 보내 주세요.',
       'gout.notSaved': '추가하지 않았습니다: 브라우저 저장 공간이 가득 차서 구글 캘린더 연결을 저장할 수 없습니다. 공간을 비운 뒤 다시 보내 주세요.',
+      'gout.syncPending': '추가하지 않았습니다: 클라우드 동기화를 내려받는 중입니다. 잠시 뒤 다시 보내 주세요.',
+      'gout.syncBroken': '추가하지 않았습니다: 클라우드 동기화가 첫 내려받기를 마치지 못했습니다(오프라인 또는 오류). 설정 → 계정을 확인하거나, 이 기기에서만 보내려면 로그아웃하세요.',
       'cards.reviewMode': '복습 모드', 'cards.addBtn': '카드', 'cards.filterAria': '과목으로 카드 거르기',
       'cards.prev': '이전 카드', 'cards.next': '다음 카드', 'cards.flip': '뒤집기', 'cards.empty': '아직 카드가 없습니다.',
       'card.title': '암기 카드 추가', 'card.front': '질문 / 앞면', 'card.back': '답 / 뒷면', 'card.add': '카드 추가',
@@ -5337,7 +5341,8 @@
       var m = (e && (e.name === 'AbortError' ? 'timeout' : e.message)) || '';
       return { offline: 'gcal.offline', timeout: 'gcal.timeout', denied: 'gcal.denied', gis: 'gcal.gisFailed',
         loading: 'gcal.loading', expired: 'gcal.expired', forbidden: 'gcal.forbidden', notfound: 'gcal.notFound',
-        quota: 'gcal.quota', nowrite: 'gout.noWrite', cleanup: 'gout.removeFailed', changed: 'gout.changed', notsaved: 'gout.notSaved' }[m] || failKey || 'gcal.failed';
+        quota: 'gcal.quota', nowrite: 'gout.noWrite', cleanup: 'gout.removeFailed', changed: 'gout.changed', notsaved: 'gout.notSaved',
+        syncpending: 'gout.syncPending', syncbroken: 'gout.syncBroken' }[m] || failKey || 'gcal.failed';
     }
 
     function showError(e) { setStatus(errorKey(e), null, true); }
@@ -5476,15 +5481,21 @@
       var subj = AppState.subjectById(task.subjectId);
       var body = outEvent(task, kind, subj ? subj.name : '', deviceTz(), Utils.todayStr());
       if (!body) return Promise.reject(new Error('notime'));
+      // like an import: not while cloud sync is restoring a sign-in or has not merged its first
+      // download (an account switch keeps the old account's tasks on screen until then)
+      var block = syncBlock();
+      if (block) return Promise.reject(new Error(block === 'gcal.syncBroken' ? 'syncbroken' : 'syncpending'));
       body.id = eventIdFor(task.id);
       var g0 = AppState.settings.gcal;    // captured before Google's window opens
+      var s0 = syncSession();             // sign-in/out changes it even before the settings are replaced
+      function same() { return AppState.settings.gcal === g0 && syncSession() === s0; }
       var first = getToken(true, true);   // synchronously, inside the click
       var lastCal = null;   // the calendar the event was sent to (it may be there even if the answer was lost)
       function insert(retried) {
         return outCalendar(g0).then(function (cal) {
           // settings replaced while the calendar was being made (backup, account switch):
           // the calendar belongs to the old settings, so add nothing to it
-          if (AppState.settings.gcal !== g0) throw new Error('changed');
+          if (!same()) throw new Error('changed');
           // the calendar id could not be saved (storage full): adding an event now could, after
           // a reload, be followed by a second calendar with a second event - try to save first
           if (unsavedCal === cal) {
@@ -5522,7 +5533,7 @@
       }
       var run = first.then(function () { return insert(false); }).then(function (r) {
         var live = liveTask();
-        var changed = AppState.settings.gcal !== g0;
+        var changed = !same();
         // the loaded data already links this very event: keep it, it is theirs
         if (changed && live && live.gout && live.gout.cal === r.cal && live.gout.id === r.id) return live.gout;
         // deleted here meanwhile, or the settings were replaced while the event was being
@@ -5542,7 +5553,7 @@
       }, function (e) {
         // the insert failed, but it may have gone through with its answer lost: if the task was
         // deleted meanwhile, remove that event too (its id is known), as on success
-        if (lastCal && !liveTask() && AppState.settings.gcal === g0 && !(e && /^(changed|notsaved)$/.test(e.message))) {
+        if (lastCal && !liveTask() && same() && !(e && /^(changed|notsaved)$/.test(e.message))) {
           return api('/calendars/' + encodeURIComponent(lastCal) + '/events/' + encodeURIComponent(body.id), false, { method: 'DELETE', write: true })
             .then(function () { return null; }, function () { throw new Error('cleanup'); });
         }
