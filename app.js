@@ -205,6 +205,7 @@
       'gout.failed': 'Saved here, but not added to Google Calendar. Use "add to Google" in the list to try again.',
       'gout.removeFailed': 'Deleted here, but it could not be removed from Google Calendar. Delete it there too (StudyDesk calendar).',
       'gout.changed': 'Your data changed while sending (a backup was loaded or the account changed). Nothing was added; send it again.',
+      'gout.notSaved': "Not added: this browser's storage is full, so the link to Google Calendar could not be kept. Free up space, then send it again.",
       // flashcards
       'cards.reviewMode': 'review mode', 'cards.addBtn': 'card', 'cards.filterAria': 'filter cards by subject',
       'cards.prev': 'previous card', 'cards.next': 'next card', 'cards.flip': 'flip', 'cards.empty': 'No cards yet.',
@@ -415,6 +416,7 @@
       'gout.failed': '여기에는 저장했지만 구글 캘린더에는 추가하지 못했습니다. 목록의 "구글에 추가"로 다시 시도하세요.',
       'gout.removeFailed': '여기서는 지웠지만 구글 캘린더에서는 지우지 못했습니다. 구글 캘린더(StudyDesk 캘린더)에서도 지워 주세요.',
       'gout.changed': '보내는 동안 데이터가 바뀌었습니다(백업을 불러왔거나 계정이 바뀜). 아무것도 추가하지 않았으니 다시 보내 주세요.',
+      'gout.notSaved': '추가하지 않았습니다: 브라우저 저장 공간이 가득 차서 구글 캘린더 연결을 저장할 수 없습니다. 공간을 비운 뒤 다시 보내 주세요.',
       'cards.reviewMode': '복습 모드', 'cards.addBtn': '카드', 'cards.filterAria': '과목으로 카드 거르기',
       'cards.prev': '이전 카드', 'cards.next': '다음 카드', 'cards.flip': '뒤집기', 'cards.empty': '아직 카드가 없습니다.',
       'card.title': '암기 카드 추가', 'card.front': '질문 / 앞면', 'card.back': '답 / 뒷면', 'card.add': '카드 추가',
@@ -1235,9 +1237,11 @@
       el.textContent = tx('storage.used', { size: (kb >= 1024 ? (kb / 1024).toFixed(1) + ' MB' : kb + ' KB'), pct: pct });
     }
 
+    /** Returns true when written, false when the write failed (storage full), null when
+        storage is blocked (private mode: nothing is ever kept, so there is nothing to lose). */
     function save() {
       var status = Utils.$('save-status');
-      if (!storageAvailable()) { warnBlockedOnce(); return; }
+      if (!storageAvailable()) { warnBlockedOnce(); return null; }
       if (status) status.textContent = tx('save.saving');
       // cloud sync: stamp changed entities first so the timestamp lands in this write too
       var pending = (typeof Sync !== 'undefined' && Sync.collectChanges) ? Sync.collectChanges() : null;
@@ -1261,6 +1265,7 @@
             if (Utils.$('save-status')) Utils.$('save-status').textContent = '';
           }, 1200);
         }
+        return true;
       } catch (e) {
         // Almost always QuotaExceededError: browser storage is full. This is
         // the one failure that can silently lose work, so say it loudly once.
@@ -1270,6 +1275,7 @@
           alert(tx('storage.fullAlert'));
         }
         updateUsageDisplay();
+        return false;
       }
     }
 
@@ -5326,7 +5332,7 @@
       var m = (e && (e.name === 'AbortError' ? 'timeout' : e.message)) || '';
       return { offline: 'gcal.offline', timeout: 'gcal.timeout', denied: 'gcal.denied', gis: 'gcal.gisFailed',
         loading: 'gcal.loading', expired: 'gcal.expired', forbidden: 'gcal.forbidden', notfound: 'gcal.notFound',
-        quota: 'gcal.quota', nowrite: 'gout.noWrite', cleanup: 'gout.removeFailed', changed: 'gout.changed' }[m] || failKey || 'gcal.failed';
+        quota: 'gcal.quota', nowrite: 'gout.noWrite', cleanup: 'gout.removeFailed', changed: 'gout.changed', notsaved: 'gout.notSaved' }[m] || failKey || 'gcal.failed';
     }
 
     function showError(e) { setStatus(errorKey(e), null, true); }
@@ -5413,6 +5419,7 @@
     // one StudyDesk calendar creation at a time: sends that overlap share it instead of
     // each making a calendar (the last one's id would win and the others be orphaned)
     var outCalPending = null;
+    var unsavedCal = null;   // a StudyDesk calendar id whose save failed (storage full)
 
     /** The "StudyDesk" calendar in Google (created by this app on the first send; kept in
         settings, so other devices use the same one). The new id is written only into the
@@ -5428,7 +5435,7 @@
         // saved at once, not after the 400 ms debounce: a reload right after this must not
         // forget the calendar (the retry would make a second one, and event ids are only
         // unique within a calendar)
-        if (AppState.settings.gcal === g) { g.outCalendarId = cal.id; Storage.save(); }
+        if (AppState.settings.gcal === g) { g.outCalendarId = cal.id; if (Storage.save() === false) unsavedCal = cal.id; }
         return cal.id;
       }, function (e) {
         if (outCalPending && outCalPending.p === p) outCalPending = null;   // a later send tries again
@@ -5472,6 +5479,12 @@
           // settings replaced while the calendar was being made (backup, account switch):
           // the calendar belongs to the old settings, so add nothing to it
           if (AppState.settings.gcal !== g0) throw new Error('changed');
+          // the calendar id could not be saved (storage full): adding an event now could, after
+          // a reload, be followed by a second calendar with a second event - try to save first
+          if (unsavedCal === cal) {
+            if (Storage.save() === false) throw new Error('notsaved');
+            unsavedCal = null;
+          }
           return api('/calendars/' + encodeURIComponent(cal) + '/events', false, { method: 'POST', write: true, body: body }).then(function (ev) {
             return { cal: cal, id: ev.id };
           }, function (e) {
