@@ -205,7 +205,7 @@
       'gout.failed': 'Saved here, but not added to Google Calendar. Use "add to Google" in the list to try again.',
       'gout.removeFailed': 'Deleted here, but it could not be removed from Google Calendar. Delete it there too (StudyDesk calendar).',
       'gout.changed': 'Your data changed while sending (a backup was loaded or the account changed). Nothing was added; send it again.',
-      'gout.notSaved': "Not added: this browser could not save (storage full or blocked), so the link to Google Calendar could not be kept. Free up space, then send it again.",
+      'gout.notSaved': "Not added: this browser could not save (storage full or blocked), so the link to Google Calendar could not be kept. Free up space, reload the page, then send it again.",
       'gout.syncPending': 'Not added: cloud sync is still downloading. Send it again in a moment.',
       'gout.syncBroken': 'Not added: cloud sync has not finished its first download (offline or an error). Check Settings → Account, or sign out to send from this device only.',
       // flashcards
@@ -418,7 +418,7 @@
       'gout.failed': '여기에는 저장했지만 구글 캘린더에는 추가하지 못했습니다. 목록의 "구글에 추가"로 다시 시도하세요.',
       'gout.removeFailed': '여기서는 지웠지만 구글 캘린더에서는 지우지 못했습니다. 구글 캘린더(StudyDesk 캘린더)에서도 지워 주세요.',
       'gout.changed': '보내는 동안 데이터가 바뀌었습니다(백업을 불러왔거나 계정이 바뀜). 아무것도 추가하지 않았으니 다시 보내 주세요.',
-      'gout.notSaved': '추가하지 않았습니다: 브라우저에 저장할 수 없어서(저장 공간이 가득 찼거나 차단됨) 구글 캘린더 연결을 남길 수 없습니다. 공간을 비운 뒤 다시 보내 주세요.',
+      'gout.notSaved': '추가하지 않았습니다: 브라우저에 저장할 수 없어서(저장 공간이 가득 찼거나 차단됨) 구글 캘린더 연결을 남길 수 없습니다. 공간을 비우고 페이지를 새로고침한 뒤 다시 보내 주세요.',
       'gout.syncPending': '추가하지 않았습니다: 클라우드 동기화를 내려받는 중입니다. 잠시 뒤 다시 보내 주세요.',
       'gout.syncBroken': '추가하지 않았습니다: 클라우드 동기화가 첫 내려받기를 마치지 못했습니다(오프라인 또는 오류). 설정 → 계정을 확인하거나, 이 기기에서만 보내려면 로그아웃하세요.',
       'cards.reviewMode': '복습 모드', 'cards.addBtn': '카드', 'cards.filterAria': '과목으로 카드 거르기',
@@ -5556,7 +5556,13 @@
         // stamped now (signed in), so an older cloud copy that lands before the debounced
         // save cannot replace the task and lose gout (its event could then not be removed)
         if (typeof Sync !== 'undefined' && Sync.isSignedIn && Sync.isSignedIn()) live.syncAt = Date.now();
-        Storage.scheduleSave();
+        // saved at once, not after the debounce: a reload must not lose the link (deleting the
+        // task would then leave the event in Google). Not savable: unlink and remove the event
+        if (Storage.save() !== true) {
+          delete live.gout;
+          return api('/calendars/' + encodeURIComponent(r.cal) + '/events/' + encodeURIComponent(r.id), false, { method: 'DELETE', write: true })
+            .then(function () { throw new Error('notsaved'); }, function () { throw new Error('cleanup'); });
+        }
         return live.gout;
       }, function (e) {
         // the insert failed, but it may have gone through with its answer lost. Treated as on
@@ -6580,6 +6586,10 @@
 
       // first render
       this.renderAll();
+
+      // tasks sent to Google: load Google's sign-in script now (only with a client ID), so
+      // deleting one - a click, e.g. in today's list right after opening - can ask Google at once
+      if (AppState.recurring.concat(AppState.adhocTasks).some(function (t) { return t && t.gout; })) GCal.preloadForSchedule();
 
       if (Utils.$('sb-foot-ver')) Utils.$('sb-foot-ver').textContent = APP_VERSION + ' \u00b7 ' + APP_UPDATED;
 
