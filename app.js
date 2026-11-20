@@ -5431,17 +5431,21 @@
       return p;
     }
 
-    /** A client-chosen event id (base32hex, as Google requires), so a send repeated after a
-        lost response finds its event already there (409) instead of adding a second one. */
-    function newEventId() {
-      var a = '0123456789abcdefghijklmnopqrstuv', out = 'sd', buf = new Uint8Array(24);
-      (window.crypto || window.msCrypto).getRandomValues(buf);
-      for (var i = 0; i < buf.length; i++) out += a[buf[i] & 31];
-      return out;
+    /** The event id for a task: chosen here (base32hex, as Google requires) and derived from
+        the task id, so every attempt for one task - a retry after a lost answer, after a page
+        reload, or from another device - names the same event, and Google answers 409 instead
+        of adding a second one. Nothing extra is stored. */
+    function eventIdFor(taskId) {
+      var str = 'studydesk|' + String(taskId), h1 = 0x811c9dc5, h2 = 0x01000193;
+      for (var i = 0; i < str.length; i++) {
+        var c = str.charCodeAt(i);
+        h1 = Math.imul(h1 ^ c, 16777619) >>> 0;
+        h2 = Math.imul(h2 ^ c, 2246822519) >>> 0;
+      }
+      return 'sd' + h1.toString(32) + 'v' + h2.toString(32);   // 0-9a-v only; 'v' joins the halves
     }
 
     var sending = {};      // task id -> the send under way (a double click shares it)
-    var pendingIds = {};   // task id -> event id of a send that did not finish (reused on retry)
 
     /** Send a timed task (kind 'one' or 'rec') to the StudyDesk calendar; it then carries
         gout: { cal, id }. Called from a click: the first call opens Google's window to ask
@@ -5453,14 +5457,19 @@
       var subj = AppState.subjectById(task.subjectId);
       var body = outEvent(task, kind, subj ? subj.name : '', deviceTz(), Utils.todayStr());
       if (!body) return Promise.reject(new Error('notime'));
-      body.id = pendingIds[task.id] || (pendingIds[task.id] = newEventId());
+      body.id = eventIdFor(task.id);
       var first = getToken(true, true);   // synchronously, inside the click
       function insert(retried) {
         return outCalendar().then(function (cal) {
           return api('/calendars/' + encodeURIComponent(cal) + '/events', false, { method: 'POST', write: true, body: body }).then(function (ev) {
             return { cal: cal, id: ev.id };
           }, function (e) {
-            if (e && e.message === 'conflict') return { cal: cal, id: body.id };   // made by an earlier try whose answer was lost
+            // the event already exists (an earlier try whose answer was lost, or one deleted in
+            // Google, which keeps its id): write it again, which also restores a deleted one
+            if (e && e.message === 'conflict') {
+              return api('/calendars/' + encodeURIComponent(cal) + '/events/' + encodeURIComponent(body.id), false,
+                { method: 'PUT', write: true, body: Object.assign({}, body, { status: 'confirmed' }) }).then(function (ev) { return { cal: cal, id: ev.id || body.id }; });
+            }
             if (!retried && e && e.message === 'notfound') {   // the StudyDesk calendar was deleted in Google
               if (AppState.settings.gcal.outCalendarId === cal) AppState.settings.gcal.outCalendarId = '';
               return insert(true);
@@ -5470,7 +5479,6 @@
         });
       }
       var run = first.then(function () { return insert(false); }).then(function (r) {
-        delete pendingIds[task.id];
         var list = kind === 'rec' ? AppState.recurring : AppState.adhocTasks;
         var live = list.filter(function (t) { return t.id === task.id; })[0];
         if (!live) {   // deleted here meanwhile: do not leave the event behind
