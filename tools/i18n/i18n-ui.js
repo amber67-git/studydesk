@@ -132,7 +132,11 @@ async function run(lang, browserLang) {
   await p.evaluate(() => { document.getElementById('manager-task-gcheck').hidden = false; });
   ok((await label('#manager-task-clash')) === want('Overlaps with: 101 (10:00–11:00)', '겹치는 일정: 101 (10:00–11:00)') && (await label('#manager-task-gcheck')) === want('check Google Calendar', '구글 캘린더 확인'),
     lang + ': overlap warning -> "' + (await label('#manager-task-clash')) + '" / "' + (await label('#manager-task-gcheck')) + '"');
+  // "also add to Google Calendar" (only with a client ID): shown directly
+  await p.evaluate(() => { document.getElementById('manager-task-gout-row').hidden = false; document.getElementById('rec-gout-row').hidden = false; });
+  ok((await label('#manager-task-gout-row')) === want('also add to Google Calendar', '구글 캘린더에도 추가'), lang + ': send checkbox -> "' + (await label('#manager-task-gout-row')) + '"');
   await scan('manager/time-block warning');
+  await p.evaluate(() => { document.getElementById('manager-task-gout-row').hidden = true; document.getElementById('rec-gout-row').hidden = true; });
   await p.evaluate(() => { document.getElementById('manager-task-gcheck').hidden = true; });
   await p.fill('#manager-task-start', ''); await p.fill('#manager-task-end', '');
   await p.evaluate(() => showPage('notes')); await p.waitForTimeout(150);
