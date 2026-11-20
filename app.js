@@ -5236,19 +5236,18 @@
         client_id: GOOGLE_CLIENT_ID,
         scope: SCOPE,
         callback: function (r) {
-          var w = tokenWait; tokenWait = null;
-          if (!w) return;
-          if (!r || r.error || !r.access_token) { w.reject(new Error('denied')); return; }
+          var ws = tokenWait; tokenWait = null;
+          if (!ws) return;
+          if (!r || r.error || !r.access_token) { ws.forEach(function (w) { w.reject(new Error('denied')); }); return; }
           token = r.access_token;
           tokenUntil = Date.now() + (Math.max(60, (r.expires_in || 3600) - 60) * 1000);
           var oauth = window.google.accounts.oauth2;
           tokenWrite = oauth.hasGrantedAllScopes ? !!oauth.hasGrantedAllScopes(r, WRITE_SCOPE)
             : String(r.scope || '').split(' ').indexOf(WRITE_SCOPE) !== -1;
           // the write permission can be unticked in Google's window: reads still work with this token
-          if (w.write && !tokenWrite) { w.reject(new Error('nowrite')); return; }
-          w.resolve(token);
+          ws.forEach(function (w) { if (w.write && !tokenWrite) w.reject(new Error('nowrite')); else w.resolve(token); });
         },
-        error_callback: function () { var w = tokenWait; tokenWait = null; if (w) w.reject(new Error('denied')); }
+        error_callback: function () { var ws = tokenWait; tokenWait = null; if (ws) ws.forEach(function (w) { w.reject(new Error('denied')); }); }
       });
     }
 
@@ -5274,9 +5273,15 @@
       if (!interactive) return Promise.reject(new Error('expired'));
       function ask() {
         initClient();
-        if (tokenWait) tokenWait.reject(new Error('denied'));   // an older unanswered popup
+        // an earlier click still waiting for Google's answer (e.g. a second task sent while
+        // the window is open) is not dropped: this one waits with it and one answer serves
+        // both. Google is asked again only when this one needs the write permission and the
+        // open request does not ask for it (a closed window ends the wait via error_callback)
+        var covered = tokenWait && (!write || tokenWait.some(function (w) { return w.write; }));
         return new Promise(function (resolve, reject) {
-          tokenWait = { resolve: resolve, reject: reject, write: !!write };
+          tokenWait = tokenWait || [];
+          tokenWait.push({ resolve: resolve, reject: reject, write: !!write });
+          if (covered) return;
           // a send asks for the write permission on top of reading (incremental: the read
           // permission already given stays, Google only asks about the new one)
           tokenClient.requestAccessToken(write ? { prompt: '', scope: SCOPE + ' ' + WRITE_SCOPE, include_granted_scopes: true } : { prompt: '' });
@@ -5474,6 +5479,7 @@
       body.id = eventIdFor(task.id);
       var g0 = AppState.settings.gcal;    // captured before Google's window opens
       var first = getToken(true, true);   // synchronously, inside the click
+      var lastCal = null;   // the calendar the event was sent to (it may be there even if the answer was lost)
       function insert(retried) {
         return outCalendar(g0).then(function (cal) {
           // settings replaced while the calendar was being made (backup, account switch):
@@ -5485,14 +5491,22 @@
             if (Storage.save() === false) throw new Error('notsaved');
             unsavedCal = null;
           }
-          return api('/calendars/' + encodeURIComponent(cal) + '/events', false, { method: 'POST', write: true, body: body }).then(function (ev) {
+          lastCal = cal;
+          var evPath = '/calendars/' + encodeURIComponent(cal) + '/events';
+          return api(evPath, false, { method: 'POST', write: true, body: body }).then(function (ev) {
             return { cal: cal, id: ev.id };
           }, function (e) {
             // the event already exists (an earlier try whose answer was lost, or one deleted in
-            // Google, which keeps its id): write it again, which also restores a deleted one
+            // Google, which keeps its id). A live one is linked as it is: writing it again would
+            // move a weekly series' first day to today and drop the earlier weeks. A deleted
+            // (cancelled) one is written again, which restores it
             if (e && e.message === 'conflict') {
-              return api('/calendars/' + encodeURIComponent(cal) + '/events/' + encodeURIComponent(body.id), false,
-                { method: 'PUT', write: true, body: Object.assign({}, body, { status: 'confirmed' }) }).then(function (ev) { return { cal: cal, id: ev.id || body.id }; });
+              var one = evPath + '/' + encodeURIComponent(body.id);
+              return api(one, false, { write: true }).then(function (ex) {
+                if (ex && ex.status !== 'cancelled') return { cal: cal, id: ex.id || body.id };
+                return api(one, false, { method: 'PUT', write: true, body: Object.assign({}, body, { status: 'confirmed' }) })
+                  .then(function (ev) { return { cal: cal, id: ev.id || body.id }; });
+              });
             }
             if (!retried && e && e.message === 'notfound') {   // the StudyDesk calendar was deleted in Google
               if (AppState.settings.gcal === g0 && g0.outCalendarId === cal) g0.outCalendarId = '';
@@ -5502,9 +5516,12 @@
           });
         });
       }
-      var run = first.then(function () { return insert(false); }).then(function (r) {
+      function liveTask() {
         var list = kind === 'rec' ? AppState.recurring : AppState.adhocTasks;
-        var live = list.filter(function (t) { return t.id === task.id; })[0];
+        return list.filter(function (t) { return t.id === task.id; })[0];
+      }
+      var run = first.then(function () { return insert(false); }).then(function (r) {
+        var live = liveTask();
         var changed = AppState.settings.gcal !== g0;
         // the loaded data already links this very event: keep it, it is theirs
         if (changed && live && live.gout && live.gout.cal === r.cal && live.gout.id === r.id) return live.gout;
@@ -5522,6 +5539,14 @@
         if (typeof Sync !== 'undefined' && Sync.isSignedIn && Sync.isSignedIn()) live.syncAt = Date.now();
         Storage.scheduleSave();
         return live.gout;
+      }, function (e) {
+        // the insert failed, but it may have gone through with its answer lost: if the task was
+        // deleted meanwhile, remove that event too (its id is known), as on success
+        if (lastCal && !liveTask() && AppState.settings.gcal === g0 && !(e && /^(changed|notsaved)$/.test(e.message))) {
+          return api('/calendars/' + encodeURIComponent(lastCal) + '/events/' + encodeURIComponent(body.id), false, { method: 'DELETE', write: true })
+            .then(function () { return null; }, function () { throw new Error('cleanup'); });
+        }
+        throw e;
       });
       sending[task.id] = run;
       var done = function () { if (sending[task.id] === run) delete sending[task.id]; };
