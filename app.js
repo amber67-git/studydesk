@@ -204,6 +204,7 @@
       'gout.noWrite': 'Google Calendar was not allowed to add events. Press the button again and allow it in the Google window.',
       'gout.failed': 'Saved here, but not added to Google Calendar. Use "add to Google" in the list to try again.',
       'gout.removeFailed': 'Deleted here, but it could not be removed from Google Calendar. Delete it there too (StudyDesk calendar).',
+      'gout.changed': 'Your data changed while sending (a backup was loaded or the account changed). Nothing was added; send it again.',
       // flashcards
       'cards.reviewMode': 'review mode', 'cards.addBtn': 'card', 'cards.filterAria': 'filter cards by subject',
       'cards.prev': 'previous card', 'cards.next': 'next card', 'cards.flip': 'flip', 'cards.empty': 'No cards yet.',
@@ -413,6 +414,7 @@
       'gout.noWrite': '구글 캘린더에 일정을 추가하는 권한이 허용되지 않았습니다. 버튼을 다시 누르고 Google 창에서 허용하세요.',
       'gout.failed': '여기에는 저장했지만 구글 캘린더에는 추가하지 못했습니다. 목록의 "구글에 추가"로 다시 시도하세요.',
       'gout.removeFailed': '여기서는 지웠지만 구글 캘린더에서는 지우지 못했습니다. 구글 캘린더(StudyDesk 캘린더)에서도 지워 주세요.',
+      'gout.changed': '보내는 동안 데이터가 바뀌었습니다(백업을 불러왔거나 계정이 바뀜). 아무것도 추가하지 않았으니 다시 보내 주세요.',
       'cards.reviewMode': '복습 모드', 'cards.addBtn': '카드', 'cards.filterAria': '과목으로 카드 거르기',
       'cards.prev': '이전 카드', 'cards.next': '다음 카드', 'cards.flip': '뒤집기', 'cards.empty': '아직 카드가 없습니다.',
       'card.title': '암기 카드 추가', 'card.front': '질문 / 앞면', 'card.back': '답 / 뒷면', 'card.add': '카드 추가',
@@ -5324,7 +5326,7 @@
       var m = (e && (e.name === 'AbortError' ? 'timeout' : e.message)) || '';
       return { offline: 'gcal.offline', timeout: 'gcal.timeout', denied: 'gcal.denied', gis: 'gcal.gisFailed',
         loading: 'gcal.loading', expired: 'gcal.expired', forbidden: 'gcal.forbidden', notfound: 'gcal.notFound',
-        quota: 'gcal.quota', nowrite: 'gout.noWrite', cleanup: 'gout.removeFailed' }[m] || failKey || 'gcal.failed';
+        quota: 'gcal.quota', nowrite: 'gout.noWrite', cleanup: 'gout.removeFailed', changed: 'gout.changed' }[m] || failKey || 'gcal.failed';
     }
 
     function showError(e) { setStatus(errorKey(e), null, true); }
@@ -5415,8 +5417,10 @@
     /** The "StudyDesk" calendar in Google (created by this app on the first send; kept in
         settings, so other devices use the same one). The new id is written only into the
         settings it was asked for: after an account switch it is not carried over. */
-    function outCalendar() {
-      var g = AppState.settings.gcal;
+    function outCalendar(g) {
+      // g: the settings the send started with (before Google's window). Replaced since then
+      // (backup loaded, account switched): stop, rather than put this send into the new data
+      if (AppState.settings.gcal !== g) return Promise.reject(new Error('changed'));
       if (g.outCalendarId) return Promise.resolve(g.outCalendarId);
       if (outCalPending && outCalPending.g === g) return outCalPending.p;
       var p = api('/calendars', false, { method: 'POST', write: true, body: { summary: OUT_NAME, timeZone: deviceTz() } }).then(function (cal) {
@@ -5458,9 +5462,10 @@
       var body = outEvent(task, kind, subj ? subj.name : '', deviceTz(), Utils.todayStr());
       if (!body) return Promise.reject(new Error('notime'));
       body.id = eventIdFor(task.id);
+      var g0 = AppState.settings.gcal;    // captured before Google's window opens
       var first = getToken(true, true);   // synchronously, inside the click
       function insert(retried) {
-        return outCalendar().then(function (cal) {
+        return outCalendar(g0).then(function (cal) {
           return api('/calendars/' + encodeURIComponent(cal) + '/events', false, { method: 'POST', write: true, body: body }).then(function (ev) {
             return { cal: cal, id: ev.id };
           }, function (e) {
@@ -5471,7 +5476,7 @@
                 { method: 'PUT', write: true, body: Object.assign({}, body, { status: 'confirmed' }) }).then(function (ev) { return { cal: cal, id: ev.id || body.id }; });
             }
             if (!retried && e && e.message === 'notfound') {   // the StudyDesk calendar was deleted in Google
-              if (AppState.settings.gcal.outCalendarId === cal) AppState.settings.gcal.outCalendarId = '';
+              if (AppState.settings.gcal === g0 && g0.outCalendarId === cal) g0.outCalendarId = '';
               return insert(true);
             }
             throw e;
