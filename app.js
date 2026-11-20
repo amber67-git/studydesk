@@ -5425,7 +5425,10 @@
       if (outCalPending && outCalPending.g === g) return outCalPending.p;
       var p = api('/calendars', false, { method: 'POST', write: true, body: { summary: OUT_NAME, timeZone: deviceTz() } }).then(function (cal) {
         if (outCalPending && outCalPending.p === p) outCalPending = null;
-        if (AppState.settings.gcal === g) { g.outCalendarId = cal.id; Storage.scheduleSave(); }
+        // saved at once, not after the 400 ms debounce: a reload right after this must not
+        // forget the calendar (the retry would make a second one, and event ids are only
+        // unique within a calendar)
+        if (AppState.settings.gcal === g) { g.outCalendarId = cal.id; Storage.save(); }
         return cal.id;
       }, function (e) {
         if (outCalPending && outCalPending.p === p) outCalPending = null;   // a later send tries again
