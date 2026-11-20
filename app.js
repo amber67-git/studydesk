@@ -5521,7 +5521,8 @@
             if (e && e.message === 'conflict') {
               var one = evPath + '/' + encodeURIComponent(body.id);
               return api(one, false, { write: true }).then(function (ex) {
-                if (ex && ex.status !== 'cancelled') return { cal: cal, id: ex.id || body.id };
+                // reused: it may be linked elsewhere (another device sent the same task)
+                if (ex && ex.status !== 'cancelled') return { cal: cal, id: ex.id || body.id, reused: true };
                 return api(one, false, { method: 'PUT', write: true, body: Object.assign({}, body, { status: 'confirmed' }) })
                   .then(function (ev) { return { cal: cal, id: ev.id || body.id }; });
               });
@@ -5560,6 +5561,9 @@
         // task would then leave the event in Google). Not savable: unlink and remove the event
         if (Storage.save() !== true) {
           delete live.gout;
+          // an event this send did not create (found live after a 409) may be another
+          // device's link: left in Google; sending again later links it
+          if (r.reused) throw new Error('notsaved');
           return api('/calendars/' + encodeURIComponent(r.cal) + '/events/' + encodeURIComponent(r.id), false, { method: 'DELETE', write: true })
             .then(function () { throw new Error('notsaved'); }, function () { throw new Error('cleanup'); });
         }
