@@ -5469,6 +5469,9 @@
       var first = getToken(true, true);   // synchronously, inside the click
       function insert(retried) {
         return outCalendar(g0).then(function (cal) {
+          // settings replaced while the calendar was being made (backup, account switch):
+          // the calendar belongs to the old settings, so add nothing to it
+          if (AppState.settings.gcal !== g0) throw new Error('changed');
           return api('/calendars/' + encodeURIComponent(cal) + '/events', false, { method: 'POST', write: true, body: body }).then(function (ev) {
             return { cal: cal, id: ev.id };
           }, function (e) {
@@ -5489,9 +5492,16 @@
       var run = first.then(function () { return insert(false); }).then(function (r) {
         var list = kind === 'rec' ? AppState.recurring : AppState.adhocTasks;
         var live = list.filter(function (t) { return t.id === task.id; })[0];
-        if (!live) {   // deleted here meanwhile: do not leave the event behind
+        var changed = AppState.settings.gcal !== g0;
+        // the loaded data already links this very event: keep it, it is theirs
+        if (changed && live && live.gout && live.gout.cal === r.cal && live.gout.id === r.id) return live.gout;
+        // deleted here meanwhile, or the settings were replaced while the event was being
+        // added (a backup with the same task id must not get an event of the old settings):
+        // do not leave the event behind
+        if (!live || changed) {
           return api('/calendars/' + encodeURIComponent(r.cal) + '/events/' + encodeURIComponent(r.id), false, { method: 'DELETE', write: true })
-            .then(function () { return null; }, function () { throw new Error('cleanup'); });
+            .then(function () { if (changed) throw new Error('changed'); return null; },
+              function () { throw new Error('cleanup'); });
         }
         live.gout = { cal: r.cal, id: r.id };
         // stamped now (signed in), so an older cloud copy that lands before the debounced
