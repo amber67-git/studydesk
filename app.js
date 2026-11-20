@@ -5498,6 +5498,7 @@
       function same() { return AppState.settings.gcal === g0 && syncSession() === s0; }
       var first = getToken(true, true);   // synchronously, inside the click
       var lastCal = null;   // the calendar the event was sent to (it may be there even if the answer was lost)
+      var sawConflict = false;   // a 409: the event existed before this send (maybe another device's link)
       function insert(retried) {
         return outCalendar(g0, s0).then(function (cal) {
           // settings replaced while the calendar was being made (backup, account switch):
@@ -5519,6 +5520,7 @@
             // move a weekly series' first day to today and drop the earlier weeks. A deleted
             // (cancelled) one is written again, which restores it
             if (e && e.message === 'conflict') {
+              sawConflict = true;
               var one = evPath + '/' + encodeURIComponent(body.id);
               return api(one, false, { write: true }).then(function (ex) {
                 // reused: it may be linked elsewhere (another device sent the same task)
@@ -5549,6 +5551,9 @@
         // added (a backup with the same task id must not get an event of the old settings):
         // do not leave the event behind
         if (!live || changed) {
+          // data on screen replaced: an event this send did not create may be linked by the
+          // other data (another device) - left alone. Deleted task: its event goes either way
+          if (changed && r.reused) throw new Error('changed');
           return api('/calendars/' + encodeURIComponent(r.cal) + '/events/' + encodeURIComponent(r.id), false, { method: 'DELETE', write: true })
             .then(function () { if (changed) throw new Error('changed'); return null; },
               function () { throw new Error('cleanup'); });
@@ -5576,6 +5581,7 @@
         var live = liveTask(), changed = !same();
         if (changed && live && live.gout && live.gout.cal === lastCal && live.gout.id === body.id) return live.gout;
         if (!changed && live) throw e;   // normal failure: the user can send again
+        if (changed && sawConflict) throw new Error('changed');   // existed before this send: not ours to remove
         return api('/calendars/' + encodeURIComponent(lastCal) + '/events/' + encodeURIComponent(body.id), false, { method: 'DELETE', write: true })
           .then(function () { if (changed) throw new Error('changed'); return null; },
             function () { throw new Error('cleanup'); });
