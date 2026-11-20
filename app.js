@@ -5434,12 +5434,15 @@
     /** The "StudyDesk" calendar in Google (created by this app on the first send; kept in
         settings, so other devices use the same one). The new id is written only into the
         settings it was asked for: after an account switch it is not carried over. */
-    function outCalendar(g) {
-      // g: the settings the send started with (before Google's window). Replaced since then
-      // (backup loaded, account switched): stop, rather than put this send into the new data
-      if (AppState.settings.gcal !== g) return Promise.reject(new Error('changed'));
+    function outCalendar(g, s) {
+      // g, s: the settings and sync session the send started with (before Google's window).
+      // Changed since then (backup loaded, signed in/out, account switch - which changes the
+      // session before it replaces the settings): stop, rather than use or create a calendar
+      // for data that is no longer the one on screen
+      function same() { return AppState.settings.gcal === g && syncSession() === s; }
+      if (!same()) return Promise.reject(new Error('changed'));
       if (g.outCalendarId) return Promise.resolve(g.outCalendarId);
-      if (outCalPending && outCalPending.g === g) return outCalPending.p;
+      if (outCalPending && outCalPending.g === g && outCalPending.s === s) return outCalPending.p;
       var p = api('/calendars', false, { method: 'POST', write: true, body: { summary: OUT_NAME, timeZone: deviceTz() } }).then(function (cal) {
         if (outCalPending && outCalPending.p === p) outCalPending = null;
         // saved at once, not after the 400 ms debounce: a reload right after this must not
@@ -5447,13 +5450,15 @@
         // unique within a calendar)
         // false = write failed (full); null = storage unavailable, which a full storage also
         // causes (the probe write fails): either way the id is not kept across a reload
-        if (AppState.settings.gcal === g) { g.outCalendarId = cal.id; if (Storage.save() !== true) unsavedCal = cal.id; }
+        if (!same()) throw new Error('changed');   // not written into data of another session
+        g.outCalendarId = cal.id;
+        if (Storage.save() !== true) unsavedCal = cal.id;
         return cal.id;
       }, function (e) {
         if (outCalPending && outCalPending.p === p) outCalPending = null;   // a later send tries again
         throw e;
       });
-      outCalPending = { g: g, p: p };
+      outCalPending = { g: g, s: s, p: p };
       return p;
     }
 
@@ -5494,7 +5499,7 @@
       var first = getToken(true, true);   // synchronously, inside the click
       var lastCal = null;   // the calendar the event was sent to (it may be there even if the answer was lost)
       function insert(retried) {
-        return outCalendar(g0).then(function (cal) {
+        return outCalendar(g0, s0).then(function (cal) {
           // settings replaced while the calendar was being made (backup, account switch):
           // the calendar belongs to the old settings, so add nothing to it
           if (!same()) throw new Error('changed');
@@ -5522,7 +5527,8 @@
               });
             }
             if (!retried && e && e.message === 'notfound') {   // the StudyDesk calendar was deleted in Google
-              if (AppState.settings.gcal === g0 && g0.outCalendarId === cal) g0.outCalendarId = '';
+              if (!same()) throw new Error('changed');
+              if (g0.outCalendarId === cal) g0.outCalendarId = '';
               return insert(true);
             }
             throw e;
