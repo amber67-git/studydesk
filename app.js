@@ -5499,6 +5499,7 @@
       var first = getToken(true, true);   // synchronously, inside the click
       var lastCal = null;   // the calendar the event was sent to (it may be there even if the answer was lost)
       var sawConflict = false;   // a 409: the event existed before this send (maybe another device's link)
+      var restoring = false;     // ...but it was cancelled and this send wrote it again (PUT): ours to roll back
       function insert(retried) {
         return outCalendar(g0, s0).then(function (cal) {
           // settings replaced while the calendar was being made (backup, account switch):
@@ -5525,6 +5526,7 @@
               return api(one, false, { write: true }).then(function (ex) {
                 // reused: it may be linked elsewhere (another device sent the same task)
                 if (ex && ex.status !== 'cancelled') return { cal: cal, id: ex.id || body.id, reused: true };
+                restoring = true;
                 return api(one, false, { method: 'PUT', write: true, body: Object.assign({}, body, { status: 'confirmed' }) })
                   .then(function (ev) { return { cal: cal, id: ev.id || body.id }; });
               });
@@ -5581,7 +5583,9 @@
         var live = liveTask(), changed = !same();
         if (changed && live && live.gout && live.gout.cal === lastCal && live.gout.id === body.id) return live.gout;
         if (!changed && live) throw e;   // normal failure: the user can send again
-        if (changed && sawConflict) throw new Error('changed');   // existed before this send: not ours to remove
+        // existed live before this send (only read, not written): not ours to remove. A restore
+        // (PUT) may have gone through with its answer lost: rolled back like an insert
+        if (changed && sawConflict && !restoring) throw new Error('changed');
         return api('/calendars/' + encodeURIComponent(lastCal) + '/events/' + encodeURIComponent(body.id), false, { method: 'DELETE', write: true })
           .then(function () { if (changed) throw new Error('changed'); return null; },
             function () { throw new Error('cleanup'); });
