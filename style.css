@@ -419,6 +419,18 @@ textarea#summary:focus-visible{box-shadow:inset 0 0 0 2px var(--bdr2)}
 .clash-warn{color:var(--red)}
 .clash-info{color:var(--txt3)}
 .clash-btn{margin-bottom:10px}
+/* "also add to Google Calendar" under the forms, and the sent/send marks in the lists */
+.gout-row{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-family:var(--sans);font-size:12px;color:var(--txt2);cursor:pointer}
+.gout-row[hidden],.gout-status[hidden]{display:none}
+.gout-row input{margin:0}
+.gout-status{margin:0 0 10px;font-family:var(--sans);font-size:12px;color:var(--txt3)}
+.gout-status.err{color:var(--red)}
+/* fixed-width cell (the same for "add to Google", "in Google Calendar" and rows that cannot
+   be sent), so the text and the delete button do not move from row to row */
+.recurring-item>span:first-child{flex:1 1 auto;min-width:0}
+.recurring-item .send-gout,.recurring-item .gout-tag,.recurring-item .gout-ph{flex:0 0 88px;width:88px;box-sizing:border-box;margin-left:8px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gout-tag{font-family:var(--sans);font-size:10px;color:var(--txt3)}
+.recurring-item .send-gout{padding:4px 6px;font-size:11px}
 .task-row:last-child{border-bottom:none}
 .task-row .task-label{min-width:0;overflow-wrap:anywhere;color:var(--txt)}
 .task-row .task-label.done{text-decoration:line-through;color:var(--txt3)}

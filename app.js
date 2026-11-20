@@ -51,8 +51,8 @@
   var APP_HOME = 'https://amber-studydesk.netlify.app/';
   // Shown bottom-left in the sidebar. Bump both in the same PR that adds a
   // line to the guide's 변경 이력 (version = number of entries there).
-  var APP_VERSION = 'v20';
-  var APP_UPDATED = '2026-11-18';
+  var APP_VERSION = 'v21';
+  var APP_UPDATED = '2026-11-20';
 
   /* ===========================================================
    * I18N - every user-facing string, English and Korean. Static HTML text
@@ -198,6 +198,12 @@
       'clash.more': 'and {n} more', 'clash.check': 'check Google Calendar', 'clash.checking': 'checking Google Calendar…',
       'clash.clear': 'Nothing in Google Calendar overlaps.', 'clash.busy': '(busy)',
       'clash.failed': 'Could not check Google Calendar. Try again later.',
+      'gout.label': 'also add to Google Calendar', 'gout.send': 'add to Google', 'gout.tag': 'in Google Calendar',
+      'gout.sending': 'adding to Google Calendar…', 'gout.sent': 'Added to the StudyDesk calendar in Google Calendar.',
+      'gout.needTime': 'Only tasks with a start and end time are added to Google Calendar.',
+      'gout.noWrite': 'Google Calendar was not allowed to add events. Press the button again and allow it in the Google window.',
+      'gout.failed': 'Saved here, but not added to Google Calendar. Use "add to Google" in the list to try again.',
+      'gout.removeFailed': 'Deleted here, but it could not be removed from Google Calendar. Delete it there too (StudyDesk calendar).',
       // flashcards
       'cards.reviewMode': 'review mode', 'cards.addBtn': 'card', 'cards.filterAria': 'filter cards by subject',
       'cards.prev': 'previous card', 'cards.next': 'next card', 'cards.flip': 'flip', 'cards.empty': 'No cards yet.',
@@ -401,6 +407,12 @@
       'clash.more': '외 {n}개', 'clash.check': '구글 캘린더 확인', 'clash.checking': '구글 캘린더 확인 중…',
       'clash.clear': '구글 캘린더에 겹치는 일정이 없습니다.', 'clash.busy': '(일정 있음)',
       'clash.failed': '구글 캘린더를 확인하지 못했습니다. 나중에 다시 시도하세요.',
+      'gout.label': '구글 캘린더에도 추가', 'gout.send': '구글에 추가', 'gout.tag': '구글 캘린더에 있음',
+      'gout.sending': '구글 캘린더에 추가하는 중…', 'gout.sent': '구글 캘린더의 StudyDesk 캘린더에 추가했습니다.',
+      'gout.needTime': '시작·끝 시간이 있는 일정만 구글 캘린더에 추가됩니다.',
+      'gout.noWrite': '구글 캘린더에 일정을 추가하는 권한이 허용되지 않았습니다. 버튼을 다시 누르고 Google 창에서 허용하세요.',
+      'gout.failed': '여기에는 저장했지만 구글 캘린더에는 추가하지 못했습니다. 목록의 "구글에 추가"로 다시 시도하세요.',
+      'gout.removeFailed': '여기서는 지웠지만 구글 캘린더에서는 지우지 못했습니다. 구글 캘린더(StudyDesk 캘린더)에서도 지워 주세요.',
       'cards.reviewMode': '복습 모드', 'cards.addBtn': '카드', 'cards.filterAria': '과목으로 카드 거르기',
       'cards.prev': '이전 카드', 'cards.next': '다음 카드', 'cards.flip': '뒤집기', 'cards.empty': '아직 카드가 없습니다.',
       'card.title': '암기 카드 추가', 'card.front': '질문 / 앞면', 'card.back': '답 / 뒷면', 'card.add': '카드 추가',
@@ -625,7 +637,7 @@
     var SKIP_IDS = {
       'note-list': 1, 'today-task-list': 1, 'lib-grid': 1, 'cal-grid': 1, 'card-grid': 1, 'notes-body': 1,
       'day-events-list': 1, 'page-list-body': 1, 'recurring-list': 1, 'manager-task-list': 1, 'lib-results': 1,
-      'manager-task-clash': 1, 'rec-clash': 1,
+      'manager-task-clash': 1, 'rec-clash': 1, 'manager-task-gout-status': 1, 'rec-gout-status': 1,
       'study-card': 1, 'sb-foot-ver': 1, 'header-date': 1, 'today-date-label': 1, 'cal-month-label': 1,
       'note-subject-select': 1, 'notebook-subject-filter': 1, 'deck-filter': 1, 'rec-subject': 1,
       'adhoc-task-subject': 1, 'manager-task-subject': 1, 'new-notebook-subject': 1, 'subject-delete-target': 1,
@@ -1190,7 +1202,8 @@
       if (typeof s.googleBooksKey !== 'string') s.googleBooksKey = '';
       // Google Calendar import: which calendar, and the subject for events that name none
       if (!s.gcal || typeof s.gcal !== 'object') s.gcal = {};
-      ['calendarId', 'calendarName', 'subjectId', 'lastImportAt'].forEach(function (k) {
+      // outCalendarId: the "StudyDesk" calendar this app created in Google for the time blocks it sends
+      ['calendarId', 'calendarName', 'subjectId', 'lastImportAt', 'outCalendarId'].forEach(function (k) {
         if (typeof s.gcal[k] !== 'string') s.gcal[k] = '';
       });
       if (s.lang !== 'ko' && s.lang !== 'en') s.lang = I18n.detect();   // first run: browser language
@@ -2544,11 +2557,15 @@
         return '<div class="recurring-item">' +
           '<span>' + Utils.escapeHtml(r.title) + ' &middot; ' + Utils.escapeHtml(subjectName(r.subjectId)) +
           ' (' + Utils.escapeHtml(tx('type.' + r.type)) + ') &middot; ' + dayLabels + (blk ? ' &middot; ' + TimeBlock.label(blk) : '') + '</span>' +
+          goutCellHtml(r, 'rec') +
           '<button class="del-recurring" data-id="' + r.id + '"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>';
       }).join('');
+      bindSendButtons(Utils.$('recurring-list'), 'rec');
       document.querySelectorAll('.del-recurring').forEach(function (b) {
         b.addEventListener('click', function () {
+          var gone = AppState.recurring.filter(function (r) { return r.id === b.dataset.id; })[0];
           AppState.recurring = AppState.recurring.filter(function (r) { return r.id !== b.dataset.id; });
+          removeOut(gone);
           renderRecurringList(); renderTodayTasks(); renderCalendar();
           Stats.render(); Storage.scheduleSave();
         });
@@ -2571,6 +2588,9 @@
         var rec = { id: Utils.uid(), title: title, subjectId: subjectId, type: type, days: days };
         if (time.block) { rec.start = time.block.start; rec.end = time.block.end; }
         AppState.recurring.push(rec);
+        if (GCal.configured() && goutWanted()) {
+          if (time.block) sendOut('rec', rec, 'rec'); else setGout('rec', 'gout.needTime');
+        }
         Utils.$('rec-title').value = '';
         Utils.$('rec-start').value = ''; Utils.$('rec-end').value = '';
         document.querySelectorAll('.day-check:checked').forEach(function (c) { c.checked = false; });
@@ -2612,6 +2632,9 @@
         var task = { id: Utils.uid(), title: title, subjectId: subjectId, type: type, date: date };
         if (time.block) { task.start = time.block.start; task.end = time.block.end; }
         AppState.adhocTasks.push(task);
+        if (GCal.configured() && goutWanted()) {
+          if (time.block) sendOut('manager', task, 'one'); else setGout('manager', 'gout.needTime');
+        }
         Utils.$('manager-task-input').value = '';
         Utils.$('manager-task-start').value = ''; Utils.$('manager-task-end').value = '';
         resetClash('manager');
@@ -2621,6 +2644,78 @@
       Utils.$('manager-task-input').addEventListener('keydown', function (e) {
         if (e.key === 'Enter') Utils.$('manager-task-add').click();
       });
+    }
+
+    // ------ sending time blocks to Google Calendar (v21) ------
+    // "also add to Google Calendar" under each form (only with a client ID; remembered per
+    // device). Adding a timed task with it ticked sends it from the add click itself; a task
+    // in the lists can be sent later with its "add to Google" button. A sent task carries
+    // gout and is removed from Google when it is deleted here.
+    var GOUT_KEY = Storage.KEY + ':gcal-out';
+    var gout = { manager: null, rec: null };   // status line per form: { key, err }
+
+    function goutWanted() {
+      try { return localStorage.getItem(GOUT_KEY) === '1'; } catch (e) { return false; }
+    }
+
+    function renderGout(form) {
+      var row = Utils.$(form === 'manager' ? 'manager-task-gout-row' : 'rec-gout-row');
+      var box = Utils.$(form === 'manager' ? 'manager-task-gout' : 'rec-gout');
+      var st = Utils.$(form === 'manager' ? 'manager-task-gout-status' : 'rec-gout-status');
+      if (!row || !box || !st) return;
+      row.hidden = !GCal.configured();
+      box.checked = goutWanted();
+      var g = gout[form];
+      st.textContent = g ? tx(g.key) : '';
+      st.className = 'gout-status' + (g && g.err ? ' err' : '');
+      st.hidden = !g;
+    }
+
+    function setGout(form, key, err) { gout[form] = key ? { key: key, err: !!err } : null; renderGout(form); }
+
+    /** Send from a click (the add button or a list button). */
+    function sendOut(form, task, kind) {
+      setGout(form, 'gout.sending');
+      GCal.sendTask(task, kind).then(function (r) {
+        setGout(form, r ? 'gout.sent' : null);
+        renderRecurringList(); renderManagerTaskList();
+      }).catch(function (e) {
+        setGout(form, GCal.errorKey(e, 'gout.failed'), true);
+      });
+    }
+
+    /** After a task was deleted here (from a click): remove its event from Google too. */
+    function removeOut(task) {
+      if (!task || !task.gout) return;
+      GCal.removeTaskEvent(task).catch(function () { alert(tx('gout.removeFailed')); });
+    }
+
+    /** "add to Google" / "in Google Calendar" for a task in the manager lists. */
+    function goutCellHtml(task, kind) {
+      if (!GCal.configured()) return '';
+      if (task.gcal || !TimeBlock.of(task)) return '<span class="gout-ph"></span>';   // imported from Google, or no time
+      if (task.gout) return '<span class="gout-tag">' + Utils.escapeHtml(tx('gout.tag')) + '</span>';
+      return '<button class="btn btn-sm send-gout" data-id="' + task.id + '" data-kind="' + kind + '">' + Utils.escapeHtml(tx('gout.send')) + '</button>';
+    }
+
+    function bindSendButtons(container, form) {
+      container.querySelectorAll('.send-gout').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var kind = b.dataset.kind, list = kind === 'rec' ? AppState.recurring : AppState.adhocTasks;
+          var task = list.filter(function (t) { return t.id === b.dataset.id; })[0];
+          if (task) sendOut(form, task, kind);
+        });
+      });
+    }
+
+    function setupGout() {
+      ['manager-task-gout', 'rec-gout'].forEach(function (id) {
+        Utils.$(id).addEventListener('change', function () {
+          try { localStorage.setItem(GOUT_KEY, this.checked ? '1' : '0'); } catch (e) { /* per-device preference only */ }
+          renderGout('manager'); renderGout('rec');
+        });
+      });
+      renderGout('manager'); renderGout('rec');
     }
 
     // ------ time blocks: overlap warning while a form is filled in ------
@@ -2712,6 +2807,11 @@
         against the current tasks, so deleting such a task brings its event back. */
     function gcalClashes(g) {
       return TimeBlock.eventClashes(g.events, g.cand, Utils.todayStr(), function (ev) {
+        // a time block sent from here: its task is in the local check while it exists
+        if (GCal.isOurs(ev)) {
+          var own = ev.extendedProperties.private.studydeskTask;
+          return AppState.adhocTasks.concat(AppState.recurring).some(function (t) { return t.id === own && !!TimeBlock.of(t); });
+        }
         var tid = ev.__cal ? GCal.taskIdFor(ev.__cal, ev.id) : '';
         return !!tid && AppState.adhocTasks.some(function (t) {
           return (t.id === tid || (t.gcal && t.gcal.cal === ev.__cal && t.gcal.id === ev.id)) && !!TimeBlock.of(t);
@@ -2721,7 +2821,7 @@
 
     /** Both forms: either kind of task (added, deleted, synced, imported) can be what
         the other form clashes with, and every change re-renders one of the two lists. */
-    function renderClashes() { renderClash('manager'); renderClash('rec'); }
+    function renderClashes() { renderClash('manager'); renderClash('rec'); renderGout('manager'); renderGout('rec'); }
 
     function resetClash(form) {
       var st = clash[form];
@@ -2757,11 +2857,15 @@
           '<span>' + Utils.escapeHtml(t.title) + ' &middot; ' + Utils.escapeHtml(subjectName(t.subjectId)) +
           ' (' + Utils.escapeHtml(tx('type.' + t.type)) + ') &middot; ' + (t.date || '') +
           (TimeBlock.of(t) ? ' ' + TimeBlock.label(TimeBlock.of(t)) : '') + '</span>' +
+          goutCellHtml(t, 'one') +
           '<button class="del-manager-task" data-id="' + t.id + '"><span class="icon" data-icon="x" aria-hidden="true"></span></button></div>';
       }).join('');
+      bindSendButtons(Utils.$('manager-task-list'), 'manager');
       document.querySelectorAll('.del-manager-task').forEach(function (b) {
         b.addEventListener('click', function () {
+          var gone = AppState.adhocTasks.filter(function (t) { return t.id === b.dataset.id; })[0];
           AppState.adhocTasks = AppState.adhocTasks.filter(function (t) { return t.id !== b.dataset.id; });
+          removeOut(gone);
           renderManagerTaskList(); renderTodayTasks(); renderCalendar();
           Stats.render(); Storage.scheduleSave();
         });
@@ -2910,7 +3014,9 @@
       });
       document.querySelectorAll('.del-adhoc').forEach(function (b) {
         b.addEventListener('click', function () {
+          var gone = AppState.adhocTasks.filter(function (t) { return t.id === b.dataset.id; })[0];
           AppState.adhocTasks = AppState.adhocTasks.filter(function (t) { return t.id !== b.dataset.id; });
+          removeOut(gone);
           renderTodayTasks(); renderCalendar(); renderManagerTaskList();
           Stats.render(); Storage.scheduleSave();
         });
@@ -3053,6 +3159,7 @@
       setupRecurringForm: setupRecurringForm,
       setupAdhocForm: setupAdhocForm,
       setupClash: setupClash,
+      setupGout: setupGout,
       setupCalendarControls: setupCalendarControls
     };
   })();
@@ -4894,9 +5001,11 @@
    * Stats - dashboard counters at the top of the Notes page
    * =========================================================== */
   /* ===========================================================
-   * GCal - one-way import from a Google Calendar into the one-off
-   * tasks (today's list + calendar). Read-only scope; nothing is ever
-   * written to Google. Imported tasks carry gcal: { id, cal, title, date }
+   * GCal - import from a Google Calendar into the one-off tasks (today's
+   * list + calendar), read-only. Since v21 it can also send a timed task to
+   * a "StudyDesk" calendar the app creates in the user's Google account
+   * (calendar.app.created: only calendars this app made can be written; the
+   * permission is asked for on the first send). Imported tasks carry gcal: { id, cal, title, date }
    * (the event instance id and the values as last imported), so a re-import
    * updates them in place, never duplicates them, and leaves alone a task
    * the user edited here (touched rule). Events gone from the calendar are
@@ -4904,6 +5013,9 @@
    * =========================================================== */
   var GCal = (function () {
     var SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
+    var WRITE_SCOPE = 'https://www.googleapis.com/auth/calendar.app.created';   // only calendars this app created
+    var OUT_NAME = 'StudyDesk';
+    var tokenWrite = false;             // the current token may write (WRITE_SCOPE granted)
     var API = 'https://www.googleapis.com/calendar/v3';
     var DAYS = 14;                      // today + the next two weeks
     var token = null, tokenUntil = 0;   // memory only: never stored or synced
@@ -4988,6 +5100,34 @@
       return 'gc' + h1.toString(36) + h2.toString(36);
     }
 
+    /** An event this app put into Google (marked with a private property). */
+    function isOurs(ev) {
+      var pr = ev && ev.extendedProperties && ev.extendedProperties.private;
+      return !!(pr && pr.studydesk);
+    }
+
+    /** The Google event for a timed task sent from here: "[subject] title" (the form the
+        import understands), local start/end with the device's time zone; a recurring task
+        repeats weekly on its days from its next day (from today). Null without a time. */
+    function outEvent(task, kind, subjectName, tz, today) {
+      var b = TimeBlock.of(task);
+      if (!b) return null;
+      var date = kind === 'rec' ? TimeBlock.dates({ days: task.days || [] }, today)[0] : task.date;
+      if (!date) return null;
+      var endDate = b.end === '24:00' ? TimeBlock.addDays(date, 1) : date;
+      var ev = {
+        summary: (subjectName ? '[' + subjectName + '] ' : '') + task.title,
+        start: { dateTime: date + 'T' + b.start + ':00', timeZone: tz },
+        end: { dateTime: endDate + 'T' + (b.end === '24:00' ? '00:00' : b.end) + ':00', timeZone: tz },
+        extendedProperties: { private: { studydesk: '1', studydeskTask: task.id } }
+      };
+      if (kind === 'rec') {
+        var codes = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
+        ev.recurrence = ['RRULE:FREQ=WEEKLY;BYDAY=' + (task.days || []).slice().sort().map(function (d) { return codes[d]; }).join(',')];
+      }
+      return ev;
+    }
+
     /** Merge fetched events into state.adhocTasks. from/to: YYYY-MM-DD window
         (inclusive) that was fetched. Returns { added, updated, removed }. */
     function merge(state, events, opts) {
@@ -4997,6 +5137,7 @@
       var seen = {};
       (events || []).forEach(function (ev) {
         if (!ev || !ev.id || ev.status === 'cancelled') return;
+        if (isOurs(ev)) return;   // a time block this app sent: it is already a task here
         var date = eventDate(ev);
         // Google's timeMin filters on an event's END, so one that started before
         // the window (yesterday, running into today) also comes back: leave it out
@@ -5085,6 +5226,11 @@
           if (!r || r.error || !r.access_token) { w.reject(new Error('denied')); return; }
           token = r.access_token;
           tokenUntil = Date.now() + (Math.max(60, (r.expires_in || 3600) - 60) * 1000);
+          var oauth = window.google.accounts.oauth2;
+          tokenWrite = oauth.hasGrantedAllScopes ? !!oauth.hasGrantedAllScopes(r, WRITE_SCOPE)
+            : String(r.scope || '').split(' ').indexOf(WRITE_SCOPE) !== -1;
+          // the write permission can be unticked in Google's window: reads still work with this token
+          if (w.write && !tokenWrite) { w.reject(new Error('nowrite')); return; }
           w.resolve(token);
         },
         error_callback: function () { var w = tokenWait; tokenWait = null; if (w) w.reject(new Error('denied')); }
@@ -5108,15 +5254,17 @@
         paged request (after a network response) whose token ran out gets
         'expired', and a click before the preloaded script arrived gets 'loading' -
         both ask the user to press again, which is a fresh click. */
-    function getToken(interactive) {
-      if (token && Date.now() < tokenUntil) return Promise.resolve(token);
+    function getToken(interactive, write) {
+      if (token && Date.now() < tokenUntil && (!write || tokenWrite)) return Promise.resolve(token);
       if (!interactive) return Promise.reject(new Error('expired'));
       function ask() {
         initClient();
         if (tokenWait) tokenWait.reject(new Error('denied'));   // an older unanswered popup
         return new Promise(function (resolve, reject) {
-          tokenWait = { resolve: resolve, reject: reject };
-          tokenClient.requestAccessToken({ prompt: '' });
+          tokenWait = { resolve: resolve, reject: reject, write: !!write };
+          // a send asks for the write permission on top of reading (incremental: the read
+          // permission already given stays, Google only asks about the new one)
+          tokenClient.requestAccessToken(write ? { prompt: '', scope: SCOPE + ' ' + WRITE_SCOPE, include_granted_scopes: true } : { prompt: '' });
         });
       }
       if (window.google && window.google.accounts && window.google.accounts.oauth2) return ask();
@@ -5134,13 +5282,18 @@
         drops the token and asks the user to press the button again - a new
         popup outside a click would be blocked. A 403 is a quota error when
         Google's reason says so, otherwise access was refused. */
-    function api(path, interactive) {
+    function api(path, interactive, opts) {
+      opts = opts || {};
       if (!navigator.onLine) return Promise.reject(new Error('offline'));
-      return getToken(interactive).then(function (tok) {
+      return getToken(interactive, !!opts.write).then(function (tok) {
         var ctl = new AbortController();
         var timer = setTimeout(function () { ctl.abort(); }, 15000);
-        return fetch(API + path, { headers: { Authorization: 'Bearer ' + tok }, signal: ctl.signal }).then(function (res) {
+        var init = { method: opts.method || 'GET', headers: { Authorization: 'Bearer ' + tok }, signal: ctl.signal };
+        if (opts.body) { init.headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(opts.body); }
+        return fetch(API + path, init).then(function (res) {
           clearTimeout(timer);
+          // deleting an event that is already gone (removed in Google) is fine
+          if (opts.method === 'DELETE' && (res.status === 404 || res.status === 410)) return null;
           if (res.status === 401) { if (token === tok) token = null; throw new Error('expired'); }   // a newer token stays
           if (res.status === 403) {
             return res.json().catch(function () { return null; }).then(function (body) {
@@ -5153,7 +5306,7 @@
           if (res.status === 404) throw new Error('notfound');
           if (res.status === 429) throw new Error('quota');
           if (!res.ok) throw new Error('http ' + res.status);
-          return res.json();
+          return res.status === 204 ? null : res.json();
         }, function (e) { clearTimeout(timer); throw e; });
       });
     }
@@ -5163,7 +5316,7 @@
       var m = (e && (e.name === 'AbortError' ? 'timeout' : e.message)) || '';
       return { offline: 'gcal.offline', timeout: 'gcal.timeout', denied: 'gcal.denied', gis: 'gcal.gisFailed',
         loading: 'gcal.loading', expired: 'gcal.expired', forbidden: 'gcal.forbidden', notfound: 'gcal.notFound',
-        quota: 'gcal.quota' }[m] || failKey || 'gcal.failed';
+        quota: 'gcal.quota', nowrite: 'gout.noWrite' }[m] || failKey || 'gcal.failed';
     }
 
     function showError(e) { setStatus(errorKey(e), null, true); }
@@ -5235,6 +5388,67 @@
       }).then(function (lists) { return [].concat.apply([], lists); });
     }
 
+    // ---------- sending time blocks (v21) ----------
+
+    function deviceTz() {
+      try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Seoul'; } catch (e) { return 'Asia/Seoul'; }
+    }
+
+    /** The "StudyDesk" calendar in Google (created by this app on the first send; kept in
+        settings, so other devices use the same one). */
+    function outCalendar() {
+      var g = AppState.settings.gcal;
+      if (g.outCalendarId) return Promise.resolve(g.outCalendarId);
+      return api('/calendars', false, { method: 'POST', write: true, body: { summary: OUT_NAME, timeZone: deviceTz() } }).then(function (cal) {
+        AppState.settings.gcal.outCalendarId = cal.id;
+        Storage.scheduleSave();
+        return cal.id;
+      });
+    }
+
+    /** Send a timed task (kind 'one' or 'rec') to the StudyDesk calendar; it then carries
+        gout: { cal, id }. Called from a click: the first call opens Google's window to ask
+        for the write permission. If the user deleted the StudyDesk calendar in Google, a
+        new one is made once. If the task was deleted while this ran, the event is removed. */
+    function sendTask(task, kind) {
+      var subj = AppState.subjectById(task.subjectId);
+      var body = outEvent(task, kind, subj ? subj.name : '', deviceTz(), Utils.todayStr());
+      if (!body) return Promise.reject(new Error('notime'));
+      var first = getToken(true, true);   // synchronously, inside the click
+      function insert(retried) {
+        return outCalendar().then(function (cal) {
+          return api('/calendars/' + encodeURIComponent(cal) + '/events', false, { method: 'POST', write: true, body: body }).then(function (ev) {
+            return { cal: cal, ev: ev };
+          }, function (e) {
+            if (!retried && e && e.message === 'notfound') {   // the StudyDesk calendar was deleted in Google
+              if (AppState.settings.gcal.outCalendarId === cal) AppState.settings.gcal.outCalendarId = '';
+              return insert(true);
+            }
+            throw e;
+          });
+        });
+      }
+      return first.then(function () { return insert(false); }).then(function (r) {
+        var list = kind === 'rec' ? AppState.recurring : AppState.adhocTasks;
+        var live = list.filter(function (t) { return t.id === task.id; })[0];
+        if (!live) {   // deleted here meanwhile: do not leave the event behind
+          return api('/calendars/' + encodeURIComponent(r.cal) + '/events/' + encodeURIComponent(r.ev.id), false, { method: 'DELETE', write: true })
+            .then(function () { return null; });
+        }
+        live.gout = { cal: r.cal, id: r.ev.id };
+        Storage.scheduleSave();
+        return live.gout;
+      });
+    }
+
+    /** Remove a sent task's event from Google (the task itself is already gone here). From a
+        click: may ask for the write permission. An event already deleted in Google is fine. */
+    function removeTaskEvent(task) {
+      if (!task || !task.gout || !task.gout.cal || !task.gout.id) return Promise.resolve(null);
+      return api('/calendars/' + encodeURIComponent(task.gout.cal) + '/events/' + encodeURIComponent(task.gout.id), true,
+        { method: 'DELETE', write: true });
+    }
+
     function hasToken() { return !!token && Date.now() < tokenUntil; }
     function configured() { return !!GOOGLE_CLIENT_ID; }
 
@@ -5256,9 +5470,11 @@
         if (seq !== reqSeq) return;
         var items = list.map(calItem);
         var g = AppState.settings.gcal;
+        // the StudyDesk calendar (time blocks sent from here) is never picked for importing
+        var others = items.filter(function (c) { return c.id !== g.outCalendarId; });
         var pick = items.filter(function (c) { return c.id === g.calendarId; })[0] ||
-          items.filter(function (c) { return /공부|study/i.test(c.name); })[0] ||
-          items.filter(function (c) { return c.primary; })[0] || items[0];
+          others.filter(function (c) { return /공부|study/i.test(c.name) && !/^studydesk$/i.test(c.name); })[0] ||
+          others.filter(function (c) { return c.primary; })[0] || others[0];
         calendars = items;
         if (pick) { g.calendarId = pick.id; g.calendarName = pick.name; Storage.scheduleSave(); }
         render();
@@ -5375,7 +5591,8 @@
 
     return { setup: setup, render: render, preload: preload, preloadForSchedule: preloadForSchedule, merge: merge, taskIdFor: taskIdFor,
       matchSubject: matchSubject, eventDate: eventDate, windowDates: windowDates, eventsForDates: eventsForDates,
-      hasToken: hasToken, configured: configured, errorKey: errorKey };
+      hasToken: hasToken, configured: configured, errorKey: errorKey, sendTask: sendTask, removeTaskEvent: removeTaskEvent,
+      isOurs: isOurs, outEvent: outEvent };
   })();
 
   var Stats = {
@@ -6214,6 +6431,7 @@
       Schedule.setupRecurringForm();
       Schedule.setupAdhocForm();
       Schedule.setupClash();
+      Schedule.setupGout();
       Schedule.setupCalendarControls();
       Flashcards.setupCards();
       Flashcards.setupStudyMode();
@@ -6266,7 +6484,7 @@
   // expose App.renderAll for Settings module's cross-call
   window.App = App;
   window.SyncCore = SyncCore;
-  window.GCalCore = { merge: GCal.merge, taskIdFor: GCal.taskIdFor, matchSubject: GCal.matchSubject, eventDate: GCal.eventDate, windowDates: GCal.windowDates };   // pure parts, for the Node tests   // pure sync helpers, used by the Node simulation tests
+  window.GCalCore = { merge: GCal.merge, taskIdFor: GCal.taskIdFor, matchSubject: GCal.matchSubject, eventDate: GCal.eventDate, windowDates: GCal.windowDates, outEvent: GCal.outEvent, isOurs: GCal.isOurs };   // pure parts, for the Node tests   // pure sync helpers, used by the Node simulation tests
 
   /* ===========================================================
    * Boot
