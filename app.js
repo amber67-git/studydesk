@@ -2808,9 +2808,16 @@
     function gcalClashes(g) {
       return TimeBlock.eventClashes(g.events, g.cand, Utils.todayStr(), function (ev) {
         // a time block sent from here: its task is in the local check while it exists
+        // a time block sent from here: left to the local check only while its task is here
+        // and the event still has the task's time (moved in Google -> it is checked here)
         if (GCal.isOurs(ev)) {
-          var own = ev.extendedProperties.private.studydeskTask;
-          return AppState.adhocTasks.concat(AppState.recurring).some(function (t) { return t.id === own && !!TimeBlock.of(t); });
+          var own = ev.extendedProperties.private.studydeskTask, eb = TimeBlock.eventBlock(ev), ed = GCal.eventDate(ev);
+          return !!eb && AppState.adhocTasks.map(function (t) { return { t: t, rec: false }; })
+            .concat(AppState.recurring.map(function (t) { return { t: t, rec: true }; })).some(function (x) {
+              var tb = TimeBlock.of(x.t);
+              if (x.t.id !== own || !tb || tb.start !== eb.start || tb.end !== eb.end) return false;
+              return x.rec ? (x.t.days || []).indexOf((new Date(ed.replace(/-/g, '/')).getDay() + 6) % 7) !== -1 : x.t.date === ed;
+            });
         }
         var tid = ev.__cal ? GCal.taskIdFor(ev.__cal, ev.id) : '';
         return !!tid && AppState.adhocTasks.some(function (t) {
@@ -5304,6 +5311,7 @@
             });
           }
           if (res.status === 404) throw new Error('notfound');
+          if (res.status === 409) throw new Error('conflict');
           if (res.status === 429) throw new Error('quota');
           if (!res.ok) throw new Error('http ' + res.status);
           return res.status === 204 ? null : res.json();
@@ -5316,7 +5324,7 @@
       var m = (e && (e.name === 'AbortError' ? 'timeout' : e.message)) || '';
       return { offline: 'gcal.offline', timeout: 'gcal.timeout', denied: 'gcal.denied', gis: 'gcal.gisFailed',
         loading: 'gcal.loading', expired: 'gcal.expired', forbidden: 'gcal.forbidden', notfound: 'gcal.notFound',
-        quota: 'gcal.quota', nowrite: 'gout.noWrite' }[m] || failKey || 'gcal.failed';
+        quota: 'gcal.quota', nowrite: 'gout.noWrite', cleanup: 'gout.removeFailed' }[m] || failKey || 'gcal.failed';
     }
 
     function showError(e) { setStatus(errorKey(e), null, true); }
@@ -5376,6 +5384,10 @@
         // the import calendar even when the list lacks it (chosen on another device or in a
         // backup); one that cannot be read any more is skipped below
         if (importCal && ids.indexOf(importCal) === -1) ids.push(importCal);
+        // and the StudyDesk calendar (time blocks sent from here), even when hidden in Google:
+        // an event moved there, or left after its task was deleted, is still in the way
+        var outCal = (AppState.settings.gcal || {}).outCalendarId;
+        if (outCal && ids.indexOf(outCal) === -1) ids.push(outCal);
         return Promise.all(ids.map(function (id) {
           return fetchEvents(id, w, interactive).then(function (evs) {
             evs.forEach(function (ev) { ev.__cal = id; });
@@ -5396,30 +5408,59 @@
 
     /** The "StudyDesk" calendar in Google (created by this app on the first send; kept in
         settings, so other devices use the same one). */
+    // one StudyDesk calendar creation at a time: sends that overlap share it instead of
+    // each making a calendar (the last one's id would win and the others be orphaned)
+    var outCalPending = null;
+
+    /** The "StudyDesk" calendar in Google (created by this app on the first send; kept in
+        settings, so other devices use the same one). The new id is written only into the
+        settings it was asked for: after an account switch it is not carried over. */
     function outCalendar() {
       var g = AppState.settings.gcal;
       if (g.outCalendarId) return Promise.resolve(g.outCalendarId);
-      return api('/calendars', false, { method: 'POST', write: true, body: { summary: OUT_NAME, timeZone: deviceTz() } }).then(function (cal) {
-        AppState.settings.gcal.outCalendarId = cal.id;
-        Storage.scheduleSave();
+      if (outCalPending && outCalPending.g === g) return outCalPending.p;
+      var p = api('/calendars', false, { method: 'POST', write: true, body: { summary: OUT_NAME, timeZone: deviceTz() } }).then(function (cal) {
+        if (outCalPending && outCalPending.p === p) outCalPending = null;
+        if (AppState.settings.gcal === g) { g.outCalendarId = cal.id; Storage.scheduleSave(); }
         return cal.id;
+      }, function (e) {
+        if (outCalPending && outCalPending.p === p) outCalPending = null;   // a later send tries again
+        throw e;
       });
+      outCalPending = { g: g, p: p };
+      return p;
     }
+
+    /** A client-chosen event id (base32hex, as Google requires), so a send repeated after a
+        lost response finds its event already there (409) instead of adding a second one. */
+    function newEventId() {
+      var a = '0123456789abcdefghijklmnopqrstuv', out = 'sd', buf = new Uint8Array(24);
+      (window.crypto || window.msCrypto).getRandomValues(buf);
+      for (var i = 0; i < buf.length; i++) out += a[buf[i] & 31];
+      return out;
+    }
+
+    var sending = {};      // task id -> the send under way (a double click shares it)
+    var pendingIds = {};   // task id -> event id of a send that did not finish (reused on retry)
 
     /** Send a timed task (kind 'one' or 'rec') to the StudyDesk calendar; it then carries
         gout: { cal, id }. Called from a click: the first call opens Google's window to ask
         for the write permission. If the user deleted the StudyDesk calendar in Google, a
-        new one is made once. If the task was deleted while this ran, the event is removed. */
+        new one is made once. If the task was deleted while this ran, the event is removed
+        (a failure there is 'cleanup': the task is gone but the event is left in Google). */
     function sendTask(task, kind) {
+      if (sending[task.id]) return sending[task.id];
       var subj = AppState.subjectById(task.subjectId);
       var body = outEvent(task, kind, subj ? subj.name : '', deviceTz(), Utils.todayStr());
       if (!body) return Promise.reject(new Error('notime'));
+      body.id = pendingIds[task.id] || (pendingIds[task.id] = newEventId());
       var first = getToken(true, true);   // synchronously, inside the click
       function insert(retried) {
         return outCalendar().then(function (cal) {
           return api('/calendars/' + encodeURIComponent(cal) + '/events', false, { method: 'POST', write: true, body: body }).then(function (ev) {
-            return { cal: cal, ev: ev };
+            return { cal: cal, id: ev.id };
           }, function (e) {
+            if (e && e.message === 'conflict') return { cal: cal, id: body.id };   // made by an earlier try whose answer was lost
             if (!retried && e && e.message === 'notfound') {   // the StudyDesk calendar was deleted in Google
               if (AppState.settings.gcal.outCalendarId === cal) AppState.settings.gcal.outCalendarId = '';
               return insert(true);
@@ -5428,17 +5469,25 @@
           });
         });
       }
-      return first.then(function () { return insert(false); }).then(function (r) {
+      var run = first.then(function () { return insert(false); }).then(function (r) {
+        delete pendingIds[task.id];
         var list = kind === 'rec' ? AppState.recurring : AppState.adhocTasks;
         var live = list.filter(function (t) { return t.id === task.id; })[0];
         if (!live) {   // deleted here meanwhile: do not leave the event behind
-          return api('/calendars/' + encodeURIComponent(r.cal) + '/events/' + encodeURIComponent(r.ev.id), false, { method: 'DELETE', write: true })
-            .then(function () { return null; });
+          return api('/calendars/' + encodeURIComponent(r.cal) + '/events/' + encodeURIComponent(r.id), false, { method: 'DELETE', write: true })
+            .then(function () { return null; }, function () { throw new Error('cleanup'); });
         }
-        live.gout = { cal: r.cal, id: r.ev.id };
+        live.gout = { cal: r.cal, id: r.id };
+        // stamped now (signed in), so an older cloud copy that lands before the debounced
+        // save cannot replace the task and lose gout (its event could then not be removed)
+        if (typeof Sync !== 'undefined' && Sync.isSignedIn && Sync.isSignedIn()) live.syncAt = Date.now();
         Storage.scheduleSave();
         return live.gout;
       });
+      sending[task.id] = run;
+      var done = function () { if (sending[task.id] === run) delete sending[task.id]; };
+      run.then(done, done);
+      return run;
     }
 
     /** Remove a sent task's event from Google (the task itself is already gone here). From a
